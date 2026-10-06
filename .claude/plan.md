@@ -114,7 +114,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/e2e/hooks.mjs` | Playwright: checks slots, bind hooks, dashboard decorator, stage event and nav order (8 checks) |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config, 
+**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config.
 
 ## 4. Done (log)
 
