@@ -4,7 +4,8 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 0 complete. Phase 1 (foundations: git, database link, deployment, code management) not started.
+- **Current phase:** Phase 0 complete. Phase 1 in progress: git, env and Supabase project done; restructure step 1 done; push to GitHub blocked on a write-enabled key.
+- **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
 ---
@@ -21,10 +22,10 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 |---|---|
 | `npm test` (node:test, no deps) | 7/7 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser smoke test (`npm run test:e2e`) | Not run in this review (needs `npm install` + Playwright) |
-| Git repository | **None.** Folder is not under version control |
+| Browser smoke test (`npm run test:e2e`) | Passes: 14 pages, no errors (run with installed Chrome via `CHROME_PATH`) |
+| Git repository | Local repo: `main` baseline + branch `chore/restructure-p1`; **not yet pushed** |
 | Linter / formatter / CI | **None** (only `.editorconfig`) |
-| Database / backend | **None.** State lives in browser `localStorage` |
+| Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -62,6 +63,56 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 
 `STAGES`: New → Shortlisted → Screening → Group Interview → Personal Interview → Selected → Offer → Offer Accepted → Joining → Onboarding → Employee Ready; plus terminal/side states `Rejected`, `On Hold`. Opening status (`Draft/Open/Screening/Interviewing/Offer/Filled/On Hold/Closed`) is derived from the furthest application stage inside `setStage()`. These rules are what must survive any rewrite.
 
+### Full file inventory
+
+| Path | Purpose |
+|---|---|
+| `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
+| `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
+| `.editorconfig`, `.gitattributes`, `.gitignore` | UTF-8/LF/2 spaces; force LF in git; ignore `node_modules/`, `dist/`, `.env*` (except `.env.example`), logs |
+| `.env` (git-ignored, local only) | Real Supabase URL, anon key, service-role key, pooler `DATABASE_URL` |
+| `.env.example` | Committed template with empty placeholders |
+| `plan.md` | This file |
+| `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md` | Run guide and layout; how the runtime works and its quirks; gap analysis to production |
+| `assets/img/logo.jpg` | Logo (the build inlines it) |
+| `src/core/utils.js` | DOM (`$`, `$$`), `esc`, dates (`today()`, `now()`, `addDays`, `fmtD`), money (`inr`, `lpa`), avatars |
+| `src/core/icons.js` | SVG icon set |
+| `src/core/constants.js` | `STAGES`, `JOURNEY`, status lists and colours, recruiters, interviewers, sources, criteria, screening questions, onboarding template, skill dictionary |
+| `src/core/store.js` | Global state `S`, `DEFAULT_SETTINGS`, `load()` / `save()` (localStorage `spectra-ats-v3`) |
+| `src/core/selectors.js` | `getOp`, `getC`, `getA`, `appsOfC`, `appsOfOp`, `intsOfA`, `offerOfA`, `stageRank`, `intStatus` |
+| `src/core/assets.js` | Asset paths |
+| `src/data/seed.js` | Demo dataset (openings, candidates, applications, interviews, offers) and `buildResume` |
+| `src/domain/match.js` | Resume-to-opening scoring with configurable weights |
+| `src/domain/resume-parser.js` | Plain-text resume parser |
+| `src/domain/salary.js` | CTC breakup |
+| `src/app/router.js` | Route state `R`, `NAV`, `go()`, previous/next record navigation (Alt+Left/Right) |
+| `src/app/shell.js` | Sidebar, top bar, global search, quick add, notifications |
+| `src/app/ui.js` | `modal`, `toast`, `confirmBox`, form helpers |
+| `src/app/actions.js` | `log`, `notify`, `setStage` (also derives opening status), `nextAction`, `journey` |
+| `src/app/render.js` | `VIEWS` registry and `render()` |
+| `src/app/main.js` | Bootstrap, loads last |
+| `src/features/dashboard/` | Dashboard |
+| `src/features/openings/` | Openings list and opening detail with tabs |
+| `src/features/applications/` | Applications table; `ai-match.js` match modal |
+| `src/features/candidates/` | Candidate list and profile; `resume-viewer.js`; `add-candidate.js` (resume paste or upload) |
+| `src/features/screening/` | Screening call form |
+| `src/features/interviews/` | Calendar and lists; `group-interview.js` and `personal-interview.js` scorecards |
+| `src/features/offers/` | Offer editor, letter, responses |
+| `src/features/onboarding/` | Onboarding checklists |
+| `src/features/tasks/`, `reports/`, `assistant/`, `settings/` | Tasks; standard reports; rule-based AI assistant; company, user and match-weight settings |
+| `src/features/pipeline/` | Pipeline control centre and SLA rules (+ `pipeline.css`) |
+| `src/features/posting/` | Job-board and social posting (+ `posting.css`) |
+| `src/features/sheets/` | `sheets-io.js` Excel workbook schema, build, parse; `sheets.js` Sheets view; `auto-import.js` Google Sheet auto-import (+ css) |
+| `src/features/management-report/` | `report-events.js`, `report-metrics.js`, `report-charts.js`, `report.js` (+ css) |
+| `src/generated/form-script.js` | **Generated** from `integrations/`; never edit |
+| `src/styles/` | `tokens`, `base`, `layout`, `components`, `widgets`, `utilities`, `responsive`, `print` (cascade order) |
+| `integrations/google-form/setup.template.gs` | Apps Script that builds the application form (source of truth) |
+| `scripts/serve.mjs`, `build-single.mjs`, `gen-form-script.mjs` | Dev server; single-file build; Apps Script generator |
+| `tests/unit/` | `domain.test.mjs`, `sheets-io.test.mjs`, `load-app.mjs` (loads app scripts into a Node `vm`) |
+| `tests/e2e/smoke.mjs` | Playwright: opens all 14 pages, fails on any uncaught error |
+
+**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config, `src/app/registry.js` (extension points).
+
 ## 4. Done (log)
 
 ### Phase 0 — structure (complete)
@@ -71,6 +122,20 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 - [x] Playwright smoke test of every sidebar page (also runnable against `dist`).
 - [x] Docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md`.
 - [x] `.editorconfig` (UTF-8, LF, 2-space), `.gitignore` (`node_modules`, `dist`, `.env*`).
+
+### Phase 1: foundations (in progress, 2026-10-06)
+- [x] **Git:** repository initialised on `main`; baseline commit; tag `v0.1.0-prototype`; `.gitattributes` forces LF.
+- [x] **Secrets handling:** `.env` (git-ignored, verified not tracked) holds the Supabase keys and database URL; `.env.example` is tracked. `.gitignore` fixed so `.env.example` is not swallowed by `.env.*`.
+- [x] **Supabase project created** (ref `zrzxmsttnmiteamjcwjh`, pooler region `ap-northeast-2`, Seoul). Credentials stored locally only. No schema, auth or RLS created yet.
+- [x] **GitHub remote:** `origin` is `git@github-ecoste-ats:pankaj-ecoste/ats.git`, using a dedicated SSH key (`~/.ssh/id_ed25519_ecoste_ats`) and a host alias in `~/.ssh/config`. The laptop's existing default key and `github.com` entry are untouched. Authentication works.
+- [x] **Branch** `chore/restructure-p1` created for restructuring work.
+- [x] **Refactor 1:** single `STAGES` source; `TODAY` and `NOW` constants replaced by `today()` and `now()` (about 90 call sites); fixed two local `today` variables in `pipeline.js` that would have shadowed the new function.
+- [x] **Verification after refactor:** `npm test` 7/7, `npm run build` OK, `npm run test:e2e` passes on all 14 pages.
+- [x] `npm install` run; `package-lock.json` committed.
+
+### Blocked or waiting
+- [ ] **Push to GitHub:** the deploy key was added read-only (GitHub: "key ... marked as read only"). Fix: delete the deploy key and re-add it with **Allow write access**, or add the key under the account's SSH keys. Then `git push -u origin main --tags` and push the branch.
+- [ ] **Rotate secrets:** the database password and `service_role` key were pasted into a chat. Reset the DB password and roll the JWT secret in Supabase (this also changes the anon key), then update `.env`.
 
 ### Review pass (2026-10-06)
 - [x] Read the whole structure, all of `app/` and `core/` store/selectors, scripts, tests, docs.
@@ -113,7 +178,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 **P1.1 Code management** *(do first; everything else depends on it)*
 - ☑ `git init`, baseline commit, tag `v0.1.0-prototype` (2026-10-06)
-- ☐ Create remote repo (company GitHub org), push; protect `main`
+- ◐ Remote repo `pankaj-ecoste/ats` exists and SSH auth works; push blocked on write access (see Blocked); then protect `main`
 - ☐ Branching: `main` (deployable) ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge
 - ☐ Commit style: Conventional Commits (`feat(offers): …`, `fix(pipeline): …`)
 - ☐ PR template + checklist (tests pass, plan.md updated, no secrets, load order checked)
@@ -152,7 +217,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 **P2.0 Decisions needed from you (blockers for this phase)** — see §8.
 
-- ☐ Pick stack. Recommendation: **PostgreSQL + auth + file storage on Supabase** (or small Node API over Postgres if self-hosted)
+- ☑ Stack chosen: **Supabase (PostgreSQL + auth + storage)**; project created (see §4)
 - ☐ Schema + migrations for each entity in `S` (openings, candidates, applications, interviews, groups, offers, onboarding, tasks, activity, notifications, settings, postings, events, call_log, …) with foreign keys matching `cid` / `opId` / `appId` links
 - ☐ Environments: `dev`, `staging`, `prod`, each with its own database and keys
 - ☐ Authentication (Google Workspace SSO) + roles: admin, recruiter, interviewer, hiring manager, read-only management; row-level security
@@ -185,8 +250,8 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 | # | Question | Default if no answer |
 |---|---|---|
-| D1 | Hosting/database platform: Supabase (managed) vs self-hosted Node+Postgres? | Supabase |
-| D2 | Where does the repo live (GitHub org/account)? | Company GitHub org |
+| D1 | Database platform: **decided, Supabase** (region Seoul; moving to Mumbai would need a new project) | done |
+| D2 | Repo location: **decided, github.com/pankaj-ecoste/ats** | done |
 | D3 | Sign-in method: Google Workspace SSO for `@ecoste.in`? | Yes |
 | D4 | Is Google Sheet staying as intake only, or still a system of record? | Intake/export only |
 | D5 | Which channels must really send: email, calendar, WhatsApp? | Email + calendar |
@@ -210,7 +275,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 | Date | Change | By |
 |---|---|---|
-| 2026-10-06 | Branch `chore/restructure-p1`: git + SSH deploy key, `.env`/`.env.example`, single `STAGES`, `today()`/`now()`; tests, build and smoke test green | Claude Code |
+| 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
 | 2026-10-06 | Reviewed codebase, verified tests/build, wrote `plan.md` with issues list, roadmap, process | Claude Code |
 | (earlier) | Phase 0: prototype split into layered project, tests, docs, build | Intern / project setup |
 
