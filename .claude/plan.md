@@ -1,7 +1,7 @@
 # Ecoste Recruit Tracker — Project Plan & Log
 
 Single source of truth for **what exists, what was done, what is pending, and how changes are made**.
-Update this file in the same change as the work it describes (see §9).
+Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
 - **Current phase:** Phase 0 complete. Phase 1 in progress: git, env and Supabase project done; restructure step 1 done; pushed to GitHub.
@@ -72,7 +72,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `.editorconfig`, `.gitattributes`, `.gitignore` | UTF-8/LF/2 spaces; force LF in git; ignore `node_modules/`, `dist/`, `.env*` (except `.env.example`), logs |
 | `.env` (git-ignored, local only) | Real Supabase URL, anon key, service-role key, pooler `DATABASE_URL` |
 | `.env.example` | Committed template with empty placeholders |
-| `plan.md` | This file |
+| `.claude/plan.md` | This file (project plan and log) |
 | `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md` | Run guide and layout; how the runtime works and its quirks; gap analysis to production |
 | `assets/img/logo.jpg` | Logo (the build inlines it) |
 | `src/core/utils.js` | DOM (`$`, `$$`), `esc`, dates (`today()`, `now()`, `addDays`, `fmtD`), money (`inr`, `lpa`), avatars |
