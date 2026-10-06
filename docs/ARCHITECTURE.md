@@ -25,10 +25,8 @@ These are carried over unchanged from the prototype. Each has a matching item in
 
 1. **Features extend each other by wrapping.** `features/sheets/auto-import.js` replaces `VIEWS.sheets` and `VIEWS.applications` with wrappers that call the original view and then `String.replace` a literal fragment of its HTML to inject UI. If that markup changes, the injected UI silently disappears. `features/posting/posting.js` wraps `VIEWS.opening`, `features/management-report/report.js` wraps `VIEWS.dashboard`, and `report-events.js` reassigns the global `setStage` to record events.
 2. **`NAV` is edited at load time** by `pipeline.js` and `posting.js` (`NAV.splice`), so sidebar order depends on script order.
-3. **`STAGES` is defined twice**: `core/constants.js` and inside `features/sheets/sheets-io.js`.
-4. **`TODAY` is fixed when the page loads** (`core/utils.js`). A tab left open overnight keeps yesterday's date.
-5. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
-6. **ExcelJS and the Figtree font load from public CDNs at runtime.**
+3. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
+4. **ExcelJS and the Figtree font load from public CDNs at runtime.**
 
 ## How the split was verified
 

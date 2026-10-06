@@ -8,7 +8,7 @@ function vOpenings(){
  <div class="seg" role="tablist">${['',...OP_STATUS].map(s=>`<button class="${opFilter.status===s?'on':''}" data-ost="${s}">${s||'All'}</button>`).join('')}</div></div>
  <div class="tbl-wrap"><table><thead><tr><th>Opening</th><th>Department</th><th>Location</th><th>Positions</th><th>Pipeline</th><th>Best match</th><th>Recruiter</th><th>Age</th><th>Priority</th><th>Status</th></tr></thead><tbody>
  ${list.map(o=>{const ap=appsOfOp(o.id);const best=ap.length?Math.max(...ap.map(a=>matchA(a).score)):0;const active=ap.filter(a=>!['Rejected','On Hold'].includes(a.stage)).length;
-  return `<tr class="click" data-op="${o.id}"><td><b>${esc(o.title)}</b><div class="muted small">${o.id} · ${o.type}, ${o.expMin}–${o.expMax} yrs</div></td><td>${esc(o.dept)}</td><td>${esc(o.location)} <span class="muted small">${o.mode}</span></td><td>${o.positions}</td><td>${active} active <span class="muted small">/ ${ap.length}</span></td><td>${ap.length?ring(best):'—'}</td><td>${esc(o.recruiter)}</td><td>${daysBetween(o.opened,TODAY)}d</td><td><span class="pill ${o.priority==='Urgent'?'red':o.priority==='High'?'orange':''}">${o.priority}</span></td><td><span class="pill ${OP_COLOR[o.status]}">${o.status}</span></td></tr>`}).join('')}
+  return `<tr class="click" data-op="${o.id}"><td><b>${esc(o.title)}</b><div class="muted small">${o.id} · ${o.type}, ${o.expMin}–${o.expMax} yrs</div></td><td>${esc(o.dept)}</td><td>${esc(o.location)} <span class="muted small">${o.mode}</span></td><td>${o.positions}</td><td>${active} active <span class="muted small">/ ${ap.length}</span></td><td>${ap.length?ring(best):'—'}</td><td>${esc(o.recruiter)}</td><td>${daysBetween(o.opened,today())}d</td><td><span class="pill ${o.priority==='Urgent'?'red':o.priority==='High'?'orange':''}">${o.priority}</span></td><td><span class="pill ${OP_COLOR[o.status]}">${o.status}</span></td></tr>`}).join('')}
  </tbody></table>${list.length?'':'<div class="empty"><b>No openings match</b>Clear the filter or create a new opening.</div>'}</div></section>`;
 }
 function bindOpenings(root){
@@ -17,7 +17,7 @@ function bindOpenings(root){
  $$('[data-op]',root).forEach(el=>el.onclick=()=>go('opening',el.dataset.op));
 }
 function openingForm(id){
- const o=id?getOp(id):{id:'OP-'+(1000+S.openings.length+1),title:'',dept:'Engineering',positions:1,location:'',mode:'Hybrid',type:'Full-time',expMin:2,expMax:5,salMin:6,salMax:12,education:'Graduate',mandatory:[],preferred:[],desc:'',resp:'',req:'',recruiter:S.settings.user,manager:INTERVIEWERS[0],opened:TODAY,target:addDays(45),priority:'Medium',status:'Open'};
+ const o=id?getOp(id):{id:'OP-'+(1000+S.openings.length+1),title:'',dept:'Engineering',positions:1,location:'',mode:'Hybrid',type:'Full-time',expMin:2,expMax:5,salMin:6,salMax:12,education:'Graduate',mandatory:[],preferred:[],desc:'',resp:'',req:'',recruiter:S.settings.user,manager:INTERVIEWERS[0],opened:today(),target:addDays(45),priority:'Medium',status:'Open'};
  const sel=(n,opts,v)=>`<select class="inp" name="${n}">${opts.map(x=>`<option ${x==v?'selected':''}>${x}</option>`).join('')}</select>`;
  modal({title:id?'Edit opening':'New opening',size:'w',body:`<form id="opF" class="fgrid g3f" onsubmit="return false">
  <label class="f">Opening ID<input class="inp" name="id" value="${o.id}" readonly></label>
@@ -69,7 +69,7 @@ function vOpening(){
   body=`<div class="grid g2"><section class="panel"><header><h3>Funnel for this opening</h3></header><div class="pbody">${funnelHTML(ap)}</div></section>
   <section class="panel"><header><h3>AI match distribution</h3></header><div class="pbody hbars">${b.map(r=>{const n=sc.filter(s=>s>=r[0]&&s<r[1]).length;return `<div class="hb"><span>${r[0]}–${Math.min(100,r[1]-1)}%</span><div class="bar"><i style="width:${ap.length?n/ap.length*100:0}%;background:${scoreColor(r[0]+1)}"></i></div><b>${n}</b></div>`}).join('')}
   <h4 style="margin:18px 0 6px">Sources</h4>${Object.entries(src).map(([k,v])=>`<div class="hb"><span>${k}</span><div class="bar"><i style="width:${v/ap.length*100}%"></i></div><b>${v}</b></div>`).join('')}
-  <p class="muted small" style="margin-top:14px">Average match ${sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0}% · Opening age ${daysBetween(o.opened,TODAY)} days · ${Math.max(0,daysBetween(TODAY,o.target))} days to target joining</p></div></section></div>`}
+  <p class="muted small" style="margin-top:14px">Average match ${sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0}% · Opening age ${daysBetween(o.opened,today())} days · ${Math.max(0,daysBetween(today(),o.target))} days to target joining</p></div></section></div>`}
  else if(R.tab==='posting')body=postingTabHTML(o);
  else {const l=S.activity.filter(x=>x.text.includes(o.title)).slice(0,40);body=`<section class="panel">${activityList(l)}</section>`}
  return `<div class="navrow"><button class="btn ghost sm" onclick="go('openings')">${ic('back')}Openings</button>${navBar(R.opNavList||[],o.id,'opening')}</div>

@@ -1,9 +1,8 @@
 /* Ecoste Recruit Tracker <-> Google Sheets workbook: one schema, used by the web app and the template builder. */
-(function(root){
+(function(root,STAGES){
 "use strict";
 const MAXR=300; // rows pre-filled with formulas and dropdowns
 const NAVY='FF0E1A33',AIH='FF7B4DFF',BLUE='FF2F6BFF';
-const STAGES=['New','Shortlisted','Screening','Group Interview','Personal Interview','Selected','Offer','Offer Accepted','Joining','Onboarding','Employee Ready'];
 const LISTS={
  'Stage':STAGES.concat(['Rejected','On Hold']),
  'Opening Status':['Draft','Open','Screening','Interviewing','Offer','Filled','On Hold','Closed'],
@@ -226,13 +225,13 @@ function buildDashboard(ws,S){
  ws.getColumn(1).width=3;ws.getColumn(2).width=28;[3,4,5,6,7,8,9,10].forEach(i=>ws.getColumn(i).width=15);
  const T=(r,c,v,st={})=>{const cell=ws.getCell(r,c);cell.value=v;cell.font={name:'Arial',size:st.size||10,bold:!!st.bold,color:{argb:st.color||'FF16203A'}};if(st.fill)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:st.fill}};if(st.fmt)cell.numFmt=st.fmt;if(st.align)cell.alignment={horizontal:st.align};return cell};
  const F=f=>({formula:f});
- T(1,2,'Recruitment dashboard',{size:16,bold:true,color:NAVY});T(2,2,{formula:'"As of "&TEXT(TODAY(),"dd mmm yyyy")'},{color:'FF8A93A8'});
+ T(1,2,'Recruitment dashboard',{size:16,bold:true,color:NAVY});T(2,2,{formula:'"As of "&TEXT(today()(),"dd mmm yyyy")'},{color:'FF8A93A8'});
  const A='Applications!$G$2:$G$'+MAXR;
  const k=[['Open positions','SUMPRODUCT((Openings!$D$2:$D$200)*(Openings!$W$2:$W$200<>"Filled")*(Openings!$W$2:$W$200<>"Closed")*(Openings!$W$2:$W$200<>"Draft")*(Openings!$A$2:$A$200<>""))'],
   ['New applications',`COUNTIF(${A},"New")`],['Shortlisted',`COUNTIF(${A},"Shortlisted")+COUNTIF(${A},"Screening")`],
-  ['Interviews today','COUNTIFS(Interviews!$G$2:$G$'+MAXR+',TODAY(),Interviews!$N$2:$N$'+MAXR+',"<>Cancelled")'],
+  ['Interviews today','COUNTIFS(Interviews!$G$2:$G$'+MAXR+',today()(),Interviews!$N$2:$N$'+MAXR+',"<>Cancelled")'],
   ['Selected',`COUNTIF(${A},"Selected")`],['Offers pending','SUMPRODUCT(COUNTIF(Offers!$Q$2:$Q$'+MAXR+',{"Draft","Generated","Sent","Negotiation"}))'],
-  ['Joining this week','COUNTIFS(Applications!$K$2:$K$'+MAXR+',">="&TODAY(),Applications!$K$2:$K$'+MAXR+',"<="&(TODAY()+7))'],['Onboarding pending',`COUNTIF(${A},"Onboarding")`]];
+  ['Joining this week','COUNTIFS(Applications!$K$2:$K$'+MAXR+',">="&today()(),Applications!$K$2:$K$'+MAXR+',"<="&(today()()+7))'],['Onboarding pending',`COUNTIF(${A},"Onboarding")`]];
  k.forEach((x,i)=>{const r=4+Math.floor(i/4)*3,c=2+(i%4)*2;T(r,c,x[0],{color:'FF55607A',fill:'FFF4F6FA'});T(r+1,c,F(x[1]),{size:18,bold:true,fill:'FFF4F6FA',align:'left'});ws.getCell(r,c+1).fill=ws.getCell(r+1,c+1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF4F6FA'}}});
  // funnel
  let r=11;T(r,2,'Recruitment funnel',{size:12,bold:true,color:NAVY});T(r,3,'Candidates',{bold:true});T(r,4,'Conversion',{bold:true});
@@ -286,4 +285,4 @@ function parse(wb){
 }
 
 root.SheetsIO={SCHEMA,SHEET_ORDER,STAGES,LISTS,MAXR,build,parse,readDate,readTime};
-})(typeof module!=='undefined'&&module.exports?module.exports:window);
+})(typeof module!=='undefined'&&module.exports?module.exports:window,STAGES); // STAGES comes from core/constants.js, which must load first

@@ -65,12 +65,12 @@ function seed(){
  // group interview today for CRM
  const gid='GI-501';
  const giApps=['Pooja Sharma','Rahul Yadav','Anjali Singh','Mohit Gupta'].map(appOf);
- groups.push({id:gid,opId:'OP-1002',date:TODAY,time:'11:00',duration:90,mode:'Office',location:'Northwind Office, Connaught Place, Delhi',link:'',panel:'Sales hiring panel',interviewers:['Kavita Rao','Farah Khan'],appIds:giApps.map(a=>a.id),evaluated:false});
- giApps.forEach((a,k)=>interviews.push({id:'INT-'+(701+k),appId:a.id,kind:'Group',round:'Group Interview',groupId:gid,date:TODAY,time:'11:00',duration:90,mode:'Office',location:'Northwind Office, Connaught Place, Delhi',link:'',interviewers:['Kavita Rao','Farah Khan'],status:'Scheduled',invite:['Confirmed','Confirmed','Sent','Confirmed'][k],scores:null,rec:null,feedback:''}));
+ groups.push({id:gid,opId:'OP-1002',date:today(),time:'11:00',duration:90,mode:'Office',location:'Northwind Office, Connaught Place, Delhi',link:'',panel:'Sales hiring panel',interviewers:['Kavita Rao','Farah Khan'],appIds:giApps.map(a=>a.id),evaluated:false});
+ giApps.forEach((a,k)=>interviews.push({id:'INT-'+(701+k),appId:a.id,kind:'Group',round:'Group Interview',groupId:gid,date:today(),time:'11:00',duration:90,mode:'Office',location:'Northwind Office, Connaught Place, Delhi',link:'',interviewers:['Kavita Rao','Farah Khan'],status:'Scheduled',invite:['Confirmed','Confirmed','Sent','Confirmed'][k],scores:null,rec:null,feedback:''}));
  const pi=(name,round,date,time,ivr,status,extra={})=>{const a=appOf(name);interviews.push(Object.assign({id:uid('INT'),appId:a.id,kind:'Personal',round,date,time,duration:60,mode:'Google Meet',location:'',link:'https://meet.google.com/abc-defg-hij',interviewers:[ivr],status,invite:'Confirmed',scores:null,rec:null,decision:null,feedback:''},extra))};
- pi('Aditya Verma','Technical',TODAY,'15:00','Rahul Mehta','Scheduled');
+ pi('Aditya Verma','Technical',today(),'15:00','Rahul Mehta','Scheduled');
  pi('Aditya Verma','HR',addDays(-3),'12:00','Priya Sharma','Completed',{scores:[4,4,4,4,5],rec:'Good',decision:'Next Round',feedback:'Clear communicator, strong ownership mindset.'});
- pi('Simran Kaur','Managerial',TODAY,'17:30','Kavita Rao','Scheduled');
+ pi('Simran Kaur','Managerial',today(),'17:30','Kavita Rao','Scheduled');
  pi('Meera Iyer','Final',addDays(-2),'16:00','Rahul Mehta','Completed',{scores:[5,4,5,5,4],rec:'Strong',decision:'Selected',feedback:'Excellent system design depth. Strongly recommend.'});
  pi('Sana Qureshi','Technical',addDays(-6),'11:00','Vikram Singh','Completed',{scores:[5,4,4,4,4],rec:'Strong',decision:'Selected',feedback:'Very strong on distributed systems.'});
  pi('Divya Menon','Technical',addDays(2),'10:30','Rahul Mehta','Scheduled');
@@ -91,15 +91,15 @@ function seed(){
  appOf('Lakshmi Pillai').joining=addDays(8);
  appOf('Divya Menon').screening={outcome:'Call Back',answers:['Yes','₹27 LPA','₹34 LPA','90 days','Open to relocate','Looking for architecture role','Next week'],notes:'Asked to call back Thursday evening.',date:addDays(-1)};
  const tasks=[
-  {id:uid('T'),title:'Submit feedback for Gaurav Mishra (Technical)',due:TODAY,related:'DevOps Engineer',priority:'High',done:false,owner:'Vikram Singh'},
+  {id:uid('T'),title:'Submit feedback for Gaurav Mishra (Technical)',due:today(),related:'DevOps Engineer',priority:'High',done:false,owner:'Vikram Singh'},
   {id:uid('T'),title:'Call back Divya Menon about notice buyout',due:addDays(1),related:'Senior Java Developer',priority:'Medium',done:false,owner:'Priya Sharma'},
-  {id:uid('T'),title:'Follow up with Sana Qureshi on offer',due:TODAY,related:'Senior Java Developer',priority:'High',done:false,owner:'Priya Sharma'},
+  {id:uid('T'),title:'Follow up with Sana Qureshi on offer',due:today(),related:'Senior Java Developer',priority:'High',done:false,owner:'Priya Sharma'},
   {id:uid('T'),title:'Post DevOps opening on 2 more job boards',due:addDays(-1),related:'DevOps Engineer',priority:'High',done:false,owner:'Arjun Nair'},
   {id:uid('T'),title:'Share group interview shortlist with Kavita',due:addDays(1),related:'CRM Executive',priority:'Medium',done:false,owner:'Arjun Nair'},
   {id:uid('T'),title:'Collect relieving letter from Kriti Arora',due:addDays(2),related:'Onboarding',priority:'Low',done:false,owner:'Sneha Kapoor'},
   {id:uid('T'),title:'Publish UI/UX Designer JD on Dribbble',due:addDays(-3),related:'UI/UX Designer',priority:'Low',done:true,owner:'Sneha Kapoor'},
  ];
- const t=h=>new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate(),h,Math.floor(Math.random()*59)).getTime();
+ const t=h=>new Date(now().getFullYear(),now().getMonth(),now().getDate(),h,Math.floor(Math.random()*59)).getTime();
  const activity=[
   {ts:t(9),text:'Nikhil Rao applied for Senior Java Developer',type:'application',appId:'APP-3007'},
   {ts:t(9),text:'Neelam Chauhan applied for CRM Executive',type:'application'},
@@ -110,7 +110,7 @@ function seed(){
   {ts:t(8),text:'Arnav Bose shortlisted for UI/UX Designer',type:'shortlist'},
   {ts:t(8),text:'Offer generated for Sana Qureshi',type:'offer'},
   {ts:t(8),text:'Kriti Arora completed 6 of 10 onboarding steps',type:'onboarding'},
-  {ts:NOW.getTime()-864e5*2,text:'Meera Iyer selected after Final round',type:'interview'},
+  {ts:now().getTime()-864e5*2,text:'Meera Iyer selected after Final round',type:'interview'},
  ].sort((a,b)=>b.ts-a.ts);
  const notifications=[
   {id:1,text:'Group interview for CRM Executive starts at 11:00 AM today',ts:t(8),read:false,go:['interviews']},

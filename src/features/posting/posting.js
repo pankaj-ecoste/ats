@@ -45,7 +45,7 @@ function boardUrl(b,o,text){const c=postCfg();const ap=formLink(o,b)||c.applyLin
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
 const postingOf=(opId,bid)=>S.postings.filter(p=>p.opId===opId&&p.board===bid).slice(-1)[0];
 function boardApplicants(o,b){return appsOfOp(o.id).filter(a=>getC(a.cid).source===b.src).length}
-function postStatus(p){if(!p)return ['Not posted',''];if(p.status==='Closed')return ['Closed','red'];if(p.status==='Paused')return ['Paused','orange'];if(p.expires&&p.expires<TODAY)return ['Expired','red'];return [`Posted ${daysBetween(p.postedOn,TODAY)===0?'today':daysBetween(p.postedOn,TODAY)+'d ago'}`,'green']}
+function postStatus(p){if(!p)return ['Not posted',''];if(p.status==='Closed')return ['Closed','red'];if(p.status==='Paused')return ['Paused','orange'];if(p.expires&&p.expires<today())return ['Expired','red'];return [`Posted ${daysBetween(p.postedOn,today())===0?'today':daysBetween(p.postedOn,today())+'d ago'}`,'green']}
 function boardCard(o,b){
  const p=postingOf(o.id,b.id);const [st,col]=postStatus(p);const n=boardApplicants(o,b);const text=postText(o,b.fmt,b);const url=boardUrl(b,o,text);
  return `<div class="bcard ${col==='green'?'posted':''}"><div class="bh"><span class="bbadge" style="background:${b.color}">${esc(b.name.replace(/[^A-Za-z]/g,'').slice(0,2).toUpperCase())}</span><div class="grow"><b>${esc(b.name)}</b><small>${b.type==='social'?'Share post':'Job board'} · ${n} applicant${n===1?'':'s'}</small></div><span class="pill ${col}">${st}</span></div>
@@ -85,7 +85,7 @@ function bindPosting(root){
  $$('[data-pgo]',root).forEach(tr=>tr.onclick=()=>{R.post.op=tr.dataset.pgo;R.param=tr.dataset.pgo;render();$('#content').scrollTo({top:0,behavior:'smooth'})});
  const B=id=>boards().find(b=>b.id===id);
  $$('[data-copyopen]',root).forEach(a=>a.onclick=()=>{const b=B(a.dataset.copyopen);copyText(postText(op,b.fmt,b)).then(ok=>toast(ok?(b.type==='social'?`Opening ${b.name} with the post filled in`:`Post copied. Paste it into ${b.name}.`):`Opening ${b.name}. Use Preview to copy the text.`,ok?'var(--green)':'var(--orange)'));
-  if(b.type==='social'&&!postingOf(op.id,b.id)){S.postings.push({id:uid('PST'),opId:op.id,board:b.id,status:'Posted',postedOn:TODAY,url:'',expires:'',cost:0});log(`${op.title} shared on ${b.name}`,'posting');save();setTimeout(render,300)}});
+  if(b.type==='social'&&!postingOf(op.id,b.id)){S.postings.push({id:uid('PST'),opId:op.id,board:b.id,status:'Posted',postedOn:today(),url:'',expires:'',cost:0});log(`${op.title} shared on ${b.name}`,'posting');save();setTimeout(render,300)}});
  $$('[data-copyonly]',root).forEach(bt=>bt.onclick=()=>{const b=B(bt.dataset.copyonly);copyText(postText(op,b.fmt,b)).then(ok=>toast(ok?'HTML copied for your careers page':'Copy blocked. Use Preview to select the text.',ok?'var(--green)':'var(--orange)'))});
  $$('[data-ppv]',root).forEach(bt=>bt.onclick=()=>previewPost(op,B(bt.dataset.ppv)));
  $$('[data-pm]',root).forEach(bt=>bt.onclick=()=>markPosted(op,B(bt.dataset.pm)));
@@ -105,7 +105,7 @@ function previewPost(o,b){
 function markPosted(o,b){
  const p=postingOf(o.id,b.id)||{};
  modal({title:`${esc(b.name)} · ${esc(o.title)}`,body:`<div class="fgrid"><label class="f full">Listing link <span class="muted">(optional)</span><input class="inp" id="mpu" value="${esc(p.url||'')}" placeholder="https://…"></label>
- <label class="f">Posted on<input class="inp" type="date" id="mpd" value="${p.postedOn||TODAY}"></label><label class="f">Live until<input class="inp" type="date" id="mpe" value="${p.expires||addDays(30)}"></label>
+ <label class="f">Posted on<input class="inp" type="date" id="mpd" value="${p.postedOn||today()}"></label><label class="f">Live until<input class="inp" type="date" id="mpe" value="${p.expires||addDays(30)}"></label>
  <label class="f">Status<select class="inp" id="mps">${['Posted','Paused','Closed'].map(s=>`<option ${s===(p.status||'Posted')?'selected':''}>${s}</option>`).join('')}</select></label><label class="f">Cost (₹)<input class="inp" type="number" id="mpc" value="${p.cost||0}"></label></div>
  <p class="small muted">Applicants are counted automatically from candidates whose source is “${esc(b.src)}”.</p>`,
  foot:`${p.id?'<button class="btn bad" id="mpdel">Remove record</button><span class="grow"></span>':''}<button class="btn" data-close>Cancel</button><button class="btn pri" id="mpsave">Save</button>`,

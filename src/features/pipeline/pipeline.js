@@ -23,7 +23,7 @@ function lastActivityMap(){
   ids.forEach(id=>{if(!m[id]||m[id].ts<x.ts)m[id]=x})});return m;
 }
 function pcInfo(a,lam){
- const col=colOf(a);const days=Math.max(0,daysBetween(a.stageSince||a.date,TODAY));const sla=slaOf(col.k);
+ const col=colOf(a);const days=Math.max(0,daysBetween(a.stageSince||a.date,today()));const sla=slaOf(col.k);
  const ints=intsOfA(a.id).filter(i=>i.status!=='Cancelled');
  const pf=ints.find(i=>intStatus(i)==='Pending Feedback');
  const up=ints.filter(i=>intStatus(i)==='Scheduled').sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))[0];
@@ -40,21 +40,21 @@ function pcInfo(a,lam){
   case 'Selected':reason='Create offer letter';owner=a.recruiter;break;
   case 'Offer':
    if(!of||['Draft','Generated'].includes(of.status))reason=of?'Send offer to candidate':'Create offer letter';
-   else if(['Sent','Negotiation'].includes(of.status)){const ds=of.sent?daysBetween(of.sent,TODAY):0;if(of.status==='Negotiation'){reason='Revise offer after negotiation'}else if(ds>3){reason=`Follow up — offer sent ${ds} days ago`;due=addDays(3,parseD(of.sent))}else{pending=false;owner='Candidate';waiting=`Offer sent ${ds?ds+' day'+(ds>1?'s':'')+' ago':'today'}, awaiting reply`}}
+   else if(['Sent','Negotiation'].includes(of.status)){const ds=of.sent?daysBetween(of.sent,today()):0;if(of.status==='Negotiation'){reason='Revise offer after negotiation'}else if(ds>3){reason=`Follow up — offer sent ${ds} days ago`;due=addDays(3,parseD(of.sent))}else{pending=false;owner='Candidate';waiting=`Offer sent ${ds?ds+' day'+(ds>1?'s':'')+' ago':'today'}, awaiting reply`}}
    else if(of.status==='Declined'){reason='Offer declined — close or re-offer'}
    break;
   case 'Offer Accepted':reason='Schedule joining date';break;
-  case 'Joining':if(a.joining&&a.joining>TODAY){pending=false;waiting=`Joins ${fmtDs(a.joining)} (${daysBetween(TODAY,a.joining)}d)`}else{reason='Confirm day-1 joining';due=a.joining||TODAY}break;
+  case 'Joining':if(a.joining&&a.joining>today()){pending=false;waiting=`Joins ${fmtDs(a.joining)} (${daysBetween(today(),a.joining)}d)`}else{reason='Confirm day-1 joining';due=a.joining||today()}break;
   case 'Onboarding':{const o=S.onboarding.find(x=>x.appId===a.id);const left=o?o.items.filter(i=>!i.done).length:10;reason=left?`${left} onboarding step${left>1?'s':''} left`:'Mark employee ready';owner='HR · '+a.recruiter;break}
   case 'Employee Ready':pending=false;waiting='Joined';break;
   case 'Rejected':pending=false;waiting='Rejected';break;
   case 'On Hold':reason='Decide: reopen or reject';break;
  }
  const stuck=sla!=null&&days>sla;
- const overdue=pending&&(!!pf||(due&&due<TODAY)||(a.stage==='Joining'&&a.joining&&a.joining<TODAY));
- const today=pending&&(overdue||(due&&due<=TODAY));
+ const overdue=pending&&(!!pf||(due&&due<today())||(a.stage==='Joining'&&a.joining&&a.joining<today()));
+ const isToday=pending&&(overdue||(due&&due<=today()));
  const la=lam[a.id];
- return {a,c:getC(a.cid),o:getOp(a.opId),m:matchA(a),col,days,sla,pending,overdue,stuck,today,owner,reason,waiting,due,up,pf,of,last:la?{text:la.text,ts:la.ts}:{text:'Stage updated',ts:parseD(a.stageSince||a.date).getTime()}};
+ return {a,c:getC(a.cid),o:getOp(a.opId),m:matchA(a),col,days,sla,pending,overdue,stuck,today:isToday,owner,reason,waiting,due,up,pf,of,last:la?{text:la.text,ts:la.ts}:{text:'Stage updated',ts:parseD(a.stageSince||a.date).getTime()}};
 }
 function pcAll(){const lam=lastActivityMap();return S.applications.map(a=>pcInfo(a,lam))}
 function pcFilter(list){
@@ -137,23 +137,23 @@ function vPipeline(){
 }
 function actionCenter(all){
  const active=all.filter(x=>x.col.k!=='parked');const T=R.pc.tab;
- const today=active.filter(x=>x.today).sort((a,b)=>(b.overdue-a.overdue)||(b.days-a.days));
+ const todayList=active.filter(x=>x.today).sort((a,b)=>(b.overdue-a.overdue)||(b.days-a.days));
  const stuck=active.filter(x=>x.stuck).sort((a,b)=>(b.days-b.sla)-(a.days-a.sla));
- const upInts=S.interviews.filter(i=>intStatus(i)==='Scheduled'&&i.date>=TODAY&&i.date<=addDays(7)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ const upInts=S.interviews.filter(i=>intStatus(i)==='Scheduled'&&i.date>=today()&&i.date<=addDays(7)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
  const fb=S.interviews.filter(i=>intStatus(i)==='Pending Feedback');
  const offers=S.offers.filter(o=>['Draft','Generated','Sent','Negotiation'].includes(o.status));
  const joining=S.applications.filter(a=>['Offer Accepted','Joining'].includes(a.stage)).sort((a,b)=>(a.joining||'9').localeCompare(b.joining||'9'));
  const opsLow=S.openings.filter(o=>!['Closed','Filled','Draft'].includes(o.status)).map(o=>{const ap=appsOfOp(o.id);const act=ap.filter(a=>!['Rejected','On Hold','Employee Ready'].includes(a.stage)).length;const need=o.positions*4;const wk=ap.filter(a=>a.date>=addDays(-7)).length;return {o,act,need,cov:Math.round(act/need*100),wk,strong:ap.filter(a=>matchA(a).score>=S.settings.threshold&&a.stage!=='Rejected').length}}).filter(x=>x.cov<100).sort((a,b)=>a.cov-b.cov);
- const tabs=[['today','Action today',today.length],['stuck','Stuck',stuck.length],['interviews','Interviews pending',upInts.length],['feedback','Awaiting feedback',fb.length],['offers','Offers pending',offers.length],['joining','Joining soon',joining.length],['openings','Low pipeline',opsLow.length]];
+ const tabs=[['today','Action today',todayList.length],['stuck','Stuck',stuck.length],['interviews','Interviews pending',upInts.length],['feedback','Awaiting feedback',fb.length],['offers','Offers pending',offers.length],['joining','Joining soon',joining.length],['openings','Low pipeline',opsLow.length]];
  const who=(c,sub)=>`<div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(sub)}</small></div></div>`;
  const tbl=(head,rows,empty)=>rows.length?`<div class="tbl-wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:`<div class="empty"><b>${empty}</b></div>`;
  let body='';
- if(T==='today')body=tbl(['Candidate','Stage','Why','Owner','Due',''],today.map(x=>`<tr class="click" data-pcand="${x.c.id}"><td>${who(x.c,x.o.title)}</td><td>${stagePill(x.a.stage)}</td><td class="wrap small">${esc(x.reason)}</td><td class="small">${esc(x.owner)}</td><td>${x.overdue?`<span class="pill red">${x.due?daysBetween(x.due,TODAY)+'d late':'Late'}</span>`:'<span class="pill orange">Today</span>'}</td><td>${nextBtn(x.a)}</td></tr>`),'Nothing needs action today');
+ if(T==='today')body=tbl(['Candidate','Stage','Why','Owner','Due',''],todayList.map(x=>`<tr class="click" data-pcand="${x.c.id}"><td>${who(x.c,x.o.title)}</td><td>${stagePill(x.a.stage)}</td><td class="wrap small">${esc(x.reason)}</td><td class="small">${esc(x.owner)}</td><td>${x.overdue?`<span class="pill red">${x.due?daysBetween(x.due,today())+'d late':'Late'}</span>`:'<span class="pill orange">Today</span>'}</td><td>${nextBtn(x.a)}</td></tr>`),'Nothing needs action today');
  if(T==='stuck')body=tbl(['Candidate','Stage','Days in stage','SLA','Over by','Owner',''],stuck.map(x=>`<tr class="click" data-pcand="${x.c.id}"><td>${who(x.c,x.o.title)}</td><td>${stagePill(x.a.stage)}</td><td><span class="days bad">${x.days}d</span></td><td>${x.sla}d</td><td><b>${x.days-x.sla}d</b></td><td class="small">${esc(x.owner)}</td><td>${nextBtn(x.a)}</td></tr>`),'No one is stuck past their SLA');
- if(T==='interviews')body=tbl(['When','Candidate','Round','Interviewer','Invitation'],upInts.map(i=>{const a=getA(i.appId),c=getC(a.cid);return `<tr class="click" data-pint="${i.id}"><td><b>${i.date===TODAY?'Today':fmtDs(i.date)}</b> ${fmtT(i.time)}</td><td>${who(c,getOp(a.opId).title)}</td><td>${i.kind==='Group'?'<span class="pill cyan">Group</span>':esc(i.round)}</td><td class="small">${esc(i.interviewers.join(', '))}</td><td><span class="pill ${i.invite==='Confirmed'?'green':i.invite==='Declined'?'red':'blue'}">${i.invite}</span></td></tr>`}),'No interviews in the next 7 days');
- if(T==='feedback')body=tbl(['Candidate','Round','Held on','Waiting','Interviewer',''],fb.map(i=>{const a=getA(i.appId),c=getC(a.cid);return `<tr class="click" data-pint="${i.id}"><td>${who(c,getOp(a.opId).title)}</td><td>${i.kind==='Group'?'Group':esc(i.round)}</td><td>${fmtDs(i.date)}</td><td><span class="pill ${daysBetween(i.date,TODAY)>1?'red':'orange'}">${Math.max(0,daysBetween(i.date,TODAY))}d</span></td><td class="small">${esc(i.interviewers.join(', '))}</td><td><button class="btn sm pri" data-peval="${i.id}">Evaluate</button></td></tr>`}),'All feedback is in');
- if(T==='offers')body=tbl(['Candidate','Designation','CTC','Status','Age',''],offers.map(o=>{const a=getA(o.appId),c=getC(a.cid);const age=daysBetween(o.sent||o.created,TODAY);return `<tr class="click" data-poffer="${o.id}"><td>${who(c,o.dept)}</td><td>${esc(o.designation)}</td><td>${inr(o.ctc)}</td><td><span class="pill ${OFFER_COLOR[o.status]}">${o.status}</span></td><td><span class="${age>3?'days bad':''}">${age}d</span></td><td>${nextBtn(a)}</td></tr>`}),'No offers pending');
- if(T==='joining')body=tbl(['Candidate','Position','Joining date','Countdown','Documents',''],joining.map(a=>{const c=getC(a.cid);const dl=a.joining?daysBetween(TODAY,a.joining):null;const docs=c.documents.filter(d=>d.status!=='Pending').length;return `<tr class="click" data-pcand="${c.id}"><td>${who(c,a.stage)}</td><td>${esc(getOp(a.opId).title)}</td><td>${fmtD(a.joining)}</td><td>${dl==null?'<span class="pill orange">Not set</span>':dl<0?`<span class="pill red">${-dl}d overdue</span>`:dl===0?'<span class="pill green">Today</span>':dl+' days'}</td><td>${docs}/${c.documents.length}</td><td>${nextBtn(a)}</td></tr>`}),'No one is joining soon');
+ if(T==='interviews')body=tbl(['When','Candidate','Round','Interviewer','Invitation'],upInts.map(i=>{const a=getA(i.appId),c=getC(a.cid);return `<tr class="click" data-pint="${i.id}"><td><b>${i.date===today()?'Today':fmtDs(i.date)}</b> ${fmtT(i.time)}</td><td>${who(c,getOp(a.opId).title)}</td><td>${i.kind==='Group'?'<span class="pill cyan">Group</span>':esc(i.round)}</td><td class="small">${esc(i.interviewers.join(', '))}</td><td><span class="pill ${i.invite==='Confirmed'?'green':i.invite==='Declined'?'red':'blue'}">${i.invite}</span></td></tr>`}),'No interviews in the next 7 days');
+ if(T==='feedback')body=tbl(['Candidate','Round','Held on','Waiting','Interviewer',''],fb.map(i=>{const a=getA(i.appId),c=getC(a.cid);return `<tr class="click" data-pint="${i.id}"><td>${who(c,getOp(a.opId).title)}</td><td>${i.kind==='Group'?'Group':esc(i.round)}</td><td>${fmtDs(i.date)}</td><td><span class="pill ${daysBetween(i.date,today())>1?'red':'orange'}">${Math.max(0,daysBetween(i.date,today()))}d</span></td><td class="small">${esc(i.interviewers.join(', '))}</td><td><button class="btn sm pri" data-peval="${i.id}">Evaluate</button></td></tr>`}),'All feedback is in');
+ if(T==='offers')body=tbl(['Candidate','Designation','CTC','Status','Age',''],offers.map(o=>{const a=getA(o.appId),c=getC(a.cid);const age=daysBetween(o.sent||o.created,today());return `<tr class="click" data-poffer="${o.id}"><td>${who(c,o.dept)}</td><td>${esc(o.designation)}</td><td>${inr(o.ctc)}</td><td><span class="pill ${OFFER_COLOR[o.status]}">${o.status}</span></td><td><span class="${age>3?'days bad':''}">${age}d</span></td><td>${nextBtn(a)}</td></tr>`}),'No offers pending');
+ if(T==='joining')body=tbl(['Candidate','Position','Joining date','Countdown','Documents',''],joining.map(a=>{const c=getC(a.cid);const dl=a.joining?daysBetween(today(),a.joining):null;const docs=c.documents.filter(d=>d.status!=='Pending').length;return `<tr class="click" data-pcand="${c.id}"><td>${who(c,a.stage)}</td><td>${esc(getOp(a.opId).title)}</td><td>${fmtD(a.joining)}</td><td>${dl==null?'<span class="pill orange">Not set</span>':dl<0?`<span class="pill red">${-dl}d overdue</span>`:dl===0?'<span class="pill green">Today</span>':dl+' days'}</td><td>${docs}/${c.documents.length}</td><td>${nextBtn(a)}</td></tr>`}),'No one is joining soon');
  if(T==='openings')body=tbl(['Opening','Positions','Active pipeline','Target','Coverage','Strong matches','New this week',''],opsLow.map(x=>`<tr class="click" data-pop="${x.o.id}"><td><b>${esc(x.o.title)}</b><div class="muted small">${x.o.id} · ${esc(x.o.recruiter)}</div></td><td>${x.o.positions}</td><td>${x.act}</td><td>${x.need}</td><td><div class="row" style="flex-wrap:nowrap"><div class="bar" style="width:70px"><i style="width:${Math.min(100,x.cov)}%;background:${x.cov<40?'var(--red)':'var(--orange)'}"></i></div><b style="color:${x.cov<40?'var(--red)':'var(--orange)'}">${x.cov}%</b></div></td><td>${x.strong}</td><td>${x.wk}</td><td><button class="btn sm" data-psrc="${x.o.id}">Add candidates</button></td></tr>`),'Every opening has enough candidates');
  // owner workload
  const load={};active.filter(x=>x.pending).forEach(x=>x.owner.replace('HR · ','').split(', ').forEach(o=>{load[o]=load[o]||{p:0,od:0};load[o].p++;if(x.overdue)load[o].od++}));
@@ -196,7 +196,7 @@ function bindPipeline(root){
  $$('[data-pcol]',root).forEach(col=>{col.ondragover=e=>{e.preventDefault();col.classList.add('over')};col.ondragleave=e=>{if(!col.contains(e.relatedTarget))col.classList.remove('over')};
   col.ondrop=e=>{e.preventDefault();col.classList.remove('over');const id=e.dataTransfer.getData('text/plain');if(!id)return;const target=[...PC_COLS,PARKED].find(c=>c.k===col.dataset.pcol);const a=getA(id);
    if(target.st&&target.st.includes(a.stage))return;if((target.k==='app'||target.k==='ai')&&a.stage==='New')return;
-   if(target.k==='onb'&&!S.onboarding.some(o=>o.appId===id))S.onboarding.push({appId:id,start:TODAY,items:ONB_TEMPLATE.map(t=>({cat:t[0],t:t[1],done:false}))});
+   if(target.k==='onb'&&!S.onboarding.some(o=>o.appId===id))S.onboarding.push({appId:id,start:today(),items:ONB_TEMPLATE.map(t=>({cat:t[0],t:t[1],done:false}))});
    setStage(id,target.drop)}});
 }
 function slaModal(){

@@ -24,7 +24,7 @@ function screeningCall(aid){
   $('#callGo',el).onclick=()=>{timer=setInterval(()=>{secs++;fmt()},1000);$('#callT',el).style.color='var(--green)';$('#callGo',el).classList.add('hide');$('#callEnd',el).classList.remove('hide')};
   $('#callEnd',el).onclick=()=>{clearInterval(timer);$('#callT',el).style.color='var(--tx2)';$('#callEnd',el).classList.add('hide');toast('Call ended · '+$('#callT',el).textContent)};
   const oc=$('#outc',el),nx=$('#nxt',el);oc.onchange=()=>{nx.value={'Not Connected':'Schedule Follow-up','Call Back':'Schedule Follow-up','Not Interested':'Reject','Rejected':'Reject'}[oc.value]||'Move to Group Interview'};
-  const doSave=(andNext)=>{clearInterval(timer);a.screening={outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,date:TODAY,duration:secs};
+  const doSave=(andNext)=>{clearInterval(timer);a.screening={outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,date:today(),duration:secs};
    log(`Screening call completed with ${c.name} (${oc.value})`,'call',aid);closeModal();
    const n=nx.value;
    if(andNext){

@@ -64,11 +64,11 @@ function applyPlan(plan){const cfg=asCfg();let added=0;const names=[];
   if(!c){const skills=String(r.skills||'').split(/[,;|\/\n]/).map(s=>s.trim()).filter(Boolean);const isUrl=/^https?:\/\//i.test(String(r.resume||''));
    let cidG='C-G'+h36(String(r.email||'').trim().toLowerCase()||String(r.phone||'').replace(/\D/g,'').slice(-10)||String(r.name).toLowerCase());while(S.candidates.some(x=>x.id===cidG))cidG+='X';
    c={id:cidG,name:String(r.name).trim(),email:String(r.email||'').trim(),phone:String(r.phone||'').trim(),designation:String(r.designation||'—'),company:String(r.company||'—'),exp:numIn(r.exp)??0,location:String(r.location||'—'),reloc:false,
-    education:String(r.education||'Graduate'),eduField:'General',university:'—',gradYear:'',skills,curSal:toLPA(r.curSal),expSal:toLPA(r.expSal),notice:toNotice(r.notice),certifications:[],achievements:[],source:String(r.source||'Google Sheet'),created:TODAY,
+    education:String(r.education||'Graduate'),eduField:'General',university:'—',gradYear:'',skills,curSal:toLPA(r.curSal),expSal:toLPA(r.expSal),notice:toNotice(r.notice),certifications:[],achievements:[],source:String(r.source||'Google Sheet'),created:today(),
     history:[{company:String(r.company||'—'),designation:String(r.designation||'—'),from:'—',to:'Present',summary:'Imported from Google Sheet.'}],documents:[{name:isUrl?'Resume (link)':'Resume',status:r.resume?'Received':'Pending',url:isUrl?String(r.resume):''}],notes:isUrl?[{text:'Resume link: '+r.resume,by:'Google Sheet sync',ts:Date.now()}]:[]};
    c.resumeText=r.resume&&!isUrl&&String(r.resume).length>60?String(r.resume):buildResume(c);S.candidates.unshift(c)}
-  const date=SheetsIO.readDate(r.date)||TODAY;let aid='APP-G'+h36(p.key);while(S.applications.some(x=>x.id===aid))aid+='X';
-  S.applications.unshift({id:aid,cid:c.id,opId:p.op.id,date,stage:'New',maxStage:0,recruiter:p.op.recruiter,screening:null,stageSince:TODAY});
+  const date=SheetsIO.readDate(r.date)||today();let aid='APP-G'+h36(p.key);while(S.applications.some(x=>x.id===aid))aid+='X';
+  S.applications.unshift({id:aid,cid:c.id,opId:p.op.id,date,stage:'New',maxStage:0,recruiter:p.op.recruiter,screening:null,stageSince:today()});
   log(`${c.name} applied for ${p.op.title} (Google Sheet)`,'application',aid);cfg.seen.push(p.key);added++;names.push(c.name)});
  return {added,names}}
 async function runSync(manual){

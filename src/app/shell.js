@@ -1,6 +1,6 @@
 /* Sidebar, top bar, search, notifications, quick actions */
 function renderSide(){
- const cnt={applications:S.applications.filter(a=>a.stage==='New').length,interviews:S.interviews.filter(i=>i.date===TODAY&&i.status!=='Cancelled').length,tasks:S.tasks.filter(t=>!t.done).length,offers:S.offers.filter(o=>['Draft','Generated','Sent','Negotiation'].includes(o.status)).length};
+ const cnt={applications:S.applications.filter(a=>a.stage==='New').length,interviews:S.interviews.filter(i=>i.date===today()&&i.status!=='Cancelled').length,tasks:S.tasks.filter(t=>!t.done).length,offers:S.offers.filter(o=>['Draft','Generated','Sent','Negotiation'].includes(o.status)).length};
  $('#side').innerHTML=`<div class="brand"><div class="brand-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><small>Recruit Tracker</small></div>
  <nav class="nav" aria-label="Main">${NAV.map(n=>n[0]==='sep'?'<div class="sep"></div>':`<button class="${R.view===n[0]?'on':''}" data-go="${n[0]}">${ic(n[2])}<span>${n[1]}</span>${cnt[n[0]]?`<span class="ct">${cnt[n[0]]}</span>`:''}</button>`).join('')}</nav>
  <div class="side-foot"><div class="rgbbar"></div>${esc(S.settings.company)}</div>`;

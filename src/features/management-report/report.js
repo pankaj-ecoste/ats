@@ -66,7 +66,7 @@ function vReport(){
 }
 function bindReport(root){
  const c=repCfg();const on=(s,f)=>{const x=$(s,root);if(x)f(x)};
- on('#rpDate',x=>x.onchange=()=>{R.rep.date=x.value||TODAY;render()});
+ on('#rpDate',x=>x.onchange=()=>{R.rep.date=x.value||today();render()});
  $$('[data-rc]',root).forEach(i=>i.onchange=()=>{c[i.dataset.rc]=Math.max(0,+i.value||0);save();render()});
  on('#rpClearDemo',x=>x.onclick=e=>{e.preventDefault();confirmBox('Clear sample history','Remove the sample weekly history, call logs and demo posting costs? Real activity from the app is kept.','Clear',()=>{S.events=S.events.filter(e=>!e.demo);S.callLog=S.callLog.filter(e=>!e.demo);S.postings=S.postings.filter(p=>!p.demo);S.demoHistory=false;save();render();toast('Sample history cleared')},true)});
  on('#rpCalls',x=>x.onclick=callLogModal);on('#rpTargets',x=>x.onclick=targetsModal);
@@ -78,12 +78,12 @@ function bindReport(root){
 }
 function callLogModal(){
  const rec=S.callLog.filter(c=>!c.demo).slice(-8).reverse();
- modal({title:'Log calls',body:`<div class="fgrid"><label class="f">Date<input class="inp" type="date" id="clD" value="${TODAY}"></label><label class="f">Position<select class="inp" id="clO">${S.openings.filter(o=>!['Closed','Draft'].includes(o.status)).map(o=>`<option value="${o.id}">${esc(o.title)}</option>`).join('')}</select></label>
+ modal({title:'Log calls',body:`<div class="fgrid"><label class="f">Date<input class="inp" type="date" id="clD" value="${today()}"></label><label class="f">Position<select class="inp" id="clO">${S.openings.filter(o=>!['Closed','Draft'].includes(o.status)).map(o=>`<option value="${o.id}">${esc(o.title)}</option>`).join('')}</select></label>
  <label class="f">Calls made<input class="inp" type="number" min="0" id="clM" value="0"></label><label class="f">Connected / interested<input class="inp" type="number" min="0" id="clC" value="0"></label></div>
  ${rec.length?`<h4 style="margin:16px 0 6px">Recent entries</h4>${rec.map(r=>`<div class="list-it" style="padding:6px 0"><span class="grow small">${fmtD(r.d)} · ${esc(getOp(r.op)?.title||r.op)} · ${r.made} made, ${r.conn} connected</span><button class="btn sm ghost" data-cldel="${r.id}" aria-label="Delete">${ic('x')}</button></div>`).join('')}`:''}`,
  foot:`<button class="btn" data-close>Close</button><button class="btn pri" id="clS">Add</button>`,
  onMount:el=>{$('#clS',el).onclick=()=>{const m=+val(el,'#clM')||0,cn=+val(el,'#clC')||0;if(!m){toast('Enter the number of calls made','var(--red)');return}if(cn>m){toast('Connected cannot be more than calls made','var(--red)');return}
-   S.callLog.push({id:uid('CL'),d:val(el,'#clD')||TODAY,op:val(el,'#clO'),made:m,conn:cn});save();closeModal();toast(`${m} calls logged`);render()};
+   S.callLog.push({id:uid('CL'),d:val(el,'#clD')||today(),op:val(el,'#clO'),made:m,conn:cn});save();closeModal();toast(`${m} calls logged`);render()};
   $$('[data-cldel]',el).forEach(b=>b.onclick=()=>{S.callLog=S.callLog.filter(c=>c.id!==b.dataset.cldel);save();closeModal();callLogModal();render()})}});
 }
 function targetsModal(){
@@ -107,7 +107,7 @@ function dropModal(aid){
  modal({title:`${esc(c.name)} dropped out`,body:`<p style="margin-top:0">Mark ${esc(c.name)} as dropped after the offer? The application moves to Rejected and counts in “Dropped after accepting”.</p>${b?`<label class="checkl" style="border:none"><input type="checkbox" class="chk" id="dpPromote" checked><span>Move backup <b>${esc(getC(b.cid).name)}</b> to Selected so you can send them an offer</span></label>`:'<p class="small" style="color:var(--orange)">No backup was named for this seat.</p>'}
  <label class="f" style="margin-top:8px">Reason<input class="inp" id="dpR" placeholder="e.g. Took another offer"></label>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn bad" id="dpOK">Mark dropped</button>`,
- onMount:el=>$('#dpOK',el).onclick=()=>{const r=val(el,'#dpR');if(a.stage==='Offer'){a.dropped=TODAY;addEvent('dropped',aid)}setStage(aid,'Rejected',true);if(r)c.notes.unshift({text:'Dropped after offer: '+r,by:S.settings.user,ts:Date.now()});
+ onMount:el=>$('#dpOK',el).onclick=()=>{const r=val(el,'#dpR');if(a.stage==='Offer'){a.dropped=today();addEvent('dropped',aid)}setStage(aid,'Rejected',true);if(r)c.notes.unshift({text:'Dropped after offer: '+r,by:S.settings.user,ts:Date.now()});
   const pr=$('#dpPromote',el);if(b&&pr&&pr.checked){setStage(b.id,'Selected',true);toast(`${getC(b.cid).name} moved to Selected`)}else toast(`${c.name} marked dropped`,'var(--red)');a.backup=null;save();closeModal();render()}});
 }
 

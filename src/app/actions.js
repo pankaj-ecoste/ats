@@ -4,7 +4,7 @@ function log(text,type='info',appId){S.activity.unshift({ts:Date.now(),text,type
 function notify(text,goArgs=['dashboard']){S.notifications.unshift({id:Date.now()+Math.random(),text,ts:Date.now(),read:false,go:goArgs})}
 function setStage(aid,stage,quiet){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const prev=a.stage;if(prev===stage)return;
- a.stage=stage;a.stageSince=TODAY;const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
+ a.stage=stage;a.stageSince=today();const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
  const type={Shortlisted:'shortlist',Rejected:'reject','Employee Ready':'joined',Onboarding:'joined',Selected:'interview'}[stage]||'stage';
  log(`${c.name} moved to ${stage} for ${o.title}`,type,aid);
  // keep opening status in sync with its furthest pipeline
@@ -26,7 +26,7 @@ function nextAction(a){
   case 'New':return ['Review AI match',()=>aiMatchModal(a.id)];
   case 'Shortlisted':return ['Screening call',()=>screeningCall(a.id)];
   case 'Screening':return ['Call back',()=>screeningCall(a.id)];
-  case 'Group Interview':return gi?(intStatus(gi)==='Scheduled'&&gi.date>TODAY?['Invite status',()=>groupDetail(gi.groupId)]:['Evaluate group',()=>groupEval(gi.groupId)]):['Schedule group',()=>scheduleGI(a.opId,[a.id])];
+  case 'Group Interview':return gi?(intStatus(gi)==='Scheduled'&&gi.date>today()?['Invite status',()=>groupDetail(gi.groupId)]:['Evaluate group',()=>groupEval(gi.groupId)]):['Schedule group',()=>scheduleGI(a.opId,[a.id])];
   case 'Personal Interview':return pi.length?['Submit scorecard',()=>piScorecard(pi[0].id)]:['Schedule interview',()=>schedulePI(a.id)];
   case 'Selected':return of?['Open offer',()=>offerEditor(of.id)]:['Create offer',()=>offerEditor(null,a.id)];
   case 'Offer':return of&&of.status==='Sent'?['Record response',()=>offerResponse(of.id)]:['Send offer',()=>offerEditor(of&&of.id,a.id)];

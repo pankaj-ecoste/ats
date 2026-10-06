@@ -85,8 +85,8 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | 1 | Features extend others by **wrapping views and `String.replace` on HTML** | `sheets/auto-import.js:144-145`, `posting/posting.js:160`, `management-report/report.js:116` | If host markup changes, injected UI silently disappears | P1.3 |
 | 2 | `setStage` **reassigned globally** to record events | `management-report/report-events.js:39` | Order-dependent; hard to reason about | P1.3 |
 | 3 | `NAV.splice` at load time | `pipeline.js:211`, `posting.js:155` | Sidebar order depends on script order | P1.3 |
-| 4 | `STAGES` defined **twice** | `core/constants.js:4`, `sheets/sheets-io.js:6` | Will drift; breaks import/export | P1.2 (quick win) |
-| 5 | `TODAY` frozen at page load | `core/utils.js` | Tab open overnight shows wrong date | P1.2 |
+| ~~4~~ | ~~`STAGES` defined twice~~ — fixed | `core/constants.js:4`, `sheets/sheets-io.js:6` | Will drift; breaks import/export | P1.2 (quick win) |
+| ~~5~~ | ~~`TODAY` frozen at page load~~ — fixed | `core/utils.js` | Tab open overnight shows wrong date | P1.2 |
 | 6 | `save()` swallows all errors; `load()` returns demo data if version ≠ 3 | `core/store.js` | Silent data loss | P1.4 / P2 |
 | 7 | 15 inline `onclick="..."` attributes | router, dashboard, openings, candidates, … | Globals dependency; injection risk | P1.3 |
 | 8 | Strict mode only in `core/data/domain` | rest of `src/` | Hidden global leaks | P1.3 |
@@ -112,7 +112,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 ### Phase 1 — Foundations (next; no new features)
 
 **P1.1 Code management** *(do first; everything else depends on it)*
-- ☐ `git init`, first commit of the current state as baseline tag `v0.1.0-prototype`
+- ☑ `git init`, baseline commit, tag `v0.1.0-prototype` (2026-10-06)
 - ☐ Create remote repo (company GitHub org), push; protect `main`
 - ☐ Branching: `main` (deployable) ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge
 - ☐ Commit style: Conventional Commits (`feat(offers): …`, `fix(pipeline): …`)
@@ -121,8 +121,8 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 - ☐ Version tags + `CHANGELOG.md`
 
 **P1.2 Quick safety wins** *(low risk, behaviour unchanged)*
-- ☐ Remove duplicate `STAGES` in `sheets-io.js`; use the one from `core/constants.js` (keep `SheetsIO` testable in Node)
-- ☐ Compute "today" on use (`today()` function) instead of a load-time constant
+- ☑ Remove duplicate `STAGES` in `sheets-io.js`; it now receives the one from `core/constants.js` (test loads constants first)
+- ☑ Compute "today" on use: `today()` / `now()` replace the `TODAY` / `NOW` constants (also fixed two local `today` variables in `pipeline.js` that would have shadowed it)
 - ☐ Surface `save()` failures to the user (toast) instead of swallowing
 - ☐ Rename storage key via a one-time migration (`spectra-ats-v3` → `ecoste-ats`), keep old key as fallback
 
@@ -210,6 +210,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 | Date | Change | By |
 |---|---|---|
+| 2026-10-06 | Branch `chore/restructure-p1`: git + SSH deploy key, `.env`/`.env.example`, single `STAGES`, `today()`/`now()`; tests, build and smoke test green | Claude Code |
 | 2026-10-06 | Reviewed codebase, verified tests/build, wrote `plan.md` with issues list, roadmap, process | Claude Code |
 | (earlier) | Phase 0: prototype split into layered project, tests, docs, build | Intern / project setup |
 
