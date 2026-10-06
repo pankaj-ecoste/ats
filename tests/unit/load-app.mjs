@@ -7,17 +7,17 @@ import vm from 'node:vm';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-export function loadApp({ until = 'src/domain/resume-parser.js', expose = [] } = {}) {
+export function loadApp({ until = 'src/domain/resume-parser.js', expose = [], storage = {}, failWrites = false, globals = {} } = {}) {
   const files = [...readFileSync(resolve(root, 'index.html'), 'utf8').matchAll(/<script src="([^"]+)">/g)].map((m) => m[1]);
   const end = files.indexOf(until);
   if (end < 0) throw new Error(`${until} is not listed in index.html`);
-  const store = new Map();
+  const store = new Map(Object.entries(storage));
   const context = vm.createContext({
     console,
-    localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) },
-    setTimeout, clearTimeout,
+    localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => { if (failWrites) throw new Error('QuotaExceededError'); store.set(k, String(v)); } },
+    setTimeout, clearTimeout, ...globals,
   });
   for (const f of files.slice(0, end + 1)) vm.runInContext(readFileSync(resolve(root, f), 'utf8'), context, { filename: f });
   // top-level const/let are not properties of the context object, so read them out explicitly
-  return vm.runInContext(`({${expose.join(',')}})`, context);
+  return { ...vm.runInContext(`({${expose.join(',')}})`, context), _storage: store };
 }
