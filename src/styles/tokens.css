@@ -1,0 +1,14 @@
+/* Design tokens: colours, radii, shadows, light/dark themes */
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--nav:#0E1A33;--nav2:#16264A;--navtx:#B8C3DA;
+--bg:#F4F6FA;--surface:#FFFFFF;--card:#F8F9FC;--line:#E3E7EF;--line2:#D3D9E4;
+--tx:#16203A;--tx2:#55607A;--tx3:#8A93A8;
+--blue:#2F6BFF;--blue2:#E8EFFF;--green:#12A150;--green2:#E3F6EA;--red:#E5484D;--red2:#FDECEC;
+--orange:#E8850C;--orange2:#FFF3E0;--ai:#7B4DFF;--ai2:#F1ECFF;--cyan:#0AA5C2;--cyan2:#E3F7FB;
+--r1:6px;--r2:10px;--r3:14px;--sh:0 1px 2px rgba(20,32,60,.06),0 4px 14px rgba(20,32,60,.05);
+color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+--bg:#0D1322;--surface:#141C2F;--card:#18223A;--line:#26314B;--line2:#33405E;--tx:#E6EAF3;--tx2:#A6B0C6;--tx3:#737E97;
+--blue2:#1B2A52;--green2:#10321F;--red2:#3A1A1D;--orange2:#3A2810;--ai2:#271D4D;--cyan2:#0F3139;--nav:#0A1120;--nav2:#141F3A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0D1322;--surface:#141C2F;--card:#18223A;--line:#26314B;--line2:#33405E;--tx:#E6EAF3;--tx2:#A6B0C6;--tx3:#737E97;
+--blue2:#1B2A52;--green2:#10321F;--red2:#3A1A1D;--orange2:#3A2810;--ai2:#271D4D;--cyan2:#0F3139;--nav:#0A1120;--nav2:#141F3A;color-scheme:dark}

@@ -1,0 +1,48 @@
+/* Sidebar, top bar, content area, layout helpers */
+/* sidebar */
+.side{background:var(--nav);color:var(--navtx);display:flex;flex-direction:column;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;color:#fff;font-weight:800;font-size:18px;letter-spacing:-.2px}
+.logo{width:30px;height:30px;position:relative;flex:none}
+.logo i{position:absolute;width:18px;height:18px;border-radius:50%;mix-blend-mode:screen}
+.logo i:nth-child(1){background:#FF4D5E;left:0;top:0}.logo i:nth-child(2){background:#2BD47D;right:0;top:0}.logo i:nth-child(3){background:#3D7BFF;left:6px;bottom:0}
+.brand small{display:block;font-size:11px;font-weight:500;color:var(--navtx);letter-spacing:0}
+.brand{flex-direction:column;align-items:flex-start;gap:6px}
+.brand-logo{background:#fff;border-radius:10px;padding:8px 10px;width:100%;display:flex;align-items:center;justify-content:center}
+.brand-logo img{display:block;width:100%;max-width:180px;height:auto}
+.brand small{font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;padding-left:2px}
+.navrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.navpn{display:flex;align-items:center;gap:8px}
+.nav{padding:6px 10px;display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:8px;font-weight:500;font-size:14px;color:var(--navtx)}
+.nav button:hover{background:var(--nav2);color:#fff}
+.nav button.on{background:var(--blue);color:#fff}
+.nav button:focus-visible{outline:2px solid #fff}
+.nav svg{width:18px;height:18px;flex:none}
+.nav .ct{margin-left:auto;font-size:11px;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:10px}
+.nav .sep{height:1px;background:var(--nav2);margin:8px 6px}
+.side-foot{margin-top:auto;padding:14px 18px;font-size:12px;border-top:1px solid var(--nav2)}
+.rgbbar{height:3px;border-radius:2px;background:linear-gradient(90deg,#FF4D5E 0 33.3%,#2BD47D 33.3% 66.6%,#3D7BFF 66.6%);margin-bottom:8px;opacity:.9}
+/* main */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+.top{display:flex;align-items:center;gap:10px;padding:10px 22px;background:var(--surface);border-bottom:1px solid var(--line);position:relative;z-index:20}
+.tbtn.menu-btn{display:none}
+.search{position:relative;flex:1;max-width:520px}
+.search input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--line);border-radius:9px;background:var(--card);outline:none}
+.search input:focus{border-color:var(--blue);background:var(--surface)}
+.search>svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;color:var(--tx3)}
+.dd{position:absolute;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(10,20,50,.18);z-index:50;max-height:70vh;overflow:auto;min-width:280px}
+.dd h6{margin:0;padding:10px 14px 4px;font-size:12px;color:var(--tx3);font-weight:600}
+.dd .it{display:flex;gap:10px;align-items:center;padding:8px 14px;cursor:pointer}
+.dd .it:hover{background:var(--card)}
+.dd .it small{color:var(--tx3);display:block}
+.tbtn{all:unset;cursor:pointer;width:36px;height:36px;display:grid;place-items:center;border-radius:9px;color:var(--tx2);position:relative}
+.tbtn:hover{background:var(--card)}
+.tbtn svg{width:19px}
+.tbtn .dot{position:absolute;top:6px;right:6px;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;display:grid;place-items:center;font-weight:700;padding:0 3px}
+.me{display:flex;align-items:center;gap:8px;padding-left:8px;border-left:1px solid var(--line);margin-left:4px}
+.content{flex:1;overflow:auto;padding:22px 26px 60px}
+.page-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.page-h h1{margin:0;font-size:24px;letter-spacing:-.4px;line-height:1.2}
+.page-h p{margin:3px 0 0;color:var(--tx2)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}

@@ -1,0 +1,13 @@
+/* Route state R, NAV, go(), record navigation */
+/* ---------- router & shell ---------- */
+const R={view:'dashboard',param:null,tab:'overview',appView:'table',calView:'week',calDate:TODAY,intTab:'calendar',offerFilter:'All',taskFilter:'Open',sel:new Set(),af:{q:'',op:'',status:'',rec:'',min:0,exp:'',loc:'',skill:'',from:'',sort:'date',dir:-1},chat:null};
+const NAV=[['dashboard','Dashboard','dash'],['openings','Openings','open'],['applications','Applications','apps'],['candidates','Candidates','cand'],['interviews','Interviews','int'],['offers','Offers','offer'],['onboarding','Onboarding','onb'],['tasks','Tasks','task'],['reports','Reports','rep'],['sep'],['ai','AI Assistant','ai'],['sheets','Google Sheets','sheet'],['settings','Settings','set']];
+function go(view,param=null,tab=null){if(param&&!['candidate','opening'].includes(R.view))R.back=R.view;
+ if(view==='candidate'&&param){if(R.keepNav){R.keepNav=false}else if(R.view!=='candidate'){R.navList=navListFromDOM();if(!R.navList.includes(param))R.navList=[param]}}
+ if(view==='opening'&&param&&R.view!=='opening'){R.opNavList=[...new Set($$('[data-op]',$('#content')).map(e=>e.dataset.op))];if(!R.opNavList.includes(param))R.opNavList=[param]}
+ if((view==='candidate'||view==='opening')&&param&&R.view===view&&tab==null){const t=R.tab;R.view=view;R.param=param;R.tab=t;R.sel.clear();render();$('#content').scrollTop=0;return}
+R.view=view;R.param=param;if(tab)R.tab=tab;else if(param)R.tab='overview';R.sel.clear();$('#side').classList.remove('open');render();$('#content').scrollTop=0}
+function navListFromDOM(){const out=[];$$('[data-cand],[data-pcand],[data-pdrag],[data-gocand]',$('#content')).forEach(e=>{const id=e.dataset.cand||e.dataset.pcand||e.dataset.gocand||(e.dataset.pdrag&&getA(e.dataset.pdrag)&&getA(e.dataset.pdrag).cid);if(id&&!out.includes(id))out.push(id)});return out}
+function navBar(list,cur,kind){const i=list.indexOf(cur);if(i<0||list.length<2)return '';const p=list[i-1],n=list[i+1];
+ return `<div class="navpn" role="group" aria-label="Record navigation"><button class="btn sm" ${p?`onclick="go('${kind}','${p}')"`:'disabled'} aria-label="Previous record" title="Previous (Alt+←)">‹ Previous</button><span class="small muted">${i+1} of ${list.length}</span><button class="btn sm pri" ${n?`onclick="go('${kind}','${n}')"`:'disabled'} aria-label="Next record" title="Next (Alt+→)">Next ›</button></div>`}
+document.addEventListener('keydown',e=>{if(!e.altKey||modalStack.length||!['ArrowLeft','ArrowRight'].includes(e.key))return;const kind=R.view;if(kind!=='candidate'&&kind!=='opening')return;const list=kind==='candidate'?R.navList||[]:R.opNavList||[];const i=list.indexOf(R.param);const t=list[i+(e.key==='ArrowRight'?1:-1)];if(i>=0&&t){e.preventDefault();go(kind,t)}});

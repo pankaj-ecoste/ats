@@ -1,0 +1,10 @@
+/* Job posting board cards */
+.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.bcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.bcard.posted{border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.bcard .bh{display:flex;align-items:center;gap:10px}
+.bbadge{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;flex:none}
+.bcard .bh b{display:block;line-height:1.2}
+.bcard .bh small{color:var(--tx3);font-size:12px}
+.bcard .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+a.btn{text-decoration:none}

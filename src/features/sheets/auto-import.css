@@ -1,0 +1,7 @@
+/* Sync chip and column-mapping rows */
+.sync-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:20px;background:var(--card);border:1px solid var(--line);color:var(--tx2)}
+.sync-chip i{width:8px;height:8px;border-radius:50%;background:var(--tx3)}
+.sync-chip.on i{background:var(--green)}.sync-chip.err i{background:var(--red)}.sync-chip.run i{background:var(--blue);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.sync-chip.run i{animation:none}}
+.maprow{display:grid;grid-template-columns:190px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
