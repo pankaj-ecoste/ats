@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 0 complete. Phase 1 in progress: git, env and Supabase project done; restructure step 1 done; push to GitHub blocked on a write-enabled key.
+- **Current phase:** Phase 0 complete. Phase 1 in progress: git, env and Supabase project done; restructure step 1 done; pushed to GitHub.
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -23,7 +23,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 | `npm test` (node:test, no deps) | 7/7 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
 | Browser smoke test (`npm run test:e2e`) | Passes: 14 pages, no errors (run with installed Chrome via `CHROME_PATH`) |
-| Git repository | Local repo: `main` baseline + branch `chore/restructure-p1`; **not yet pushed** |
+| Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / formatter / CI | **None** (only `.editorconfig`) |
 | Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
@@ -134,7 +134,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 - [x] `npm install` run; `package-lock.json` committed.
 
 ### Blocked or waiting
-- [ ] **Push to GitHub:** the deploy key was added read-only (GitHub: "key ... marked as read only"). Fix: delete the deploy key and re-add it with **Allow write access**, or add the key under the account's SSH keys. Then `git push -u origin main --tags` and push the branch.
+- [x] **Push to GitHub:** done 2026-10-06 after the key was re-added with write access. `main`, `chore/restructure-p1` and tag `v0.1.0-prototype` are on `origin`.
 - [ ] **Rotate secrets:** the database password and `service_role` key were pasted into a chat. Reset the DB password and roll the JWT secret in Supabase (this also changes the anon key), then update `.env`.
 
 ### Review pass (2026-10-06)
@@ -178,7 +178,7 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 
 **P1.1 Code management** *(do first; everything else depends on it)*
 - ☑ `git init`, baseline commit, tag `v0.1.0-prototype` (2026-10-06)
-- ◐ Remote repo `pankaj-ecoste/ats` exists and SSH auth works; push blocked on write access (see Blocked); then protect `main`
+- ◐ Remote repo `pankaj-ecoste/ats` live and pushed; still to do: protect `main`, require PR review
 - ☐ Branching: `main` (deployable) ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge
 - ☐ Commit style: Conventional Commits (`feat(offers): …`, `fix(pipeline): …`)
 - ☐ PR template + checklist (tests pass, plan.md updated, no secrets, load order checked)
