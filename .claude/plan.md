@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 0 complete. Phase 1 in progress: git, env and Supabase project done; restructure step 1 done; pushed to GitHub.
+- **Current phase:** Phase 1 (Foundations) in progress. Phases 2-8 are planned in §7. Next: finish P1, then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -170,94 +170,279 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 6. Demo seed data is the default for new users.
 7. "AI" = keyword rules + regex + canned replies. Relabel or back with a real model (human decision stays in the loop; record rejection reasons).
 
-## 7. Roadmap — pending work
+## 7. The whole-app plan and phased roadmap
 
-Legend: ☐ pending · ◐ in progress · ☑ done
+Legend: ☐ pending · ◐ in progress · ☑ done. Effort: S = days, M = 1-2 weeks, L = 3-6 weeks (one developer, rough).
 
-### Phase 1 — Foundations (next; no new features)
+### 7.1 Goal, scope, non-goals
 
-**P1.1 Code management** *(do first; everything else depends on it)*
+**Goal.** One shared, secure ATS for Ecoste's recruiting team that replaces spreadsheets and the browser-only prototype: every opening, candidate, interview, offer and joining is in one database, with the right people seeing the right data and real emails and invites going out.
+
+**In scope (v1).** Everything the prototype shows today, made real: openings, applications, candidates and resumes, screening, group and personal interviews, offers, onboarding, tasks, pipeline control, management report, job posting, Excel and Google Sheet intake, user login and roles, audit log.
+
+**Out of scope for v1.** Payroll or HRMS sync, candidate self-service portal, mobile app, multi-company (multi-tenant) use, video interviewing. Revisit after launch (Phase 8).
+
+### 7.2 Users and roles
+
+| Role | Who | Can do |
+|---|---|---|---|
+| `admin` | Head of TA, developer | Everything, including users, settings, delete, audit log |
+| `recruiter` | Recruiting team | Create and edit openings, candidates, applications, interviews, offers (send needs approval if enabled), tasks |
+| `interviewer` | Panel members | See only interviews assigned to them and those candidates' résumés; submit scorecards |
+| `hiring_manager` | Department heads | Read their own openings and pipelines; approve offers; give feedback |
+| `management` | Leadership | Read-only dashboards and management report; no candidate contact details or salary unless granted |
+
+Rules enforced in the database (row-level security), never only in the UI. Salary and offer fields are visible to `admin`, `recruiter` and approving `hiring_manager` only.
+
+### 7.3 Modules: today and target
+
+| Module | Today | Target |
+|---|---|---|---|
+| Dashboard, Reports, Management report | Computed in the browser from `S` | SQL views and functions; same screens; export to PDF/Excel |
+| Openings, Job posting | CRUD in browser; "posting" is text and links | Same, plus public careers page and job-board links |
+| Applications, AI match | Keyword scoring in `domain/match.js` | Same rules in a shared domain package; stored score with reasons; optional model-assisted score later |
+| Candidates, Resume viewer, Add candidate | `.txt` and `.md` only | PDF/DOCX upload to storage, text extraction, duplicate detection |
+| Screening, Group and Personal interviews | Forms writing to `S` | Same forms; scorecards stored per interviewer; calendar invites |
+| Offers | Editor and printable letter | Approval step, letter PDF stored, send by email, response tracked |
+| Onboarding, Tasks | Checklists in `S` | Same, assigned to real users, reminders |
+| Pipeline control (SLA) | Computed in browser | Scheduled job raises alerts and notifications |
+| Sheets (export, import, auto-import) | ExcelJS in browser; auto-import only inside claude.ai | Export stays; Google Form posts to the API; Sheets are intake or export only |
+| AI assistant | Hard-coded patterns | Relabel as "search and shortcuts" until a model is connected |
+| Settings | Text fields in `S` | Company settings table; users and roles screen |
+
+### 7.4 Target data model (PostgreSQL on Supabase)
+
+All tables have `id uuid`, `created_at`, `updated_at`, `created_by`. Existing short ids (`OP-…`, `A-…`) are kept as a `code` column for continuity with the workbook importer.
+
+| Table | Replaces in `S` | Notes |
+|---|---|---|---|
+| `profiles` | recruiter and interviewer arrays, `settings.user` | One row per auth user; `role`, `active` |
+| `company_settings` | `settings` | Single row; match threshold and weights as `jsonb` |
+| `openings` | `openings` | `status` derived by a trigger from applications, as `setStage` does today |
+| `candidates` | `candidates` | Personal data; unique on normalised email and phone |
+| `candidate_documents` | `candidate.documents` | Metadata; the file is in Storage; status of verification |
+| `applications` | `applications` | `candidate_id`, `opening_id`, `stage`, `max_stage`, `stage_since`, match score and reasons |
+| `stage_events` | `events`, part of `activity` | Append-only; every stage move with who and when; feeds the management report |
+| `screenings` | `callLog`, `application.screening` | Answers as `jsonb`, outcome, notes |
+| `interview_groups`, `interviews`, `interview_scores` | `groups`, `interviews` | One score row per interviewer per criterion |
+| `offers` | `offers` | Status, CTC breakup `jsonb`, approval, sent and response dates |
+| `onboarding_items` | `onboarding` | Checklist rows per application |
+| `tasks` | `tasks` | Assignee is a `profiles` row |
+| `notifications` | `notifications` | Per user, read flag |
+| `audit_log` | `activity` (capped at 300 today) | Append-only, never capped; who changed what |
+| `postings`, `job_boards` | `postings`, `boards`, `postCfg` | Where each opening is advertised |
+| `messages` | composer "send" | Every email sent, template, status from the provider |
+| `intake_batches` | `sheetLog`, `autoSync` | One row per sheet or form import, with counts and errors |
+
+Migrations live in `supabase/migrations/` as numbered SQL files. Every table gets row-level security in the same migration that creates it.
+
+### 7.5 Target architecture
+
+```
+Browser app (today's vanilla JS, then modules, optionally React later)
+   │  supabase-js (anon key + user session)
+   ▼
+Supabase: Auth (Google SSO)  ·  Postgres + RLS  ·  Storage (resumes, letters)
+   │                                   ▲
+   ├─ Edge Functions: public application form intake, email send, résumé text extraction, calendar invites
+   └─ Scheduled jobs (pg_cron): SLA alerts, reminders, sheet intake
+```
+
+- **Service-role key and database URL are server-only** (Edge Functions, CI, migrations). The browser only ever has the project URL and anon key.
+- **One data-access module** (`src/data/api.js` after P2) is the only code that talks to Supabase. Features call named functions (`moveStage`, `createOffer`), never raw queries. An in-memory adapter with the same interface keeps tests and the demo working.
+- **Domain rules** (`match`, `salary`, `resume-parser`, stage rules) stay pure and shared, tested in Node.
+
+### 7.6 Cross-cutting rules (apply to every phase)
+
+- **Security and privacy:** RLS on every table; no secrets in the repo; candidate data access logged; consent text on the application form; retention and deletion rules; India DPDP review before go-live.
+- **Testing:** unit tests for domain and data layer; the smoke test on every page; SQL tests for RLS (each role can and cannot do what the matrix says); one end-to-end happy path (apply → hire → onboard).
+- **Environments:** `dev` (local or a dev Supabase project), `staging`, `prod`. Today's single project becomes `dev`; create the other two before Phase 7.
+- **Definition of done for any change:** tests pass, lint passes, build passes, smoke test passes, `.claude/plan.md` updated, reviewed in a pull request, no new global state.
+
+### 7.7 Phase overview
+
+| # | Phase | Outcome | Effort | Depends on |
+|---|---|---|---|---|
+| 1 | Foundations | Safe to change: git workflow, tooling, CI, modules, one mutation layer | M-L | none |
+| 2 | Backend core | Real shared database, login, roles; app reads and writes Supabase | L | 1 |
+| 3 | Files and messaging | Resumes and letters stored; real email and calendar invites | M | 2 |
+| 4 | Intake and integrations | Application form and sheets feed the API; careers page; job boards | M | 2, 3 |
+| 5 | Automation and insight | Scheduled SLA alerts, reminders, SQL-backed reports, optional model assist | M | 2, 3 |
+| 6 | Frontend modernisation (gate) | Real URLs, Vite build, TypeScript; React only if the gate says yes | L | 2 |
+| 7 | Hardening and launch | Staging and prod, monitoring, backups, security and DPDP review, UAT, go-live | M | 2-5 |
+| 8 | Post-launch | Feedback loop, v2 features | ongoing | 7 |
+
+Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel with 3-5 if there is a second developer; otherwise do it after launch.
+
+### Phase 1: Foundations (in progress; no new features)
+
+*Goal:* any developer can change the code safely, and every change is reviewed, tested and traceable.
+
+**P1.1 Code management**
 - ☑ `git init`, baseline commit, tag `v0.1.0-prototype` (2026-10-06)
-- ◐ Remote repo `pankaj-ecoste/ats` live and pushed; still to do: protect `main`, require PR review
+- ☑ Remote repo `pankaj-ecoste/ats` live and pushed over SSH (2026-10-06)
+- ☐ Protect `main`: pull request and one review required, no force push
 - ☐ Branching: `main` (deployable) ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge
 - ☐ Commit style: Conventional Commits (`feat(offers): …`, `fix(pipeline): …`)
-- ☐ PR template + checklist (tests pass, plan.md updated, no secrets, load order checked)
-- ☐ CODEOWNERS / reviewer rule: at least 1 review before merge
-- ☐ Version tags + `CHANGELOG.md`
+- ☐ PR template and checklist (tests pass, plan updated, no secrets, load order checked)
+- ☐ Version tags and `CHANGELOG.md`
 
-**P1.2 Quick safety wins** *(low risk, behaviour unchanged)*
-- ☑ Remove duplicate `STAGES` in `sheets-io.js`; it now receives the one from `core/constants.js` (test loads constants first)
-- ☑ Compute "today" on use: `today()` / `now()` replace the `TODAY` / `NOW` constants (also fixed two local `today` variables in `pipeline.js` that would have shadowed it)
-- ☐ Surface `save()` failures to the user (toast) instead of swallowing
-- ☐ Rename storage key via a one-time migration (`spectra-ats-v3` → `ecoste-ats`), keep old key as fallback
+**P1.2 Quick safety wins** *(behaviour unchanged)*
+- ☑ Remove duplicate `STAGES`; `sheets-io.js` receives the one from `core/constants.js`
+- ☑ `today()` / `now()` replace the `TODAY` / `NOW` constants
+- ☐ Surface `save()` failures to the user instead of swallowing them
+- ☐ Rename storage key via a one-time migration (`spectra-ats-v3` → `ecoste-ats`), old key kept as fallback
 
 **P1.3 Make code safe to change**
-- ☐ Convert classic scripts to ES modules (explicit imports/exports); keep `index.html` manifest working until a bundler replaces it
-- ☐ Replace inline `onclick` with bound handlers (15 sites)
-- ☐ Replace view-wrapping/`String.replace` hooks with explicit slots; `setStage` emits an event instead of being reassigned; NAV declared in one place
-- ☐ Strict mode everywhere
-- ☐ One mutation layer (`createOpening`, `moveStage`, `recordFeedback`, …) — the seam where the database plugs in
-- ☐ Move candidate-facing/company constants (recruiters, interviewers, company defaults) out of code into settings/data
+- ☐ Explicit extension points: a view declares slots, features register into them (replaces view wrapping and `String.replace` on HTML in `auto-import.js`, `posting.js`, `report.js`)
+- ☐ `setStage` emits a `stage-changed` event; `report-events.js` subscribes (no global reassignment)
+- ☐ `NAV` declared in one place with an order field (no `NAV.splice`)
+- ☐ One mutation layer (`createOpening`, `moveStage`, `recordScorecard`, `createOffer`, …): every write to `S` goes through it. **This is the seam Phase 2 swaps for Supabase.**
+- ☐ Replace the 15 inline `onclick` attributes with bound handlers
+- ☐ Convert classic scripts to ES modules with explicit imports; strict mode everywhere
+- ☐ Move recruiters, interviewers and company defaults out of code into settings and seed data
 
 **P1.4 Tooling**
-- ☐ ESLint + Prettier configured to match `.editorconfig`
-- ☐ Add `npm run lint`, `npm run format`
-- ☐ CI (GitHub Actions): install, lint, unit tests, build, Playwright smoke on `dist`; upload `dist` as artifact
-- ☐ Pre-commit hook (lint + unit tests)
-- ☐ Widen unit tests: stage transitions & opening-status derivation (`setStage`), `nextAction`, salary, import/export round-trip, store migrations
+- ☐ ESLint and Prettier matching `.editorconfig`; `npm run lint`, `npm run format`
+- ☐ GitHub Actions CI: install, lint, unit tests, build, Playwright smoke on `dist`
+- ☐ Pre-commit hook (lint and unit tests)
+- ☐ Widen unit tests: `setStage` and opening-status derivation, `nextAction`, workbook round-trip, store migrations
 
-**P1.5 Conventions (written down in `CONTRIBUTING.md`)**
-- ☐ File naming: `src/features/<name>/<name>.js`, kebab-case, CSS beside JS
-- ☐ Layer rule: a layer may only use layers to its left (`core → data → domain → app → features`); `domain/` stays DOM-free and test-covered
-- ☐ Generated files are never hand-edited; header comment says how to regenerate
-- ☐ Every new feature: view + bind, NAV entry, manifest entry, at least one test, line in `plan.md`
-- ☐ No secrets in repo; config via `.env` (git-ignored) with a committed `.env.example`
+**P1.5 Conventions** (written in `CONTRIBUTING.md`)
+- ☐ File naming and folder rules; layer rule `core → data → domain → app → features`
+- ☐ Generated files are never hand-edited
+- ☐ New-feature checklist (view, bind, NAV entry, test, plan line)
+- ☐ Secrets only in `.env`; `.env.example` committed
 
-### Phase 2 — Database & backend (the "database link")
+*Exit criteria:* CI green on every pull request; no global reassignments or HTML patching left; all writes go through the mutation layer; the app behaves identically (smoke test and manual check).
 
-**P2.0 Decisions needed from you (blockers for this phase)** — see §8.
+### Phase 2: Backend core (the database link)
 
-- ☑ Stack chosen: **Supabase (PostgreSQL + auth + storage)**; project created (see §4)
-- ☐ Schema + migrations for each entity in `S` (openings, candidates, applications, interviews, groups, offers, onboarding, tasks, activity, notifications, settings, postings, events, call_log, …) with foreign keys matching `cid` / `opId` / `appId` links
-- ☐ Environments: `dev`, `staging`, `prod`, each with its own database and keys
-- ☐ Authentication (Google Workspace SSO) + roles: admin, recruiter, interviewer, hiring manager, read-only management; row-level security
-- ☐ Replace `localStorage` in the mutation layer with API calls; keep an offline-demo adapter for tests
-- ☐ One-time import of existing data via the workbook importer
-- ☐ Resume/document upload (PDF/DOCX) to object storage + text extraction
-- ☐ Append-only audit log; retention/deletion rules; consent text on the application form
-- ☐ Backups with a tested restore
+*Goal:* one shared database; people log in; the app reads and writes Supabase instead of `localStorage`.
 
-### Phase 3 — Real integrations
-- ☐ Email delivery and calendar invites for interviews (WhatsApp only if wanted)
-- ☐ Application form posts straight to the API (replace Google Sheet + `window.claude` auto-import; Sheets become export/one-way intake)
-- ☐ Job-board posting where APIs exist
-- ☐ Optional model-backed matching (with human decision + rejection reasons)
+**P2.1 Schema and migrations** (M)
+- ☐ `supabase/` folder and CLI set up; migrations for every table in §7.4, in dependency order
+- ☐ Foreign keys, indexes, enums for stages and statuses; trigger for opening status; `stage_events` filled by trigger
+- ☐ Seed script for development only; production starts empty
 
-### Phase 4 — Frontend modernisation (feature by feature)
-- ☐ TypeScript types for entities; then React + Vite with a real router (URLs, deep links, back button)
-- ☐ Pagination/virtualised lists; stop whole-page re-render
-- ☐ Migrate one feature at a time behind the same API
+**P2.2 Auth and roles** (M)
+- ☐ Google Workspace sign-in for `@ecoste.in`; `profiles` row created on first login
+- ☐ Admin screen to invite users and set roles
+- ☐ RLS policies per §7.2, with SQL tests for every role
 
-### Phase 5 — Deployment & operations
-- ☐ Hosting: static frontend (Vercel/Netlify/Cloudflare Pages/S3+CDN) + API/DB host; custom domain (e.g. `ats.ecoste.in`) with HTTPS
-- ☐ Deploy flow: PR → CI → preview URL → merge to `main` → auto-deploy to **staging** → manual promote to **prod**
-- ☐ Rollback procedure (redeploy previous tag) documented and rehearsed
+**P2.3 Data layer** (L)
+- ☐ `src/data/api.js` implementing the mutation layer against Supabase; in-memory adapter kept for tests and demo
+- ☐ Read paths first (lists, detail), then writes one feature at a time: openings → candidates → applications → interviews → offers → onboarding → tasks
+- ☐ Loading and error states in the UI; replace whole-state `save()` with per-record writes
+- ☐ Pagination on applications and candidates
+
+**P2.4 Data migration and cutover** (S)
+- ☐ One-time import of existing real data through the workbook importer
+- ☐ First-run setup screen (company, signatory) replaces demo defaults
+- ☐ Remove `localStorage` as the source of truth
+
+*Exit criteria:* two recruiters on two computers see the same data; a user with the wrong role is blocked at the database; tests cover RLS; no business data left in `localStorage`.
+
+### Phase 3: Files and messaging
+
+*Goal:* real documents and real communication.
+
+- ☐ Storage buckets (private) with access policies: `resumes`, `documents`, `offer-letters`
+- ☐ PDF/DOCX upload; Edge Function extracts text and feeds the existing parser; duplicate detection on email and phone
+- ☐ Document checklist with real files and verification status
+- ☐ Email through a provider (Resend or Postmark): templates for invite, rejection, offer; every send recorded in `messages` with delivery status
+- ☐ Google Calendar invites for interviews (organiser = recruiter), reschedule and cancel
+- ☐ Offer letter saved as PDF; offer approval step
+- ☐ WhatsApp only if Decision D5 asks for it
+
+*Exit criteria:* a resume uploaded in the browser is stored, parsed and visible to the right people; an interview invite reaches the candidate's calendar; every outgoing message is traceable.
+
+### Phase 4: Intake and integrations
+
+*Goal:* applications arrive without manual copying.
+
+- ☐ Public Edge Function receives application-form posts (consent checkbox, spam protection, file upload); creates candidate and application; replaces `window.claude` auto-import
+- ☐ Google Form script updated to post to that function; Sheets become export and optional one-way intake
+- ☐ Public careers page listing open openings (static page reading a public view)
+- ☐ Job-board links and posting status where APIs exist
+- ☐ Intake log and error screen for rejected submissions
+
+*Exit criteria:* a candidate applies on the careers page or the form and appears in New within a minute, with consent recorded.
+
+### Phase 5: Automation and insight
+
+*Goal:* the system nudges people instead of waiting to be looked at.
+
+- ☐ Scheduled job computes SLA breaches and writes notifications; daily digest email to recruiters
+- ☐ Interview reminders to candidates and panel; feedback-overdue reminders
+- ☐ Dashboard and management report backed by SQL views; export to PDF and Excel
+- ☐ Match scoring moved to the shared domain package and stored with reasons; relabel "AI" honestly
+- ☐ Optional: model-assisted summaries or scoring behind a setting, human decision required, rejection reason always recorded
+- ☐ Audit log screen for admins
+
+*Exit criteria:* SLA alerts arrive without anyone opening the app; management report numbers match the database.
+
+### Phase 6: Frontend modernisation (decision gate after Phase 2)
+
+*Goal:* fix the structural limits of the UI (no URLs, whole-page re-render).
+
+- ☐ **Gate decision (D8):** stay on vanilla JS with modules and a small router, or move to React. Decide using real pain after Phase 2, not before.
+- ☐ Vite build replaces `build-single.mjs` and the hand-ordered manifest
+- ☐ Real router: URLs, deep links, back button, "share this candidate"
+- ☐ TypeScript types generated from the database schema
+- ☐ Targeted re-rendering or components; virtualised long lists
+- ☐ If React: migrate one feature at a time behind the same data layer, smoke test after each
+
+*Exit criteria:* every page has a URL; refresh keeps you where you are; no page loses focus or scroll on edit.
+
+### Phase 7: Hardening and launch
+
+- ☐ Create `staging` and `prod` Supabase projects; separate keys; secrets in CI and host, never in the repo
+- ☐ Hosting: static frontend (Vercel, Netlify, Cloudflare Pages) on `ats.ecoste.in` with HTTPS and security headers
+- ☐ Deploy flow: PR → CI → preview URL → merge to `main` → auto-deploy to staging → manual promote to prod
+- ☐ Rollback rehearsed (redeploy previous tag; migration rollback notes)
+- ☐ Backups with a tested restore; point-in-time recovery turned on
 - ☐ Error monitoring, uptime check, log retention
-- ☐ Self-host fonts and ExcelJS (remove CDNs); security headers/CSP
-- ☐ Accessibility pass, load test, security test, DPDP review
+- ☐ Self-host fonts and ExcelJS; CSP without public CDNs
+- ☐ Security review (RLS audit, key handling, dependency scan) and DPDP review (consent, retention, deletion, access requests)
+- ☐ Accessibility pass; load test with realistic volume
+- ☐ User acceptance test with the recruiting team; training notes; go-live and cutover checklist
+
+*Exit criteria:* a written go-live checklist signed off by the owner; a restore has been rehearsed; the team has used staging for real work for at least a week.
+
+### Phase 8: Post-launch
+
+- ☐ Two-week stabilisation window: bug triage daily
+- ☐ Collect feedback; prioritise v2 (candidate portal, HRMS sync, richer analytics, multi-user approvals)
+- ☐ Quarterly: dependency updates, access review, backup restore drill
+
+### 7.8 Immediate next steps (in order)
+
+1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
+2. ☐ Protect `main` on GitHub
+3. ☐ Finish P1.2 (`save()` errors, storage-key migration)
+4. ☐ P1.3 extension points, then the mutation layer
+5. ☐ P1.4 lint and CI
+6. ☐ Open a pull request for `chore/restructure-p1`; merge; start Phase 2 on a new branch
 
 ## 8. Open decisions (need an owner)
 
-| # | Question | Default if no answer |
-|---|---|---|
-| D1 | Database platform: **decided, Supabase** (region Seoul; moving to Mumbai would need a new project) | done |
-| D2 | Repo location: **decided, github.com/pankaj-ecoste/ats** | done |
-| D3 | Sign-in method: Google Workspace SSO for `@ecoste.in`? | Yes |
-| D4 | Is Google Sheet staying as intake only, or still a system of record? | Intake/export only |
-| D5 | Which channels must really send: email, calendar, WhatsApp? | Email + calendar |
-| D6 | Real company name/address/signatory to replace "Northwind Technologies" defaults? | Ask HR |
-| D7 | Is the current "AI" wording acceptable internally, or relabel as "rule-based"? | Relabel until a model is connected |
-| D8 | Keep React rewrite (Phase 4) or stay vanilla JS + modules? | Decide after Phase 2 |
+| # | Question | Default if no answer | Needed by |
+|---|---|---|---|
+| D1 | Database platform: **decided, Supabase** (region Seoul; moving to Mumbai would need a new project) | done | n/a |
+| D2 | Repo location: **decided, github.com/pankaj-ecoste/ats** | done | n/a |
+| D3 | Sign-in method: Google Workspace SSO for `@ecoste.in`? | Yes | P2.2 |
+| D4 | Is Google Sheet staying as intake only, or still a system of record? | Intake/export only | P4 |
+| D5 | Which channels must really send: email, calendar, WhatsApp? | Email + calendar | P3 |
+| D6 | Real company name/address/signatory to replace "Northwind Technologies" defaults? | Ask HR | P2.4 |
+| D7 | Is the current "AI" wording acceptable internally, or relabel as "rule-based"? | Relabel until a model is connected | P5 |
+| D8 | Stay on vanilla JS with modules, or move to React? | Decide after Phase 2 | P6 gate |
+| D9 | Does an offer need approval by a hiring manager before sending? | Yes | P3 |
+| D10 | Which roles may see salary and offer data? | admin, recruiter, approving hiring manager | P2.2 |
+| D11 | Email provider (Resend, Postmark, or Google Workspace SMTP)? | Resend | P3 |
+| D12 | Data retention: how long are rejected candidates kept? | 12 months, then anonymise (confirm with legal) | P7 |
+| D13 | Who is the product owner who signs off each phase? | Head of Talent Acquisition | all |
+| D14 | Staging and prod Supabase projects: same region as dev (Seoul) or Mumbai? | Mumbai for prod if data-residency matters | P7 |
 
 ## 9. How every future change is made (update process)
 
@@ -274,8 +459,9 @@ Legend: ☐ pending · ◐ in progress · ☑ done
 ## 10. Change log
 
 | Date | Change | By |
-|---|---|---|
+|---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-06 | Whole-app plan written: scope, roles, module map, data model, target architecture, 8 phases with exit criteria, new decisions D9-D14 | Claude Code |
 | 2026-10-06 | Reviewed codebase, verified tests/build, wrote `plan.md` with issues list, roadmap, process | Claude Code |
 | (earlier) | Phase 0: prototype split into layered project, tests, docs, build | Intern / project setup |
 
