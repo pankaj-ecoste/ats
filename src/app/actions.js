@@ -4,6 +4,7 @@ function log(text,type='info',appId){S.activity.unshift({ts:Date.now(),text,type
 function notify(text,goArgs=['dashboard']){S.notifications.unshift({id:Date.now()+Math.random(),text,ts:Date.now(),read:false,go:goArgs})}
 function setStage(aid,stage,quiet){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const prev=a.stage;if(prev===stage)return;
+ emitEvent('stage:changing',{aid,stage,prev});
  a.stage=stage;a.stageSince=today();const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
  const type={Shortlisted:'shortlist',Rejected:'reject','Employee Ready':'joined',Onboarding:'joined',Selected:'interview'}[stage]||'stage';
  log(`${c.name} moved to ${stage} for ${o.title}`,type,aid);

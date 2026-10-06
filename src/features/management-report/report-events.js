@@ -35,9 +35,9 @@ function seedHistory(){
 if(!S.events)seedHistory();
 if(!S.callLog)S.callLog=[];if(!S.monthly)S.monthly={};
 
-/* hook stage changes into events */
-{const _set=setStage;setStage=function(aid,stage,quiet){const a=getA(aid);const prev=a&&a.stage;
- if(a&&prev!==stage){const map={Shortlisted:'shortlist',Selected:'selected','Offer Accepted':'accepted'};if(map[stage])addEvent(map[stage],aid);
-  if(stage==='Onboarding'&&!a.joinedOn){a.joinedOn=today();const c=getC(a.cid);addEvent('joined',aid,{days:daysBetween(a.date,today()),src:c.source})}
-  if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){a.dropped=today();addEvent('dropped',aid)}}
- return _set(aid,stage,quiet)}}
+/* record management-report events when a stage changes (runs before setStage writes the new stage) */
+onEvent('stage:changing',({aid,stage,prev})=>{const a=getA(aid);
+ const map={Shortlisted:'shortlist',Selected:'selected','Offer Accepted':'accepted'};if(map[stage])addEvent(map[stage],aid);
+ if(stage==='Onboarding'&&!a.joinedOn){a.joinedOn=today();const c=getC(a.cid);addEvent('joined',aid,{days:daysBetween(a.date,today()),src:c.source})}
+ if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){a.dropped=today();addEvent('dropped',aid)}
+});

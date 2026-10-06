@@ -208,4 +208,4 @@ function slaModal(){
   $('#slaSave',el).onclick=()=>{S.settings.sla={};$$('[data-sla]',el).forEach(i=>S.settings.sla[i.dataset.sla]=Math.max(0,+i.value||0));save();closeModal();toast('SLA rules saved');render()}}});
 }
 VIEWS.pipeline=[vPipeline,bindPipeline];
-NAV.splice(1,0,['pipeline','Pipeline control','board']);
+addNav(['pipeline','Pipeline control','board'],'dashboard');

@@ -4,10 +4,10 @@
 
 The app is a client-only, single-page application written in plain JavaScript with no framework and no build step.
 
-- **State.** One object, `S` (`src/core/store.js`), holds everything: `settings`, `openings`, `candidates`, `applications`, `interviews`, `groups`, `offers`, `onboarding`, `tasks`, `activity`, `notifications`, `postings`, `boards`, `postCfg`, `autoSync`, `events`, `callLog`, `monthly`, `sheetLog`. It is read from and written to `localStorage` under the key `spectra-ats-v3` as a single JSON blob.
+- **State.** One object, `S` (`src/core/store.js`), holds everything: `settings`, `openings`, `candidates`, `applications`, `interviews`, `groups`, `offers`, `onboarding`, `tasks`, `activity`, `notifications`, `postings`, `boards`, `postCfg`, `autoSync`, `events`, `callLog`, `monthly`, `sheetLog`. It is read from and written to `localStorage` under the key `ecoste-ats` (older data under `spectra-ats-v3` is read once and copied; unknown versions are backed up to `ecoste-ats-backup`) as a single JSON blob.
 - **Routing.** `R` (`src/app/router.js`) is in-memory UI state (current view, tab, filters). `go(view, param, tab)` changes it and re-renders. There are no URLs, so pages cannot be linked or refreshed into.
 - **Rendering.** Each view is a pair `[viewFn, bindFn]` in `VIEWS` (`src/app/render.js`). `viewFn()` returns an HTML string, `render()` assigns it to `#content`, then `bindFn(root)` attaches handlers. Every change re-renders the whole page.
-- **Mutations.** Code mutates `S` directly, then calls `save()` and `render()`. `setStage()` in `src/app/actions.js` is the main shared mutation.
+- **Mutations.** Code mutates `S` directly, then calls `save()` and `render()`. `setStage()` in `src/app/actions.js` is the main shared mutation; it emits `stage:changing` before writing.
 
 ## Layers and dependency direction
 
@@ -21,12 +21,11 @@ All files are classic scripts in one global scope. Only `core/`, `data/` and `do
 
 ## Things that will surprise you
 
-These are carried over unchanged from the prototype. Each has a matching item in the roadmap.
+Carried over from the prototype. Each has a matching item in `.claude/plan.md`.
 
-1. **Features extend each other by wrapping.** `features/sheets/auto-import.js` replaces `VIEWS.sheets` and `VIEWS.applications` with wrappers that call the original view and then `String.replace` a literal fragment of its HTML to inject UI. If that markup changes, the injected UI silently disappears. `features/posting/posting.js` wraps `VIEWS.opening`, `features/management-report/report.js` wraps `VIEWS.dashboard`, and `report-events.js` reassigns the global `setStage` to record events.
-2. **`NAV` is edited at load time** by `pipeline.js` and `posting.js` (`NAV.splice`), so sidebar order depends on script order.
-3. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
-4. **ExcelJS and the Figtree font load from public CDNs at runtime.**
+1. **Extension points live in `src/app/hooks.js`.** A host view declares a slot (`slotHTML('sheets.top')`) and a feature fills it (`fillSlot`); extra handlers go through `onBind`; a view can be changed with `decorateView`; stage changes are announced with `emitEvent('stage:changing')` and heard with `onEvent`; sidebar items are added with `addNav(item, afterKey)`. Do not patch another feature's HTML or reassign its functions. The one remaining decorator is the dashboard (`management-report/report.js`).
+2. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
+3. **ExcelJS and the Figtree font load from public CDNs at runtime.**
 
 ## How the split was verified
 

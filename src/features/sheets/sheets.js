@@ -80,7 +80,7 @@ function vSheets(){
  const log=(S.sheetLog||[]).slice(0,8);
  const step=(n,t,d)=>`<div class="list-it" style="align-items:flex-start"><span class="av" style="background:var(--blue2);color:var(--blue);width:28px;height:28px;font-size:12px">${n}</span><div><b>${t}</b><div class="small muted">${d}</div></div></div>`;
  return `<div class="page-h"><div><h1>Google Sheets</h1><p>Run the same recruitment process in a Google Sheet, and move data between the Sheet and this app whenever you like.</p></div></div>
- <div class="grid g2">
+ ${slotHTML('sheets.top')}<div class="grid g2">
  <section class="panel"><header><div><h3>Work in Google Sheets</h3><p>Every opening, candidate, application, interview, offer, onboarding step and task</p></div></header>
   <div class="pbody"><button class="btn pri" id="gsExport">${ic('upload','style="transform:rotate(180deg)"')}Download workbook with app data</button> <button class="btn" id="gsBlank">Download blank template</button></div>
   ${step(1,'Download the workbook','An .xlsx file with 11 tabs: How to use, Dashboard, Openings, Candidates, Applications, Group Interviews, Interviews, Offers, Onboarding, Tasks and Settings.')}

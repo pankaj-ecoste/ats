@@ -141,7 +141,10 @@ function bindAutoImport(root){const b=$('#asconnect',root);if(!b)return;b.onclic
  const en=$('#asen',root);if(en)en.onchange=()=>{const cfg=asCfg();cfg.enabled=en.checked;asState.error=null;save();if(cfg.enabled){startSync();runSync(true)}else stopSync();render()};
  const off=$('#asoff',root);if(off)off.onclick=()=>confirmBox('Disconnect Google Sheet','Stop importing from this sheet? Applications already imported stay in the app.','Disconnect',()=>{stopSync();S.autoSync=null;save();render()},true)}
 // hook into the Google Sheets page and the Applications page
-{const [v,b]=VIEWS.sheets;VIEWS.sheets=[()=>{const h=v();return h.replace('<div class="grid g2">',autoImportCard()+'<div class="grid g2">')},r=>{b(r);bindAutoImport(r)}]}
-{const [v,b]=VIEWS.applications;VIEWS.applications=[()=>{const h=v();const cfg=asCfg();const slot=cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:`<button class="btn" onclick="go('sheets')">${ic('refresh')}Auto-import from Google Sheet</button>`;return h.replace('<div class="row"><div class="seg">',`<div class="row">${slot}<div class="seg">`)},r=>{b(r);bindSyncNow(r)}]}
+/* extension points: see src/app/hooks.js */
+fillSlot('sheets.top',autoImportCard);
+fillSlot('applications.toolbar',()=>{const cfg=asCfg();return cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:`<button class="btn" onclick="go('sheets')">${ic('refresh')}Auto-import from Google Sheet</button>`});
+onBind('sheets',bindAutoImport);
+onBind('applications',bindSyncNow);
 // start: first check shortly after load, then on the interval
 setTimeout(()=>{const cfg=asCfg();if(cfg.enabled&&cfg.fileId){startSync();runSync(false)}},2500);

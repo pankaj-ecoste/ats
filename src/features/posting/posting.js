@@ -152,9 +152,9 @@ function manageBoards(){
    save();closeModal();toast('Sites saved');render()}}});
 }
 VIEWS.posting=[vPosting,bindPosting];
-NAV.splice(NAV.findIndex(n=>n[0]==='openings')+1,0,['posting','Job posting','send']);
+addNav(['posting','Job posting','send'],'openings');
 
 // opening detail: posting tab
 function postingTabHTML(o){R.post.op=o.id;const live=S.postings.filter(p=>p.opId===o.id&&postStatus(p)[1]==='green');
  return `${formBanner(o)}<section class="panel"><header><div><h3>Live on ${live.length} job site${live.length===1?'':'s'}</h3><p>Copy a post, open the site, then mark it posted</p></div><button class="btn pri" onclick="go('posting','${o.id}')">${ic('send')}All sites and social</button></header><div class="pbody"><div class="boards">${boards().filter(x=>x.type==='board').map(x=>boardCard(o,x)).join('')}</div></div></section>`}
-{const [v,b]=VIEWS.opening;VIEWS.opening=[v,r=>{b(r);if(R.tab==='posting')bindPosting(r)}]}
+onBind('opening',r=>{if(R.tab==='posting')bindPosting(r)});

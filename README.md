@@ -12,6 +12,7 @@ npm test           # unit tests, no dependencies
 npm run build      # dist/Ecoste_Recruit_Tracker.html, one self-contained file
 npm install && npx playwright install chromium
 npm run test:e2e   # browser smoke test of every page (add `-- dist` to test the build)
+npm run test:e2e:hooks   # browser check of the extension points
 ```
 
 Requires Node 20+. Nothing needs installing for `dev`, `test` or `build`.
@@ -45,6 +46,7 @@ src/
     salary.js                    CTC breakup
   app/                         Application frame
     router.js                    route state R, NAV, go()
+    hooks.js                     extension points: slots, bind hooks, events, addNav
     shell.js                     sidebar, top bar, search, notifications
     ui.js                        modal, toast, confirm
     actions.js                   stage changes, activity log, next action
@@ -68,6 +70,8 @@ docs/                          ARCHITECTURE.md, PRODUCTION_ROADMAP.md
 ```
 
 ## Working in this codebase
+
+**Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/app/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
 
 **Adding a feature.** Create `src/features/<name>/<name>.js` (and `.css` if needed), register the view with `VIEWS.<name>=[viewFn, bindFn]`, add a `NAV` entry, then list the files in `index.html` after the features they depend on and before `src/app/main.js`.
 

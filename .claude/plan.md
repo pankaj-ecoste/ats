@@ -20,9 +20,9 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 7/7 pass |
+| `npm test` (node:test, no deps) | 12/12 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser smoke test (`npm run test:e2e`) | Passes: 14 pages, no errors (run with installed Chrome via `CHROME_PATH`) |
+| Browser tests (`test:e2e`, `test:e2e:hooks`) | Pass on source and on `dist`: 14 pages, 8 hook checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / formatter / CI | **None** (only `.editorconfig`) |
 | Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
@@ -89,7 +89,8 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `src/app/shell.js` | Sidebar, top bar, global search, quick add, notifications |
 | `src/app/ui.js` | `modal`, `toast`, `confirmBox`, form helpers |
 | `src/app/actions.js` | `log`, `notify`, `setStage` (also derives opening status), `nextAction`, `journey` |
-| `src/app/render.js` | `VIEWS` registry and `render()` |
+| `src/app/hooks.js` | Extension points: `fillSlot`/`slotHTML`, `onBind`, `decorateView`, `onEvent`/`emitEvent`, `addNav` |
+| `src/app/render.js` | `VIEWS` registry and `render()` (runs bind hooks) |
 | `src/app/main.js` | Bootstrap, loads last |
 | `src/features/dashboard/` | Dashboard |
 | `src/features/openings/` | Openings list and opening detail with tabs |
@@ -110,8 +111,10 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `scripts/serve.mjs`, `build-single.mjs`, `gen-form-script.mjs` | Dev server; single-file build; Apps Script generator |
 | `tests/unit/` | `domain.test.mjs`, `sheets-io.test.mjs`, `load-app.mjs` (loads app scripts into a Node `vm`) |
 | `tests/e2e/smoke.mjs` | Playwright: opens all 14 pages, fails on any uncaught error |
+| `tests/e2e/hooks.mjs` | Playwright: checks slots, bind hooks, dashboard decorator, stage event and nav order (8 checks) |
+| `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config, `src/app/registry.js` (extension points).
+**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config, 
 
 ## 4. Done (log)
 
@@ -147,16 +150,16 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 
 | # | Issue | Where | Why it matters | Fix in |
 |---|---|---|---|---|
-| 1 | Features extend others by **wrapping views and `String.replace` on HTML** | `sheets/auto-import.js:144-145`, `posting/posting.js:160`, `management-report/report.js:116` | If host markup changes, injected UI silently disappears | P1.3 |
-| 2 | `setStage` **reassigned globally** to record events | `management-report/report-events.js:39` | Order-dependent; hard to reason about | P1.3 |
-| 3 | `NAV.splice` at load time | `pipeline.js:211`, `posting.js:155` | Sidebar order depends on script order | P1.3 |
+| ~~1~~ | ~~Features extend others by wrapping views and `String.replace` on HTML~~ — fixed (`hooks.js`) | `sheets/auto-import.js:144-145`, `posting/posting.js:160`, `management-report/report.js:116` | If host markup changes, injected UI silently disappears | P1.3 |
+| ~~2~~ | ~~`setStage` reassigned globally~~ — fixed (event) | `management-report/report-events.js:39` | Order-dependent; hard to reason about | P1.3 |
+| ~~3~~ | ~~`NAV.splice` at load time~~ — fixed (`addNav`) | `pipeline.js:211`, `posting.js:155` | Sidebar order depends on script order | P1.3 |
 | ~~4~~ | ~~`STAGES` defined twice~~ — fixed | `core/constants.js:4`, `sheets/sheets-io.js:6` | Will drift; breaks import/export | P1.2 (quick win) |
 | ~~5~~ | ~~`TODAY` frozen at page load~~ — fixed | `core/utils.js` | Tab open overnight shows wrong date | P1.2 |
-| 6 | `save()` swallows all errors; `load()` returns demo data if version ≠ 3 | `core/store.js` | Silent data loss | P1.4 / P2 |
+| ~~6~~ | ~~`save()` swallows all errors~~ — fixed; still open: `load()` falls back to demo data; `load()` returns demo data if version ≠ 3 | `core/store.js` | Silent data loss | P1.4 / P2 |
 | 7 | 15 inline `onclick="..."` attributes | router, dashboard, openings, candidates, … | Globals dependency; injection risk | P1.3 |
 | 8 | Strict mode only in `core/data/domain` | rest of `src/` | Hidden global leaks | P1.3 |
 | 9 | Whole-page `innerHTML` render | `app/render.js` | Loses focus/scroll; no pagination | P4 |
-| 10 | Storage key `spectra-ats-v3` is a leftover name | `core/store.js` | Cosmetic, but migrate carefully | P1.4 |
+| ~~10~~ | ~~Storage key `spectra-ats-v3`~~ — migrated | `core/store.js` | Cosmetic, but migrate carefully | P1.4 |
 | 11 | `window.claude.use('mcp')` for Sheet auto-import (no fallback) | `sheets/auto-import.js` | Does nothing outside claude.ai | P3 |
 | 12 | ExcelJS + Figtree font from public CDNs | `index.html`, sheets | Offline/privacy/availability | P5 |
 
@@ -290,13 +293,13 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 **P1.2 Quick safety wins** *(behaviour unchanged)*
 - ☑ Remove duplicate `STAGES`; `sheets-io.js` receives the one from `core/constants.js`
 - ☑ `today()` / `now()` replace the `TODAY` / `NOW` constants
-- ☐ Surface `save()` failures to the user instead of swallowing them
-- ☐ Rename storage key via a one-time migration (`spectra-ats-v3` → `ecoste-ats`), old key kept as fallback
+- ☑ `save()` failures are reported to the user (once per failure streak)
+- ☑ Storage key renamed to `ecoste-ats`: legacy key read once and never deleted; unknown versions backed up to `ecoste-ats-backup` before they can be overwritten (5 unit tests)
 
 **P1.3 Make code safe to change**
-- ☐ Explicit extension points: a view declares slots, features register into them (replaces view wrapping and `String.replace` on HTML in `auto-import.js`, `posting.js`, `report.js`)
-- ☐ `setStage` emits a `stage-changed` event; `report-events.js` subscribes (no global reassignment)
-- ☐ `NAV` declared in one place with an order field (no `NAV.splice`)
+- ☑ Explicit extension points in `src/app/hooks.js` (`fillSlot`/`slotHTML`, `onBind`, `decorateView`): `auto-import.js` and `posting.js` no longer patch HTML or wrap views; `report.js` uses `decorateView`
+- ☑ `setStage` emits `stage:changing`; `report-events.js` subscribes (no global reassignment)
+- ☑ `addNav(item, afterKey)` replaces `NAV.splice` (sidebar order unchanged)
 - ☐ One mutation layer (`createOpening`, `moveStage`, `recordScorecard`, `createOffer`, …): every write to `S` goes through it. **This is the seam Phase 2 swaps for Supabase.**
 - ☐ Replace the 15 inline `onclick` attributes with bound handlers
 - ☐ Convert classic scripts to ES modules with explicit imports; strict mode everywhere
@@ -420,8 +423,8 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 
 1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
 2. ☐ Protect `main` on GitHub
-3. ☐ Finish P1.2 (`save()` errors, storage-key migration)
-4. ☐ P1.3 extension points, then the mutation layer
+3. ☑ Finish P1.2 (`save()` errors, storage-key migration)
+4. ◐ P1.3: extension points done; mutation layer next, then inline `onclick`, ES modules, strict mode
 5. ☐ P1.4 lint and CI
 6. ☐ Open a pull request for `chore/restructure-p1`; merge; start Phase 2 on a new branch
 
@@ -461,6 +464,7 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-06 | P1.2 finished (storage key migration, save errors) and extension points added (`hooks.js`): no more HTML patching, `setStage` reassignment or `NAV.splice`; 5 new unit tests, new `hooks.mjs` browser test | Claude Code |
 | 2026-10-06 | Whole-app plan written: scope, roles, module map, data model, target architecture, 8 phases with exit criteria, new decisions D9-D14 | Claude Code |
 | 2026-10-06 | Reviewed codebase, verified tests/build, wrote `plan.md` with issues list, roadmap, process | Claude Code |
 | (earlier) | Phase 0: prototype split into layered project, tests, docs, build | Intern / project setup |
