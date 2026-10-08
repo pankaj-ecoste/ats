@@ -1,5 +1,4 @@
 /* ===================== Management hiring report ===================== */
-const REP_DEF={offerAlert:70,noShowAlert:25,dueSoon:7};
 const repCfg=()=>{if(!S.settings.report)S.settings.report={...REP_DEF};return S.settings.report};
 R.rep={date:today()};
 const mondayOf=s=>{const d=parseD(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)};
@@ -8,9 +7,7 @@ const monthEnd=s=>{const d=parseD(monthStart(s));d.setMonth(d.getMonth()+1);d.se
 const shiftMonth=(s,n)=>{const d=parseD(monthStart(s));d.setMonth(d.getMonth()+n);return iso(d)};
 const ym=s=>s.slice(0,7);
 const inR=(d,a,b)=>d&&d>=a&&d<=b;
-function addEvent(t,aid,extra={}){if(!S.events)S.events=[];const a=aid?getA(aid):null;S.events.push({d:today(),t,aid:aid||null,op:a?a.opId:extra.op||null,...extra})}
-
-/* demo history so the report has 8+ weeks to show */
+/* demo history so the report has 8+ weeks to show. Sample data only: writes S directly and is removed when production starts empty (plan Phase 2.4). */
 function seedHistory(){
  let x=20260928;const rnd=()=>{x=(x*1103515245+12345)%2147483648;return x/2147483648};const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
  S.events=[];S.callLog=[];const ops=S.openings.filter(o=>o.status!=='Draft');const srcs=['Naukri','Indeed','Referral','LinkedIn','Walk-in','Apna'];
@@ -35,9 +32,3 @@ function seedHistory(){
 if(!S.events)seedHistory();
 if(!S.callLog)S.callLog=[];if(!S.monthly)S.monthly={};
 
-/* record management-report events when a stage changes (runs before setStage writes the new stage) */
-onEvent('stage:changing',({aid,stage,prev})=>{const a=getA(aid);
- const map={Shortlisted:'shortlist',Selected:'selected','Offer Accepted':'accepted'};if(map[stage])addEvent(map[stage],aid);
- if(stage==='Onboarding'&&!a.joinedOn){repo.update('applications',aid,{joinedOn:today()});const c=getC(a.cid);addEvent('joined',aid,{days:daysBetween(a.date,today()),src:c.source})}
- if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){repo.update('applications',aid,{dropped:today()});addEvent('dropped',aid)}
-});

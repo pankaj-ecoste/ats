@@ -188,6 +188,42 @@ await page.click('#resetAll');
 await page.click('#cOK');
 check('settings: reset demo data restores the sample company and clears our test data', await ev(() => S.settings.company === DEFAULT_SETTINGS.company && !S.openings.some((o) => o.title.startsWith('Flow Test'))));
 
+// ---- management report
+await ev(() => { R.dashTab = 'report'; go('dashboard'); });
+await ev(() => callLogModal());
+await page.fill('#clM', '40');
+await page.fill('#clC', '15');
+await page.click('#clS');
+await modalGone();
+check('report: a call log entry is added', await ev(() => S.callLog.some((c) => c.made === 40 && c.conn === 15 && !c.demo)));
+await ev(() => callLogModal());
+await page.click('[data-cldel]');
+await closeAllModals();
+check('report: a call log entry can be deleted', await ev(() => !S.callLog.some((c) => c.made === 40 && c.conn === 15 && !c.demo)));
+await ev(() => targetsModal());
+const tkey = await ev(() => document.querySelector('[data-tm][data-k="target"]').dataset.tm);
+await page.fill('[data-tm][data-k="target"]', '7');
+await page.click('#tmS');
+await modalGone();
+check('report: monthly targets are saved', await ev((k) => S.monthly[k].target === 7, tkey));
+const dp = await ev(() => {
+  const o = S.openings.find((x) => appsOfOp(x.id).length >= 2);
+  const [a, b] = appsOfOp(o.id).slice(0, 2);
+  moveStage(a.id, 'Offer Accepted');
+  return { a: a.id, b: b.id };
+});
+await ev((x) => backupModal(x.a), dp);
+await page.selectOption('#bkA', dp.b);
+await page.click('#bkSave');
+await modalGone();
+check('report: a backup can be named', await ev((x) => getA(x.a).backup && getA(x.a).backup.aid === x.b, dp));
+await ev((x) => dropModal(x.a), dp);
+await page.fill('#dpR', 'Flow reason');
+await page.click('#dpOK');
+await modalGone();
+check('report: drop-out rejects the candidate and promotes the backup', await ev((x) => getA(x.a).stage === 'Rejected' && getA(x.b).stage === 'Selected' && getA(x.a).backup === null, dp));
+check('report: drop-out reason is noted on the candidate', await ev((x) => getC(getA(x.a).cid).notes[0].text === 'Dropped after offer: Flow reason', dp));
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }

@@ -12,11 +12,11 @@ function recordJoined(aid){
  log(`${c.name} joined`,'joined',aid);
  notify(`${c.name} joined today`,['onboarding']);
 }
-// creates the checklist once, then moves the candidate to Onboarding
-function beginOnboarding(aid){
+// creates the checklist once
+function ensureOnboardingChecklist(aid){
  if(!repo.find('onboarding',aid))repo.insert('onboarding',{appId:aid,start:today(),items:ONB_TEMPLATE.map(t=>({cat:t[0],t:t[1],done:false}))},{end:true});
- moveStage(aid,'Onboarding');
 }
+function beginOnboarding(aid){ensureOnboardingChecklist(aid);moveStage(aid,'Onboarding')}
 function setOnboardingItem(appId,index,done){
  const o=repo.update('onboarding',appId,o=>{o.items[index].done=done});
  if(done)log(`${getC(getA(appId).cid).name}: ${o.items[index].t}`,'onboarding',appId);

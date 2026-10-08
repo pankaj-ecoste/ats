@@ -196,7 +196,7 @@ function bindPipeline(root){
  $$('[data-pcol]',root).forEach(col=>{col.ondragover=e=>{e.preventDefault();col.classList.add('over')};col.ondragleave=e=>{if(!col.contains(e.relatedTarget))col.classList.remove('over')};
   col.ondrop=e=>{e.preventDefault();col.classList.remove('over');const id=e.dataTransfer.getData('text/plain');if(!id)return;const target=[...PC_COLS,PARKED].find(c=>c.k===col.dataset.pcol);const a=getA(id);
    if(target.st&&target.st.includes(a.stage))return;if((target.k==='app'||target.k==='ai')&&a.stage==='New')return;
-   if(target.k==='onb'&&!S.onboarding.some(o=>o.appId===id))S.onboarding.push({appId:id,start:today(),items:ONB_TEMPLATE.map(t=>({cat:t[0],t:t[1],done:false}))});
+   if(target.k==='onb')ensureOnboardingChecklist(id);
    setStage(id,target.drop)}});
 }
 function slaModal(){
