@@ -38,15 +38,18 @@ src/
     constants.js                 stages, statuses, criteria, templates
     store.js                     global state S, defaults, load/save
     selectors.js                 lookups over S
+    repo.js                      the only code that inserts, updates or removes records in S
+    hooks.js                     extension points: slots, bind hooks, events, addNav
   data/
     seed.js                      demo dataset
   domain/                      Business rules, no DOM
     match.js                     resume-to-opening scoring
     resume-parser.js             plain-text resume parser
     salary.js                    CTC breakup
+  services/                    Use cases that change data (moveStage, addTask, log ...). No DOM.
+    activity.js  tasks.js  stages.js
   app/                         Application frame
     router.js                    route state R, NAV, go()
-    hooks.js                     extension points: slots, bind hooks, events, addNav
     shell.js                     sidebar, top bar, search, notifications
     ui.js                        modal, toast, confirm
     actions.js                   stage changes, activity log, next action
@@ -71,11 +74,13 @@ docs/                          ARCHITECTURE.md, PRODUCTION_ROADMAP.md
 
 ## Working in this codebase
 
-**Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/app/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
+**Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/core/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
+
+**Changing data.** A handler never writes to `S`. It calls a service from `src/services/` (`addTask`, `moveStage`, ...), which changes records only through `repo.insert/update/remove/root` and returns the result; the handler then shows the toast and re-renders. Services are DOM-free, so they are unit-tested in Node. This is the seam where Supabase plugs in (Phase 2).
 
 **Adding a feature.** Create `src/features/<name>/<name>.js` (and `.css` if needed), register the view with `VIEWS.<name>=[viewFn, bindFn]`, add a `NAV` entry, then list the files in `index.html` after the features they depend on and before `src/app/main.js`.
 
-**Load order matters.** Files are classic scripts sharing one global scope, so a file can only use, at load time, what earlier files defined. The order in `index.html` is `core -> data -> domain -> app -> features -> app/main.js`. The build and the unit-test loader both read that list, so `index.html` is the only place to maintain it.
+**Load order matters.** Files are classic scripts sharing one global scope, so a file can only use, at load time, what earlier files defined. The order in `index.html` is `core -> data -> domain -> services -> app -> features -> app/main.js`. The build and the unit-test loader both read that list, so `index.html` is the only place to maintain it.
 
 **Editing the Google Form script.** Edit `integrations/google-form/setup.template.gs`, then run `npm run gen`.
 

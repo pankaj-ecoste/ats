@@ -38,6 +38,6 @@ if(!S.callLog)S.callLog=[];if(!S.monthly)S.monthly={};
 /* record management-report events when a stage changes (runs before setStage writes the new stage) */
 onEvent('stage:changing',({aid,stage,prev})=>{const a=getA(aid);
  const map={Shortlisted:'shortlist',Selected:'selected','Offer Accepted':'accepted'};if(map[stage])addEvent(map[stage],aid);
- if(stage==='Onboarding'&&!a.joinedOn){a.joinedOn=today();const c=getC(a.cid);addEvent('joined',aid,{days:daysBetween(a.date,today()),src:c.source})}
- if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){a.dropped=today();addEvent('dropped',aid)}
+ if(stage==='Onboarding'&&!a.joinedOn){repo.update('applications',aid,{joinedOn:today()});const c=getC(a.cid);addEvent('joined',aid,{days:daysBetween(a.date,today()),src:c.source})}
+ if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){repo.update('applications',aid,{dropped:today()});addEvent('dropped',aid)}
 });

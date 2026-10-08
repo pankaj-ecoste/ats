@@ -35,7 +35,7 @@
 <div id="printArea" aria-hidden="true"></div>
 
 <!-- Scripts: classic scripts sharing one global scope, so ORDER MATTERS.
-     core -> data -> domain -> app -> features -> app/main.js (always last).
+     core -> data -> domain -> services -> app -> features -> app/main.js (always last).
      scripts/build-single.mjs reads this list to produce the single-file build. -->
 <script src="src/core/assets.js"></script>
 <script src="src/generated/form-script.js"></script>
@@ -46,10 +46,14 @@
 <script src="src/domain/salary.js"></script>
 <script src="src/core/store.js"></script>
 <script src="src/core/selectors.js"></script>
+<script src="src/core/repo.js"></script>
+<script src="src/core/hooks.js"></script>
 <script src="src/domain/match.js"></script>
 <script src="src/domain/resume-parser.js"></script>
+<script src="src/services/activity.js"></script>
+<script src="src/services/tasks.js"></script>
+<script src="src/services/stages.js"></script>
 <script src="src/app/router.js"></script>
-<script src="src/app/hooks.js"></script>
 <script src="src/app/shell.js"></script>
 <script src="src/app/ui.js"></script>
 <script src="src/app/actions.js"></script>

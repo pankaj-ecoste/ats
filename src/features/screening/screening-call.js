@@ -29,7 +29,7 @@ function screeningCall(aid){
    const n=nx.value;
    if(andNext){
     if(n==='Move to Group Interview')setStage(aid,'Group Interview',true);
-    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);S.tasks.unshift({id:uid('T'),title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',done:false,owner:a.recruiter})}
+    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);addTask({title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',owner:a.recruiter})}
     else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true);
     save();const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
     const na=appsOfC(nextCid).find(x=>['Shortlisted','Screening','New'].includes(x.stage))||primaryApp(nextCid);R.appSel=na.id;go('candidate',nextCid);return}

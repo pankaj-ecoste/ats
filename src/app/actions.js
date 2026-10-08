@@ -1,20 +1,9 @@
-/* Cross-feature actions: activity log, notifications, stage changes, next action, journey */
+/* Cross-feature UI actions: stage change with feedback, next action, journey. Data changes live in src/services/ */
 /* ---------- actions ---------- */
-function log(text,type='info',appId){S.activity.unshift({ts:Date.now(),text,type,appId});if(S.activity.length>300)S.activity.length=300}
-function notify(text,goArgs=['dashboard']){S.notifications.unshift({id:Date.now()+Math.random(),text,ts:Date.now(),read:false,go:goArgs})}
+// UI wrapper over the moveStage() service: adds the toast and the re-render
 function setStage(aid,stage,quiet){
- const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const prev=a.stage;if(prev===stage)return;
- emitEvent('stage:changing',{aid,stage,prev});
- a.stage=stage;a.stageSince=today();const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
- const type={Shortlisted:'shortlist',Rejected:'reject','Employee Ready':'joined',Onboarding:'joined',Selected:'interview'}[stage]||'stage';
- log(`${c.name} moved to ${stage} for ${o.title}`,type,aid);
- // keep opening status in sync with its furthest pipeline
- const furthest=Math.max(...appsOfOp(o.id).map(stageRank));
- if(!['Draft','On Hold','Closed','Filled'].includes(o.status)){
-  const hired=appsOfOp(o.id).filter(x=>STAGES.indexOf(x.stage)>=STAGES.indexOf('Joining')).length;
-  o.status=hired>=o.positions?'Filled':furthest>=6?'Offer':furthest>=3?'Interviewing':furthest>=1?'Screening':'Open';
- }
- save();if(!quiet){toast(`${c.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}
+ const r=moveStage(aid,stage);if(!r)return;
+ if(!quiet){toast(`${r.candidate.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}
 }
 function refresh(){render()}
 function shortlist(aid){setStage(aid,'Shortlisted')}

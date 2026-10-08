@@ -7,15 +7,15 @@ The app is a client-only, single-page application written in plain JavaScript wi
 - **State.** One object, `S` (`src/core/store.js`), holds everything: `settings`, `openings`, `candidates`, `applications`, `interviews`, `groups`, `offers`, `onboarding`, `tasks`, `activity`, `notifications`, `postings`, `boards`, `postCfg`, `autoSync`, `events`, `callLog`, `monthly`, `sheetLog`. It is read from and written to `localStorage` under the key `ecoste-ats` (older data under `spectra-ats-v3` is read once and copied; unknown versions are backed up to `ecoste-ats-backup`) as a single JSON blob.
 - **Routing.** `R` (`src/app/router.js`) is in-memory UI state (current view, tab, filters). `go(view, param, tab)` changes it and re-renders. There are no URLs, so pages cannot be linked or refreshed into.
 - **Rendering.** Each view is a pair `[viewFn, bindFn]` in `VIEWS` (`src/app/render.js`). `viewFn()` returns an HTML string, `render()` assigns it to `#content`, then `bindFn(root)` attaches handlers. Every change re-renders the whole page.
-- **Mutations.** Code mutates `S` directly, then calls `save()` and `render()`. `setStage()` in `src/app/actions.js` is the main shared mutation; it emits `stage:changing` before writing.
+- **Mutations.** Being moved behind services (see below). Migrated so far: activity log, notifications, tasks, stage changes. The rest still mutate `S` directly, then call `save()` and `render()`. `setStage()` in `src/app/actions.js` is the main shared mutation; it emits `stage:changing` before writing.
 
 ## Layers and dependency direction
 
 ```
-core  ->  data  ->  domain  ->  app  ->  features  ->  app/main.js
+core  ->  data  ->  domain  ->  services  ->  app  ->  features  ->  app/main.js
 ```
 
-A layer may use layers to its left. `core`, `data` and `domain` never touch the DOM at load time, which is what lets `tests/unit/load-app.mjs` run them in Node.
+A layer may use layers to its left. `core`, `data`, `domain` and `services` never touch the DOM at all, which is what lets `tests/unit/load-app.mjs` run them in Node.
 
 All files are classic scripts in one global scope. Only `core/`, `data/` and `domain/` run in strict mode, because only that part of the prototype did. Turning strict mode on elsewhere is a separate, deliberate change.
 
@@ -23,7 +23,7 @@ All files are classic scripts in one global scope. Only `core/`, `data/` and `do
 
 Carried over from the prototype. Each has a matching item in `.claude/plan.md`.
 
-1. **Extension points live in `src/app/hooks.js`.** A host view declares a slot (`slotHTML('sheets.top')`) and a feature fills it (`fillSlot`); extra handlers go through `onBind`; a view can be changed with `decorateView`; stage changes are announced with `emitEvent('stage:changing')` and heard with `onEvent`; sidebar items are added with `addNav(item, afterKey)`. Do not patch another feature's HTML or reassign its functions. The one remaining decorator is the dashboard (`management-report/report.js`).
+1. **Extension points live in `src/core/hooks.js`.** A host view declares a slot (`slotHTML('sheets.top')`) and a feature fills it (`fillSlot`); extra handlers go through `onBind`; a view can be changed with `decorateView`; stage changes are announced with `emitEvent('stage:changing')` and heard with `onEvent`; sidebar items are added with `addNav(item, afterKey)`. Do not patch another feature's HTML or reassign its functions. The one remaining decorator is the dashboard (`management-report/report.js`).
 2. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
 3. **ExcelJS and the Figtree font load from public CDNs at runtime.**
 

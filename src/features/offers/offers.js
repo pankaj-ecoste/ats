@@ -75,7 +75,7 @@ function offerEditor(fid,aid){
    $('#ofSt',el).className='pill '+OFFER_COLOR[status];$('#ofSt',el).textContent=status;save();return true};
   $('#ofDraft',el).onclick=()=>{if(commit('Draft')){closeModal();toast('Offer saved as draft');refresh()}};
   $('#ofGen',el).onclick=()=>{if(commit('Generated')){toast('Offer letter generated','var(--ai)');refresh()}};
-  $('#ofSend',el).onclick=()=>{if(!commit('Sent'))return;f.sent=today();log(`Offer sent to ${c.name}`,'offer',a.id);notify(`Offer sent to ${c.name} · awaiting response`,['offers']);S.tasks.unshift({id:uid('T'),title:`Follow up with ${c.name} on offer`,due:addDays(2),related:o.title,priority:'High',done:false,owner:S.settings.user});save();closeModal();toast(`Offer sent to ${c.email}`);refresh()};
+  $('#ofSend',el).onclick=()=>{if(!commit('Sent'))return;f.sent=today();log(`Offer sent to ${c.name}`,'offer',a.id);notify(`Offer sent to ${c.name} · awaiting response`,['offers']);addTask({title:`Follow up with ${c.name} on offer`,due:addDays(2),related:o.title,priority:'High',owner:S.settings.user});closeModal();toast(`Offer sent to ${c.email}`);refresh()};
   $('#ofPrev',el).onclick=()=>{if(editing)w.custom=L.innerHTML;modal({title:'Offer letter preview',size:'w',body:`<div class="letter">${letterHTML(w)}</div>`,foot:`<button class="btn" data-close>Close</button>`})};
   $('#ofPdf',el).onclick=()=>{if(editing)w.custom=L.innerHTML;$('#printArea').innerHTML=`<div class="letter">${letterHTML(w)}</div>`;
    try{window.print();toast('Choose “Save as PDF” in the print dialog')}catch(e){toast('Printing is blocked here. Open the preview and use your browser\'s print.','var(--orange)')}};

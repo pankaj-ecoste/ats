@@ -41,6 +41,28 @@ const ev = await page.evaluate(() => {
 check('stage event: setStage moves the stage', ev.stage === 'Shortlisted');
 check('stage event: management report records "shortlist"', ev.types.includes('shortlist'));
 
+
+// service wiring: handlers call the services instead of writing to S
+await page.click('[data-go="tasks"]');
+await page.click('[data-tf="All"]');
+const t0 = await page.evaluate(() => ({ open: S.tasks.filter((t) => !t.done).length, id: S.tasks.find((t) => !t.done).id }));
+await page.click(`[data-task="${t0.id}"]`);
+check('tasks: ticking a task saves it as done', await page.evaluate((id) => S.tasks.find((t) => t.id === id).done === true, t0.id));
+await page.click(`[data-task="${t0.id}"]`);
+check('tasks: unticking reopens it', await page.evaluate((id) => S.tasks.find((t) => t.id === id).done === false, t0.id));
+const nTasks = await page.evaluate(() => S.tasks.length);
+await page.click('[data-tdel]');
+check('tasks: delete removes one task', (await page.evaluate(() => S.tasks.length)) === nTasks - 1);
+
+await page.evaluate(() => { notify('check one', ['tasks']); renderTop(); });
+await page.click('#nBtn');
+await page.click('#markAll');
+check('notifications: mark all read', await page.evaluate(() => S.notifications.every((n) => n.read)));
+await page.evaluate(() => { notify('check two', ['tasks']); renderTop(); });
+await page.click('#nBtn');
+await page.click('#nDD .it');
+check('notifications: opening one marks it read and navigates', await page.evaluate(() => S.notifications[0].read && R.view === 'tasks'));
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }

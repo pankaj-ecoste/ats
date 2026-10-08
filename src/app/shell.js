@@ -39,8 +39,8 @@ function renderTop(){
   const acts=[()=>openingForm(),()=>addCandidate(),()=>schedulePI(),()=>scheduleGI(),()=>pickForOffer(),()=>taskForm()];$$('.it',qa).forEach(el=>el.onclick=()=>{qa.classList.add('hide');acts[el.dataset.k]()})};
  const nd=$('#nDD');
  $('#nBtn').onclick=e=>{e.stopPropagation();closeDD('nDD');nd.innerHTML=`<h6 style="display:flex;justify-content:space-between">Notifications <a href="#" id="markAll" style="font-weight:600">Mark all read</a></h6>`+(S.notifications.slice(0,12).map(n=>`<div class="it" data-id="${n.id}"><span style="width:8px;height:8px;border-radius:50%;background:${n.read?'transparent':'var(--blue)'};flex:none"></span><div><span style="${n.read?'color:var(--tx2)':'font-weight:600'}">${esc(n.text)}</span><small>${timeAgo(n.ts)}</small></div></div>`).join('')||'<div class="empty">You\'re all caught up.</div>');nd.classList.toggle('hide');
-  $('#markAll').onclick=ev=>{ev.preventDefault();S.notifications.forEach(n=>n.read=true);save();renderTop()};
-  $$('.it',nd).forEach(el=>el.onclick=()=>{const n=S.notifications.find(x=>x.id==el.dataset.id);n.read=true;save();nd.classList.add('hide');go(...n.go)})};
+  $('#markAll').onclick=ev=>{ev.preventDefault();markAllNotificationsRead();renderTop()};
+  $$('.it',nd).forEach(el=>el.onclick=()=>{const n=markNotificationRead(el.dataset.id);nd.classList.add('hide');go(...n.go)})};
  $('#helpBtn').onclick=helpModal;
 }
 function closeDD(except){$$('.dd').forEach(d=>{if(d.id!==except)d.classList.add('hide')})}

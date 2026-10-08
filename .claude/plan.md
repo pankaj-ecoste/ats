@@ -20,9 +20,9 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 12/12 pass |
+| `npm test` (node:test, no deps) | 23/23 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser tests (`test:e2e`, `test:e2e:hooks`) | Pass on source and on `dist`: 14 pages, 8 hook checks (run with installed Chrome via `CHROME_PATH`) |
+| Browser tests (`test:e2e`, `test:e2e:hooks`) | Pass on source and on `dist`: 14 pages, 13 hook checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / formatter / CI | **None** (only `.editorconfig`) |
 | Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
@@ -37,7 +37,7 @@ Client-only SPA, plain JavaScript, no framework, no bundler. Full detail in `doc
 - **Routing:** in-memory `R` + `go(view, param, tab)`; no URLs.
 - **Rendering:** each view is `[viewFn → HTML string, bindFn(root)]` registered in `VIEWS`; whole page re-renders on every change.
 - **Mutations:** code edits `S` directly then calls `save()` + `render()`. Main shared mutation: `setStage()` (`src/app/actions.js`).
-- **Load order (strict):** classic scripts in one global scope. `core → data → domain → app → features → app/main.js`. `index.html` is the only manifest; the build and the unit-test loader both read it.
+- **Load order (strict):** classic scripts in one global scope. `core → data → domain → services → app → features → app/main.js`. `index.html` is the only manifest; the build and the unit-test loader both read it.
 
 ### Folder map
 
@@ -79,6 +79,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `src/core/icons.js` | SVG icon set |
 | `src/core/constants.js` | `STAGES`, `JOURNEY`, status lists and colours, recruiters, interviewers, sources, criteria, screening questions, onboarding template, skill dictionary |
 | `src/core/store.js` | Global state `S`, `DEFAULT_SETTINGS`, `load()` / `save()` (localStorage `spectra-ats-v3`) |
+| `src/core/repo.js` | The only code that inserts, updates, removes records in `S`; notifies listeners (`repoOnChange`) so a Supabase adapter can mirror changes |
 | `src/core/selectors.js` | `getOp`, `getC`, `getA`, `appsOfC`, `appsOfOp`, `intsOfA`, `offerOfA`, `stageRank`, `intStatus` |
 | `src/core/assets.js` | Asset paths |
 | `src/data/seed.js` | Demo dataset (openings, candidates, applications, interviews, offers) and `buildResume` |
@@ -88,8 +89,11 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `src/app/router.js` | Route state `R`, `NAV`, `go()`, previous/next record navigation (Alt+Left/Right) |
 | `src/app/shell.js` | Sidebar, top bar, global search, quick add, notifications |
 | `src/app/ui.js` | `modal`, `toast`, `confirmBox`, form helpers |
-| `src/app/actions.js` | `log`, `notify`, `setStage` (also derives opening status), `nextAction`, `journey` |
-| `src/app/hooks.js` | Extension points: `fillSlot`/`slotHTML`, `onBind`, `decorateView`, `onEvent`/`emitEvent`, `addNav` |
+| `src/services/activity.js` | `log`, `notify`, `markNotificationRead`, `markAllNotificationsRead` |
+| `src/services/tasks.js` | `addTask`, `setTaskDone`, `deleteTask` |
+| `src/services/stages.js` | `moveStage`: writes the stage, logs it, derives the opening status, fires `stage:changing` |
+| `src/app/actions.js` | `setStage` (UI wrapper over `moveStage`: toast + re-render), `nextAction`, `journey` |
+| `src/core/hooks.js` | Extension points: `fillSlot`/`slotHTML`, `onBind`, `decorateView`, `onEvent`/`emitEvent`, `addNav` |
 | `src/app/render.js` | `VIEWS` registry and `render()` (runs bind hooks) |
 | `src/app/main.js` | Bootstrap, loads last |
 | `src/features/dashboard/` | Dashboard |
@@ -111,7 +115,8 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `scripts/serve.mjs`, `build-single.mjs`, `gen-form-script.mjs` | Dev server; single-file build; Apps Script generator |
 | `tests/unit/` | `domain.test.mjs`, `sheets-io.test.mjs`, `load-app.mjs` (loads app scripts into a Node `vm`) |
 | `tests/e2e/smoke.mjs` | Playwright: opens all 14 pages, fails on any uncaught error |
-| `tests/e2e/hooks.mjs` | Playwright: checks slots, bind hooks, dashboard decorator, stage event and nav order (8 checks) |
+| `tests/e2e/hooks.mjs` | Playwright: slots, bind hooks, dashboard decorator, stage event, nav order, tasks and notifications wiring (13 checks) |
+| `tests/unit/services.test.mjs` | 11 tests: stage rules, opening-status derivation, event timing, repo listeners, tasks, notifications, activity cap |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
 **Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config.
@@ -297,10 +302,10 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 - ☑ Storage key renamed to `ecoste-ats`: legacy key read once and never deleted; unknown versions backed up to `ecoste-ats-backup` before they can be overwritten (5 unit tests)
 
 **P1.3 Make code safe to change**
-- ☑ Explicit extension points in `src/app/hooks.js` (`fillSlot`/`slotHTML`, `onBind`, `decorateView`): `auto-import.js` and `posting.js` no longer patch HTML or wrap views; `report.js` uses `decorateView`
+- ☑ Explicit extension points in `src/core/hooks.js` (`fillSlot`/`slotHTML`, `onBind`, `decorateView`): `auto-import.js` and `posting.js` no longer patch HTML or wrap views; `report.js` uses `decorateView`
 - ☑ `setStage` emits `stage:changing`; `report-events.js` subscribes (no global reassignment)
 - ☑ `addNav(item, afterKey)` replaces `NAV.splice` (sidebar order unchanged)
-- ☐ One mutation layer (`createOpening`, `moveStage`, `recordScorecard`, `createOffer`, …): every write to `S` goes through it. **This is the seam Phase 2 swaps for Supabase.**
+- ◐ **Mutation layer: see §7.9.** Handlers call services; services write only through `repo`. **This is the seam Phase 2 swaps for Supabase.**
 - ☐ Replace the 15 inline `onclick` attributes with bound handlers
 - ☐ Convert classic scripts to ES modules with explicit imports; strict mode everywhere
 - ☐ Move recruiters, interviewers and company defaults out of code into settings and seed data
@@ -312,12 +317,47 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 - ☐ Widen unit tests: `setStage` and opening-status derivation, `nextAction`, workbook round-trip, store migrations
 
 **P1.5 Conventions** (written in `CONTRIBUTING.md`)
-- ☐ File naming and folder rules; layer rule `core → data → domain → app → features`
+- ☐ File naming and folder rules; layer rule `core → data → domain → services → app → features`
 - ☐ Generated files are never hand-edited
 - ☐ New-feature checklist (view, bind, NAV entry, test, plan line)
 - ☐ Secrets only in `.env`; `.env.example` committed
 
 *Exit criteria:* CI green on every pull request; no global reassignments or HTML patching left; all writes go through the mutation layer; the app behaves identically (smoke test and manual check).
+
+### 7.9 Mutation layer: design and migration checklist
+
+**Problem.** 65 `save()` call sites in 23 files. UI handlers change `S` directly, mixed with DOM, toasts and navigation, so the rules cannot be tested and cannot be redirected to a database.
+
+**Design (built, 2026-10-08).**
+- `src/core/repo.js`: the only code that may `insert`, `update`, `remove`, `trim` or change a `root` object (settings, postCfg, monthly targets). Each change calls `save()` and notifies `repoOnChange` listeners with `{op, coll, id, record}`.
+- `src/services/*.js`: named use cases (`moveStage`, `addTask`, `log`, ...). DOM-free: no `toast`, `modal`, `render`, `go`. They return what happened.
+- Handlers: parse the form, call a service, then show the toast and re-render.
+- Layer order: `core → data → domain → services → app → features`. `hooks.js` moved to `core` so services can emit events.
+- Rule for reviewers: a pull request that adds `S.<collection>.push/unshift/splice`, `S.x=...`, or `save()` outside `repo`/`store` is rejected. (Enforced by lint in P1.4.)
+
+**Decision D15 (for Phase 2): how the Supabase adapter sync works.**
+- *Option A, recommended:* keep `S` as an in-memory cache loaded from Supabase at start. A `repoOnChange` listener sends each change to Supabase in the background (write-behind queue with retry and an error toast). UI code stays synchronous, so no screen changes. Add Supabase Realtime to refresh other users' changes. Weakness: last write wins if two people edit the same record at once; acceptable for a small team, revisit with `updated_at` checks.
+- *Option B:* make every service `async` and render from query results. Cleaner for correctness, but every handler changes at once.
+- Decide at the start of Phase 2. Both use the same services; only `repo` changes.
+
+**Migration checklist.** Done: ☑ activity log + notifications, ☑ tasks (incl. the two follow-up tasks created from offers and screening), ☑ stage moves (`moveStage`, event listener writes via `repo`).
+
+| Area | Sites to migrate (file: what it writes) | Service to create |
+|---|---|---|
+| Openings | `openings.js`: create/edit opening | `saveOpening`, `setOpeningStatus` |
+| Candidates | `add-candidate.js` create; `candidates.js` documents status, request document, notes, message sent; `resume-viewer.js` resume edit | `addCandidate`, `setDocumentStatus`, `requestDocument`, `addCandidateNote`, `recordMessage`, `updateResume` |
+| Applications | `applications.js` bulk assign recruiter; `ai-match.js` note | `assignRecruiter`, `addApplicationNote` |
+| Screening | `screening-call.js` call outcome, call log | `recordScreening` |
+| Interviews | `group-interview.js` schedule, invite status, reminder, cancel, evaluate; `personal-interview.js` schedule, scorecard; `interviews.js` no-show, cancel | `scheduleGroup`, `setInvite`, `cancelGroup`, `evaluateGroup`, `schedulePersonal`, `recordScorecard`, `markNoShow`, `cancelInterview` |
+| Offers | `offers.js` save draft, send, response | `saveOffer`, `sendOffer`, `recordOfferResponse` |
+| Onboarding | `onboarding.js` joining date, start, checklist item, mark ready | `scheduleJoining`, `startOnboarding`, `setOnboardingItem`, `markEmployeeReady` |
+| Posting | `posting.js` post, edit, delete, boards, settings | `savePosting`, `deletePosting`, `saveBoards`, `savePostingSettings` |
+| Sheets | `sheets.js` log, import; `auto-import.js` config, log, applied rows | `logSheetEvent`, `importRows`, `saveAutoSyncConfig` |
+| Settings | `settings.js` fields, weights, threshold, reset | `updateSetting`, `resetWeights`, `resetDemoData` |
+| Pipeline | `pipeline.js` SLA rules | `saveSla` |
+| Management report | `report.js` targets, call log, drop risk, backup, dropped; `report-events.js` seed history | `saveTargets`, `logCalls`, `setDropRisk`, `setBackup`, `markDropped` |
+
+Each area is its own commit: move the writes into the service, add unit tests for the rules, run `npm test`, `test:e2e`, `test:e2e:hooks` on source and `dist`.
 
 ### Phase 2: Backend core (the database link)
 
@@ -424,7 +464,7 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
 2. ☐ Protect `main` on GitHub
 3. ☑ Finish P1.2 (`save()` errors, storage-key migration)
-4. ◐ P1.3: extension points done; mutation layer next, then inline `onclick`, ES modules, strict mode
+4. ◐ P1.3: extension points done; mutation layer in progress (§7.9: 4 of ~16 areas migrated), then inline `onclick`, ES modules, strict mode
 5. ☐ P1.4 lint and CI
 6. ☐ Open a pull request for `chore/restructure-p1`; merge; start Phase 2 on a new branch
 
@@ -446,6 +486,7 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 | D12 | Data retention: how long are rejected candidates kept? | 12 months, then anonymise (confirm with legal) | P7 |
 | D13 | Who is the product owner who signs off each phase? | Head of Talent Acquisition | all |
 | D14 | Staging and prod Supabase projects: same region as dev (Seoul) or Mumbai? | Mumbai for prod if data-residency matters | P7 |
+| D15 | Supabase sync style: cache + background write queue (A) or async everywhere (B)? | A (see §7.9) | start of P2 |
 
 ## 9. How every future change is made (update process)
 
@@ -464,6 +505,7 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-08 | Mutation layer started: `core/repo.js`, `services/` (activity, tasks, stages), `hooks.js` moved to `core/`; handlers for notifications and tasks and `setStage` now go through services; 11 new unit tests, 5 new browser checks; design and per-area checklist in §7.9; decision D15 added | Claude Code |
 | 2026-10-06 | P1.2 finished (storage key migration, save errors) and extension points added (`hooks.js`): no more HTML patching, `setStage` reassignment or `NAV.splice`; 5 new unit tests, new `hooks.mjs` browser test | Claude Code |
 | 2026-10-06 | Whole-app plan written: scope, roles, module map, data model, target architecture, 8 phases with exit criteria, new decisions D9-D14 | Claude Code |
 | 2026-10-06 | Reviewed codebase, verified tests/build, wrote `plan.md` with issues list, roadmap, process | Claude Code |
