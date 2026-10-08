@@ -8,7 +8,7 @@ function modal({title,body,foot='',size='',onMount}){
  el.addEventListener('mousedown',e=>{if(e.target===el)closeModal()});
  $$('[data-close]',el).forEach(b=>b.onclick=()=>closeModal());
  onMount&&onMount(el);
- const f=$('input:not([type=checkbox]),select,textarea',el);f&&f.focus&&setTimeout(()=>f.focus(),30);
+ const f=$('input:not([type=checkbox]):not([readonly]):not([disabled]),select:not([disabled]),textarea:not([readonly]):not([disabled])',el); // first field the user can type inf&&f.focus&&setTimeout(()=>f.focus(),30);
  return el;
 }
 function closeModal(){const el=modalStack.pop();el&&el.remove()}

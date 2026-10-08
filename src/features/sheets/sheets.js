@@ -16,7 +16,7 @@ async function exportWorkbook(kind){
  const btn=$('#'+(kind==='blank'?'gsBlank':'gsExport'));const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='Preparing workbook…';
  try{const X=await loadExcel();const wb=await SheetsIO.build(X,kind==='blank'?templateState():S);const buf=await wb.xlsx.writeBuffer();
   const name=kind==='blank'?'Ecoste_Recruit_Tracker_Template.xlsx':`Ecoste_Recruit_Tracker_${today()}.xlsx`;const r=await saveFile(name,buf);
-  if(r==='saved'){S.sheetLog=(S.sheetLog||[]);S.sheetLog.unshift({ts:Date.now(),text:kind==='blank'?'Downloaded blank template':'Downloaded workbook with all app data'});save();toast(`${name} downloaded. Next: import it into Google Sheets.`);render()}
+  if(r==='saved'){logSheetEvent(kind==='blank'?'Downloaded blank template':'Downloaded workbook with all app data');toast(`${name} downloaded. Next: import it into Google Sheets.`);render()}
   else if(r==='declined')toast('Download cancelled','var(--orange)');
  }catch(e){toast(e.message||'Could not build the workbook','var(--red)')}
  finally{const b=$('#'+(kind==='blank'?'gsBlank':'gsExport'));if(b){b.disabled=false;b.innerHTML=old}}
@@ -49,7 +49,6 @@ function toState(parsed){
  if(R0.Tasks)out.tasks=R0.Tasks.map((t,i)=>({id:t.id||('T-'+(800+i)),title:t.title||'Task',due:t.due||today(),related:t.related||'General',priority:t.priority||'Medium',owner:t.owner||S.settings.user,done:!!t.done}));
  return {out,warn};
 }
-const GS_KEYS=[['openings','Openings'],['candidates','Candidates'],['applications','Applications'],['groups','Group Interviews'],['interviews','Interviews'],['offers','Offers'],['onboarding','Onboarding'],['tasks','Tasks']];
 async function importFile(file){
  if(!file)return;if(!/\.xlsx$/i.test(file.name)){toast('Choose an .xlsx file. In Google Sheets use File → Download → Microsoft Excel (.xlsx).','var(--red)');return}
  try{const X=await loadExcel();const wb=new X.Workbook();await wb.xlsx.load(await file.arrayBuffer());
@@ -70,11 +69,7 @@ function importPreview(fname,parsed){
  <label class="checkl" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;align-items:flex-start"><input type="radio" name="gm" value="merge" class="chk"><span><b>Merge</b><br><span class="small muted">Add new rows and update matching IDs. Nothing is removed from the app.</span></span></label></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="gsApply">Load into app</button>`,
  onMount:el=>$('#gsApply',el).onclick=()=>{const mode=$('input[name=gm]:checked',el).value;
-  GS_KEYS.forEach(([k])=>{const next=out[k];if(!next)return;if(mode==='replace')S[k]=next;else{const idOf=x=>x.id||x.appId;const m=new Map(S[k].map(x=>[idOf(x),x]));next.forEach(x=>m.set(idOf(x),{...(m.get(idOf(x))||{}),...x}));S[k]=[...m.values()]}});
-  if(parsed.settings){const s=parsed.settings;Object.entries(s).forEach(([k,v])=>{if(k==='weights'){if(Object.values(v).some(Boolean))S.settings.weights=v}else if(v!==''&&v!=null)S.settings[k]=v})}
-  const n=GS_KEYS.reduce((t,[k])=>t+(out[k]?out[k].length:0),0);
-  S.sheetLog=(S.sheetLog||[]);S.sheetLog.unshift({ts:Date.now(),text:`Loaded ${fname} (${mode}, ${n} rows)`});log(`Data loaded from Google Sheets (${mode})`,'info');notify(`Loaded ${n} rows from ${fname}`,['sheets']);
-  save();closeModal();toast(`Loaded ${n} rows from Google Sheets`);render()}});
+  const n=applyWorkbookImport({out,settings:parsed.settings,mode,fname});closeModal();toast(`Loaded ${n} rows from Google Sheets`);render()}});
 }
 function vSheets(){
  const log=(S.sheetLog||[]).slice(0,8);

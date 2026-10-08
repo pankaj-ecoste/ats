@@ -13,6 +13,7 @@ npm run build      # dist/Ecoste_Recruit_Tracker.html, one self-contained file
 npm install && npx playwright install chromium
 npm run test:e2e   # browser smoke test of every page (add `-- dist` to test the build)
 npm run test:e2e:hooks   # browser check of the extension points
+npm run test:e2e:flows   # browser check that user actions reach the data through the services
 ```
 
 Requires Node 20+. Nothing needs installing for `dev`, `test` or `build`.
@@ -46,8 +47,9 @@ src/
     match.js                     resume-to-opening scoring
     resume-parser.js             plain-text resume parser
     salary.js                    CTC breakup
+    sheet-values.js              reading loose spreadsheet values (salary, notice, hash)
   services/                    Use cases that change data (moveStage, addTask, log ...). No DOM.
-    activity.js  tasks.js  stages.js
+    activity  tasks  stages  openings  candidates  applications  interviews  offers  onboarding  posting  settings  report  sheets
   app/                         Application frame
     router.js                    route state R, NAV, go()
     shell.js                     sidebar, top bar, search, notifications
@@ -76,7 +78,7 @@ docs/                          ARCHITECTURE.md, PRODUCTION_ROADMAP.md
 
 **Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/core/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
 
-**Changing data.** A handler never writes to `S`. It calls a service from `src/services/` (`addTask`, `moveStage`, ...), which changes records only through `repo.insert/update/remove/root` and returns the result; the handler then shows the toast and re-renders. Services are DOM-free, so they are unit-tested in Node. This is the seam where Supabase plugs in (Phase 2).
+**Changing data.** A handler never writes to `S`. It calls a service from `src/services/` (`addTask`, `moveStage`, ...), which changes records only through `repo.insert/update/remove/root` and returns the result; the handler then shows the toast and re-renders. Services are DOM-free, so they are unit-tested in Node, and `tests/unit/architecture.test.mjs` fails the build if app or feature code writes to `S` or calls `save()` directly, or if a service touches the UI. This is the seam where Supabase plugs in (Phase 2).
 
 **Adding a feature.** Create `src/features/<name>/<name>.js` (and `.css` if needed), register the view with `VIEWS.<name>=[viewFn, bindFn]`, add a `NAV` entry, then list the files in `index.html` after the features they depend on and before `src/app/main.js`.
 

@@ -224,6 +224,34 @@ await modalGone();
 check('report: drop-out rejects the candidate and promotes the backup', await ev((x) => getA(x.a).stage === 'Rejected' && getA(x.b).stage === 'Selected' && getA(x.a).backup === null, dp));
 check('report: drop-out reason is noted on the candidate', await ev((x) => getC(getA(x.a).cid).notes[0].text === 'Dropped after offer: Flow reason', dp));
 
+// ---- Google Sheet auto-import (the Drive connector and ExcelJS are stubbed; the CSV below stands in for the sheet)
+await ev(() => {
+  window.__sheet = 'Name,Email,Phone,Position,Experience\nFlow Sheet Person,flowsheet@example.com,9000000001,' + S.openings.find((o) => o.status !== 'Closed').title + ',3';
+  window.claude = { use: async () => ({ callTool: async () => ({ payload: { title: 'Flow Leads', content: btoa(window.__sheet) } }) }) };
+  loadExcel = async () => ({});
+});
+await page.click('[data-go="sheets"]');
+await page.click('#asconnect');
+await page.fill('#asurl', 'https://docs.google.com/spreadsheets/d/1AAAAAAAAAAAAAAAAAAAAAAAAAAAA/edit');
+await page.click('#asread');
+await page.click('#asgo');
+await modalGone();
+check('auto-import: connecting saves the sheet settings and turns it on', await ev(() => S.autoSync.fileId.startsWith('1AAAA') && S.autoSync.enabled === true && S.autoSync.title === 'Flow Leads'));
+check('auto-import: existing rows are imported on connect as New applications', await ev(() => { const c = S.candidates.find((x) => x.email === 'flowsheet@example.com'); return !!c && appsOfC(c.id).some((a) => a.stage === 'New'); }));
+const seenAfterConnect = await ev(() => S.autoSync.seen.length);
+await ev(() => { window.__sheet += '\nSecond Sheet Person,flowsheet2@example.com,9000000002,' + S.openings.find((o) => o.status !== 'Closed').title + ',5'; });
+await ev(() => runSync(true));
+check('auto-import: a sync adds only the new row and logs the run', await ev((n) => S.candidates.filter((x) => x.email.startsWith('flowsheet')).length === 2 && S.autoSync.seen.length === n + 1 && /added 1/.test(S.autoSync.log[0].text), seenAfterConnect));
+await ev(() => runSync(true));
+check('auto-import: syncing again adds nothing', await ev(() => S.candidates.filter((x) => x.email.startsWith('flowsheet')).length === 2 && /added 0/.test(S.autoSync.log[0].text)));
+await page.click('[data-go="sheets"]');
+await page.uncheck('#asen');
+check('auto-import: pausing turns it off', await ev(() => S.autoSync.enabled === false));
+await page.click('#asoff');
+await page.click('#cOK');
+check('auto-import: disconnecting clears the connection', await ev(() => S.autoSync === null || !S.autoSync.fileId));
+check('auto-import: imported applications stay after disconnecting', await ev(() => S.candidates.filter((x) => x.email.startsWith('flowsheet')).length === 2));
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }
