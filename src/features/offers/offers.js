@@ -69,13 +69,11 @@ function offerEditor(fid,aid){
   $('#ofRegen',el).onclick=()=>{w.custom=null;editing=false;L.contentEditable=false;$('#ofEdit',el).innerHTML=ic('edit')+'Edit text';upd();toast('Letter regenerated from offer details','var(--ai)')};
   const commit=status=>{if(editing){w.custom=L.innerHTML;editing=false}
    if(sum()!==w.ctc&&status!=='Draft'){toast('Fix the salary breakup so components equal CTC','var(--red)');return false}
-   const isNew=!S.offers.includes(f);w.status=status;delete w._new;
-   if(isNew){S.offers.push(w);f=w;log(`Offer ${status==='Draft'?'drafted':'generated'} for ${c.name}`,'offer',a.id)}else Object.assign(f,w);
-   if(STAGES.indexOf(a.stage)<6||a.stage==='On Hold')setStage(a.id,'Offer',true);
-   $('#ofSt',el).className='pill '+OFFER_COLOR[status];$('#ofSt',el).textContent=status;save();return true};
+   f=saveOffer(w,status);
+   $('#ofSt',el).className='pill '+OFFER_COLOR[status];$('#ofSt',el).textContent=status;return true};
   $('#ofDraft',el).onclick=()=>{if(commit('Draft')){closeModal();toast('Offer saved as draft');refresh()}};
   $('#ofGen',el).onclick=()=>{if(commit('Generated')){toast('Offer letter generated','var(--ai)');refresh()}};
-  $('#ofSend',el).onclick=()=>{if(!commit('Sent'))return;f.sent=today();log(`Offer sent to ${c.name}`,'offer',a.id);notify(`Offer sent to ${c.name} · awaiting response`,['offers']);addTask({title:`Follow up with ${c.name} on offer`,due:addDays(2),related:o.title,priority:'High',owner:S.settings.user});closeModal();toast(`Offer sent to ${c.email}`);refresh()};
+  $('#ofSend',el).onclick=()=>{if(!commit('Sent'))return;markOfferSent(f.id);closeModal();toast(`Offer sent to ${c.email}`);refresh()};
   $('#ofPrev',el).onclick=()=>{if(editing)w.custom=L.innerHTML;modal({title:'Offer letter preview',size:'w',body:`<div class="letter">${letterHTML(w)}</div>`,foot:`<button class="btn" data-close>Close</button>`})};
   $('#ofPdf',el).onclick=()=>{if(editing)w.custom=L.innerHTML;$('#printArea').innerHTML=`<div class="letter">${letterHTML(w)}</div>`;
    try{window.print();toast('Choose “Save as PDF” in the print dialog')}catch(e){toast('Printing is blocked here. Open the preview and use your browser\'s print.','var(--orange)')}};
@@ -86,8 +84,8 @@ function offerResponse(fid){
  const f=S.offers.find(x=>x.id===fid),a=getA(f.appId),c=getC(a.cid);
  modal({title:`Response from ${esc(c.name)}`,body:`<p style="margin-top:0">Offer sent ${fmtD(f.sent)} for <b>${esc(f.designation)}</b> at ${inr(f.ctc)} CTC.</p><label class="f">Notes<textarea class="inp" id="rn" rows="3" placeholder="e.g. Accepted over call, signed copy to follow"></textarea></label>`,
  foot:`<button class="btn bad" data-r="Declined">Declined</button><button class="btn" data-r="Negotiation">Wants to negotiate</button><button class="btn ok" data-r="Accepted">${ic('check')}Accepted</button>`,
- onMount:el=>$$('[data-r]',el).forEach(b=>b.onclick=()=>{const r=b.dataset.r;f.status=r;log(`${c.name} ${r==='Negotiation'?'asked to negotiate the offer':r.toLowerCase()+' the offer'}`,'offer',a.id);closeModal();
-  if(r==='Accepted'){setStage(a.id,'Offer Accepted',true);notify(`${c.name} accepted the offer 🎉`,['onboarding']);save();refresh();toast(`${c.name} accepted the offer`);scheduleJoining(a.id)}
-  else if(r==='Declined'){save();toast('Offer marked declined','var(--red)');refresh()}
-  else {save();toast('Marked for negotiation. Revise and resend.','var(--orange)');offerEditor(f.id)}})});
+ onMount:el=>$$('[data-r]',el).forEach(b=>b.onclick=()=>{const r=b.dataset.r;recordOfferResponse(f.id,r);closeModal();
+  if(r==='Accepted'){refresh();toast(`${c.name} accepted the offer`);scheduleJoining(a.id)}
+  else if(r==='Declined'){toast('Offer marked declined','var(--red)');refresh()}
+  else {toast('Marked for negotiation. Revise and resend.','var(--orange)');offerEditor(f.id)}})});
 }

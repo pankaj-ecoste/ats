@@ -7,10 +7,10 @@ function scheduleJoining(aid){
  <label class="f full">Reporting location<input class="inp" id="jl" value="${esc(S.settings.companyAddr)}"></label>
  <label class="f full"><span><input type="checkbox" class="chk" id="jk" checked style="vertical-align:-3px"> Send joining kit and document checklist to ${esc(c.email)}</span></label></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="jS">Confirm joining</button>`,
- onMount:el=>$('#jS',el).onclick=()=>{a.joining=val(el,'#jd');if(f)f.joining=a.joining;setStage(aid,'Joining',true);log(`Joining confirmed for ${c.name} on ${fmtD(a.joining)}`,'schedule',aid);save();closeModal();toast(`Joining set for ${fmtD(a.joining)}`);refresh()}});
+ onMount:el=>$('#jS',el).onclick=()=>{const d=val(el,'#jd');confirmJoining(aid,d);closeModal();toast(`Joining set for ${fmtD(d)}`);refresh()}});
 }
-function startOnboarding(aid){if(!S.onboarding.some(o=>o.appId===aid))S.onboarding.push({appId:aid,start:today(),items:ONB_TEMPLATE.map(t=>({cat:t[0],t:t[1],done:false}))});setStage(aid,'Onboarding',true);save();go('onboarding');toast('Onboarding started')}
-function markJoined(aid){const c=getC(getA(aid).cid);confirmBox('Mark as joined',`Confirm ${esc(c.name)} reported on day 1? This starts the onboarding checklist.`,'Mark joined',()=>{log(`${c.name} joined`,'joined',aid);notify(`${c.name} joined today`,['onboarding']);startOnboarding(aid)})}
+function startOnboarding(aid){beginOnboarding(aid);go('onboarding');toast('Onboarding started')}
+function markJoined(aid){const c=getC(getA(aid).cid);confirmBox('Mark as joined',`Confirm ${esc(c.name)} reported on day 1? This starts the onboarding checklist.`,'Mark joined',()=>{recordJoined(aid);startOnboarding(aid)})}
 function vOnboarding(){
  const upcoming=S.applications.filter(a=>['Offer Accepted','Joining'].includes(a.stage)).sort((x,y)=>(x.joining||'9').localeCompare(y.joining||'9'));
  const ob=S.onboarding.slice().reverse();
@@ -24,8 +24,8 @@ function vOnboarding(){
   ${a.stage!=='Employee Ready'?`<div style="margin-top:14px"><button class="btn ${pct===100?'ok':''}" data-ready="${o.appId}" ${pct<100?'disabled title="Complete every step first"':''}>${ic('check')}Mark employee ready</button></div>`:''}</div></section>`}).join('')||'<div class="empty"><b>No onboarding yet</b>Mark a joiner as joined to start their checklist.</div>'}</div>`;
 }
 function bindOnboarding(root){
- $$('[data-ob]',root).forEach(cb=>cb.onchange=()=>{const o=S.onboarding.find(x=>x.appId===cb.dataset.ob);o.items[+cb.dataset.k].done=cb.checked;if(cb.checked)log(`${getC(getA(o.appId).cid).name}: ${o.items[+cb.dataset.k].t}`,'onboarding',o.appId);save();render()});
- $$('[data-ready]',root).forEach(b=>b.onclick=()=>{const a=getA(b.dataset.ready),c=getC(a.cid);setStage(a.id,'Employee Ready',true);log(`${c.name} is employee ready`,'joined',a.id);notify(`${c.name} completed onboarding`,['onboarding']);save();render();
+ $$('[data-ob]',root).forEach(cb=>cb.onchange=()=>{setOnboardingItem(cb.dataset.ob,+cb.dataset.k,cb.checked);render()});
+ $$('[data-ready]',root).forEach(b=>b.onclick=()=>{const a=getA(b.dataset.ready),c=getC(a.cid);markEmployeeReady(a.id);render();
   modal({title:'Employee ready',body:`<div style="text-align:center">${av(c.name,'lg')}<h2 style="margin:12px 0 4px">${esc(c.name)} is ready to go</h2><p class="muted">From application on ${fmtD(a.date)} to employee ready in ${daysBetween(a.date,today())} days.</p>${journey(a)}</div>`,foot:'<button class="btn pri" data-close>Done</button>'})});
  bindNext(root);
 }

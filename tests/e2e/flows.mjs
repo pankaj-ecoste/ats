@@ -124,6 +124,31 @@ for (const [btn, status] of [['#iNs', 'No-show'], ['#iCan', 'Cancelled']]) {
   check(`interview detail: ${status} is saved`, await ev(([id, st]) => S.interviews.find((x) => x.id === id).status === st, [iid, status]));
 }
 
+// ---- offer -> joining -> onboarding -> employee ready
+const oa = await ev(() => { const a = S.applications.find((x) => !offerOfA(x.id) && x.stage === 'New'); repo.update('applications', a.id, { stage: 'Selected' }); return a.id; });
+const tasksBefore = await ev(() => S.tasks.length);
+await ev((id) => offerEditor(null, id), oa);
+await page.click('#ofSend');
+await modalGone();
+const of1 = await ev((id) => { const f = offerOfA(id); return { id: f.id, status: f.status, sent: f.sent, stage: getA(id).stage }; }, oa);
+check('offer: sending stores a Sent offer with the send date and moves the candidate to Offer', of1.status === 'Sent' && of1.sent === (await ev(() => today())) && of1.stage === 'Offer');
+check('offer: sending creates a follow-up task', (await ev(() => S.tasks.length)) === tasksBefore + 1);
+await ev((id) => offerResponse(id), of1.id);
+await page.click('[data-r="Accepted"]');
+await page.waitForSelector('#jS');
+await page.click('#jS');
+await modalGone();
+check('offer: accepting then confirming joining reaches Joining and sets the date on the offer', await ev(([a, f]) => getA(a).stage === 'Joining' && !!getA(a).joining && S.offers.find((o) => o.id === f).joining === getA(a).joining, [oa, of1.id]));
+await ev((id) => markJoined(id), oa);
+await page.click('#cOK');
+check('onboarding: marking joined starts the checklist', await ev((id) => getA(id).stage === 'Onboarding' && !!S.onboarding.find((o) => o.appId === id), oa));
+const items = await ev((id) => S.onboarding.find((o) => o.appId === id).items.length, oa);
+for (let k = 0; k < items; k++) await page.click(`[data-ob="${oa}"][data-k="${k}"]`);
+check('onboarding: every checklist item can be ticked', await ev((id) => S.onboarding.find((o) => o.appId === id).items.every((i) => i.done), oa));
+await page.click(`[data-ready="${oa}"]`);
+check('onboarding: mark employee ready finishes the journey', await ev((id) => getA(id).stage === 'Employee Ready', oa));
+await closeAllModals();
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }
