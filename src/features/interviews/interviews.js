@@ -14,8 +14,8 @@ function interviewDetail(iid){
  ${i.scores?`<dt>Scores</dt><dd>${(i.kind==='Group'?GI_CRIT:PI_CRIT).map((cr,k)=>`${cr}: <b>${i.scores[k]||'–'}</b>`).join(' · ')}</dd><dt>Result</dt><dd>${esc(i.decision||i.rec)}</dd><dt>Feedback</dt><dd>${esc(i.feedback||'—')}</dd>`:''}</dl>`,
  foot:`${st!=='Cancelled'&&st!=='Completed'&&st!=='No-show'?'<button class="btn bad" id="iCan">Cancel</button><button class="btn" id="iNs">No-show</button>':''}<span class="grow"></span><button class="btn" id="iProf">Open profile</button>${i.kind==='Group'?'<button class="btn" id="iGrp">Group details</button>':''}${st!=='Cancelled'?`<button class="btn pri" id="iEv">${st==='Completed'?'Edit evaluation':'Evaluate'}</button>`:''}`,
  onMount:el=>{const b=(s,f)=>{const x=$(s,el);if(x)x.onclick=f};
-  b('#iNs',()=>{i.status='No-show';log(`${c.name} did not attend the ${i.kind==='Group'?'group':i.round} interview`,'schedule',a.id);save();closeModal();toast('Marked as no-show','var(--red)');refresh()});
-  b('#iCan',()=>{i.status='Cancelled';log(`Interview cancelled for ${c.name}`,'schedule',a.id);save();closeModal();toast('Interview cancelled','var(--red)');refresh()});
+  b('#iNs',()=>{markNoShow(i.id);closeModal();toast('Marked as no-show','var(--red)');refresh()});
+  b('#iCan',()=>{cancelInterview(i.id);closeModal();toast('Interview cancelled','var(--red)');refresh()});
   b('#iProf',()=>{closeModal();go('candidate',c.id)});b('#iGrp',()=>{closeModal();groupDetail(i.groupId)});
   b('#iEv',()=>{closeModal();i.kind==='Group'?groupEval(i.groupId):piScorecard(i.id)})}});
 }

@@ -14,9 +14,7 @@ function schedulePI(aid){
  <label class="f" style="grid-column:span 3">Location (for office interviews)<input class="inp" id="piLoc" placeholder="Office address"></label></div><p class="muted small">Completed rounds: ${done.length?done.join(', '):'none'}.</p>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="piS">Schedule interview</button>`,
  onMount:el=>{$('#piS',el).onclick=()=>{const id=val(el,'#piA');const a=getA(id);
-  const it={id:uid('INT'),appId:id,kind:'Personal',round:val(el,'#piR'),date:val(el,'#piD'),time:val(el,'#piT'),duration:+val(el,'#piDur'),mode:val(el,'#piM'),link:val(el,'#piL'),location:val(el,'#piLoc'),interviewers:[val(el,'#piI')],status:'Scheduled',invite:'Sent',scores:null,rec:null,decision:null,feedback:''};
-  S.interviews.push(it);if(STAGES.indexOf(a.stage)<4||a.stage==='On Hold')setStage(id,'Personal Interview',true);
-  log(`${it.round} interview scheduled for ${getC(a.cid).name} on ${fmtD(it.date)}`,'schedule',id);save();closeModal();toast(`${it.round} interview scheduled and invite sent`);refresh()}}});
+  const it=schedulePersonalInterview({appId:id,round:val(el,'#piR'),date:val(el,'#piD'),time:val(el,'#piT'),duration:+val(el,'#piDur'),mode:val(el,'#piM'),link:val(el,'#piL'),location:val(el,'#piLoc'),interviewers:[val(el,'#piI')]});closeModal();toast(`${it.round} interview scheduled and invite sent`);refresh()}}});
 }
 function piScorecard(iid){
  const i=S.interviews.find(x=>x.id===iid),a=getA(i.appId),c=getC(a.cid),o=getOp(a.opId);const sc=i.scores?[...i.scores]:PI_CRIT.map(()=>0);
@@ -30,11 +28,11 @@ function piScorecard(iid){
   $$('[data-crit]',el).forEach(d=>$$('button',d).forEach(b=>b.onclick=()=>{sc[+d.dataset.crit]=+b.dataset.v;$$('button',d).forEach(x=>x.classList.toggle('on',x===b));upd();
    const v=sc.filter(Boolean);if(v.length===PI_CRIT.length){const av=v.reduce((a,b)=>a+b,0)/v.length;$('#pOv',el).value=av>=4.3?'Strong':av>=3.6?'Good':av>=2.8?'Average':'Not Suitable'}}));
   $('#pSub',el).onclick=()=>{if(sc.some(x=>!x)){toast('Score every criterion before submitting','var(--red)');return}
-   i.scores=sc;i.rec=val(el,'#pOv');i.decision=val(el,'#pDec');i.feedback=val(el,'#pFb');i.status='Completed';log(`${i.round} interview completed for ${c.name}: ${i.decision}`,'interview',a.id);closeModal();
-   if(i.decision==='Selected'){setStage(a.id,'Selected',true);notify(`${c.name} selected for ${o.title}`,['candidate',c.id]);save();refresh();selectedModal(a.id)}
+   recordScorecard(i.id,{scores:sc,rec:val(el,'#pOv'),decision:val(el,'#pDec'),feedback:val(el,'#pFb')});closeModal();
+   if(i.decision==='Selected'){setStage(a.id,'Selected',true);notify(`${c.name} selected for ${o.title}`,['candidate',c.id]);refresh();selectedModal(a.id)}
    else if(i.decision==='Rejected'){setStage(a.id,'Rejected')}
    else if(i.decision==='Hold'){setStage(a.id,'On Hold')}
-   else {save();refresh();toast('Scorecard saved. Schedule the next round.');schedulePI(a.id)}}}});
+   else {refresh();toast('Scorecard saved. Schedule the next round.');schedulePI(a.id)}}}});
 }
 function selectedModal(aid){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);

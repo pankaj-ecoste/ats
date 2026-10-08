@@ -24,20 +24,19 @@ function screeningCall(aid){
   $('#callGo',el).onclick=()=>{timer=setInterval(()=>{secs++;fmt()},1000);$('#callT',el).style.color='var(--green)';$('#callGo',el).classList.add('hide');$('#callEnd',el).classList.remove('hide')};
   $('#callEnd',el).onclick=()=>{clearInterval(timer);$('#callT',el).style.color='var(--tx2)';$('#callEnd',el).classList.add('hide');toast('Call ended · '+$('#callT',el).textContent)};
   const oc=$('#outc',el),nx=$('#nxt',el);oc.onchange=()=>{nx.value={'Not Connected':'Schedule Follow-up','Call Back':'Schedule Follow-up','Not Interested':'Reject','Rejected':'Reject'}[oc.value]||'Move to Group Interview'};
-  const doSave=(andNext)=>{clearInterval(timer);a.screening={outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,date:today(),duration:secs};
-   log(`Screening call completed with ${c.name} (${oc.value})`,'call',aid);closeModal();
+  const doSave=(andNext)=>{clearInterval(timer);recordScreening(aid,{outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,duration:secs});closeModal();
    const n=nx.value;
    if(andNext){
     if(n==='Move to Group Interview')setStage(aid,'Group Interview',true);
     else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);addTask({title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',owner:a.recruiter})}
     else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true);
-    save();const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
+    const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
     const na=appsOfC(nextCid).find(x=>['Shortlisted','Screening','New'].includes(x.stage))||primaryApp(nextCid);R.appSel=na.id;go('candidate',nextCid);return}
    if(n==='Move to Group Interview'){setStage(aid,'Group Interview',true);toast(`${c.name} moved to Group Interview`);confirmBox('Schedule group interview?',`${esc(c.name)} is ready for the group round. Schedule it now?`,'Schedule now',()=>scheduleGI(o.id,[aid]))}
    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);taskForm({title:`Follow-up call with ${c.name}`,related:o.title,due:addDays(1),priority:'Medium'})}
    else if(n==='Keep on Hold')setStage(aid,'On Hold',true),toast(c.name+' kept on hold','var(--orange)');
    else setStage(aid,'Rejected',true),toast(c.name+' rejected','var(--red)');
-   save();refresh()};
+   refresh()};
   $('#callSave',el).onclick=()=>doSave(false);$('#callNext',el).onclick=()=>doSave(true);
  }});
 }
