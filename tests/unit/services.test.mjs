@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadApp } from './load-app.mjs';
 
 const fresh = () => loadApp({
-  until: 'src/services/stages.js',
+  until: 'services',
   expose: ['S', 'repo', 'repoOnChange', 'onEvent', 'moveStage', 'log', 'notify', 'markNotificationRead', 'markAllNotificationsRead',
     'addTask', 'setTaskDone', 'deleteTask', 'getA', 'getOp', 'appsOfOp', 'STAGES', 'today'],
 });

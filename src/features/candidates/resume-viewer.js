@@ -22,8 +22,8 @@ function resumeSplit(c,o){
 }
 function bindResumeSplit(root,c,o){
  const b=$('[data-rsave]',root);if(!b)return;
- b.onclick=()=>{const before=match(c,o).score;$$('[data-rf]',root).forEach(el=>{const k=el.dataset.rf;let v=el.value;
-  if(['exp','notice','curSal','expSal'].includes(k))v=+v;if(k==='skills')v=v.split(',').map(s=>s.trim()).filter(Boolean);if(k==='certifications'||k==='achievements')v=v.split('\n').map(s=>s.trim()).filter(Boolean);c[k]=v});
-  c.resumeText=c.resumeText.replace(/^.*$/m,c.name);const after=match(c,o).score;log(`Resume data edited for ${c.name}`,'note');save();toast(`Saved. Match ${before}% → ${after}%`,'var(--ai)');refresh()};
+ b.onclick=()=>{const before=match(c,o).score;const fields={};$$('[data-rf]',root).forEach(el=>{const k=el.dataset.rf;let v=el.value;
+  if(['exp','notice','curSal','expSal'].includes(k))v=+v;if(k==='skills')v=v.split(',').map(s=>s.trim()).filter(Boolean);if(k==='certifications'||k==='achievements')v=v.split('\n').map(s=>s.trim()).filter(Boolean);fields[k]=v});
+  updateCandidateProfile(c.id,fields);const after=match(c,o).score;toast(`Saved. Match ${before}% → ${after}%`,'var(--ai)');refresh()};
 }
 function resumeModal(cid,opId){const c=getC(cid),o=getOp(opId);modal({title:'Resume · '+esc(c.name),size:'xw',body:resumeSplit(c,o),onMount:el=>bindResumeSplit(el,c,o)})}

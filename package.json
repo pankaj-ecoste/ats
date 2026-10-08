@@ -11,7 +11,8 @@
     "build": "node scripts/gen-form-script.mjs && node scripts/build-single.mjs",
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "test:e2e": "node tests/e2e/smoke.mjs",
-    "test:e2e:hooks": "node tests/e2e/hooks.mjs"
+    "test:e2e:hooks": "node tests/e2e/hooks.mjs",
+    "test:e2e:flows": "node tests/e2e/flows.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

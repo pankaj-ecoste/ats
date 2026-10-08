@@ -51,8 +51,7 @@ function openingForm(id){
   $('#opSave',el).onclick=()=>{const f=$('#opF',el);if(!f.title.value.trim()){f.title.focus();toast('Add a job title to continue','var(--red)');return}
    const d=Object.fromEntries(new FormData(f));['positions','expMin','expMax','salMin','salMax'].forEach(k=>d[k]=+d[k]);
    d.mandatory=d.mandatory.split(',').map(s=>s.trim()).filter(Boolean);d.preferred=d.preferred.split(',').map(s=>s.trim()).filter(Boolean);
-   if(id)Object.assign(o,d);else{S.openings.unshift(d);log(`Opening ${d.title} created`,'opening');}
-   save();closeModal();toast(id?'Opening saved':'Opening created');id?refresh():go('opening',d.id)}}});
+   saveOpening(d,id);closeModal();toast(id?'Opening saved':'Opening created');id?refresh():go('opening',d.id)}}});
 }
 function vOpening(){
  const o=getOp(R.param);if(!o)return '<div class="empty">Opening not found.</div>';
