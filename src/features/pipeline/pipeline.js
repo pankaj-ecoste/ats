@@ -205,7 +205,7 @@ function slaModal(){
  <div class="fgrid">${PC_COLS.filter(c=>c.k!=='joined').map(c=>`<label class="f">${c.label}<div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" min="0" max="60" data-sla="${c.k}" value="${s[c.k]}"><span class="small muted">days</span></div></label>`).join('')}</div>`,
  foot:`<button class="btn ghost" id="slaDef">Restore defaults</button><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn pri" id="slaSave">Save rules</button>`,
  onMount:el=>{$('#slaDef',el).onclick=()=>$$('[data-sla]',el).forEach(i=>i.value=DEFAULT_SLA[i.dataset.sla]);
-  $('#slaSave',el).onclick=()=>{S.settings.sla={};$$('[data-sla]',el).forEach(i=>S.settings.sla[i.dataset.sla]=Math.max(0,+i.value||0));save();closeModal();toast('SLA rules saved');render()}}});
+  $('#slaSave',el).onclick=()=>{const rules={};$$('[data-sla]',el).forEach(i=>rules[i.dataset.sla]=Math.max(0,+i.value||0));saveSla(rules);closeModal();toast('SLA rules saved');render()}}});
 }
 VIEWS.pipeline=[vPipeline,bindPipeline];
 addNav(['pipeline','Pipeline control','board'],'dashboard');

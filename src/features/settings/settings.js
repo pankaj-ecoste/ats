@@ -15,11 +15,11 @@ function vSettings(){
  <section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`;
 }
 function bindSettings(root){
- $$('[data-s]',root).forEach(i=>i.onchange=()=>{S.settings[i.dataset.s]=i.value;save();applyTheme();render();toast('Settings saved')});
- $$('[data-w]',root).forEach(i=>{i.oninput=()=>{i.nextElementSibling.textContent=i.value};i.onchange=()=>{S.settings.weights[i.dataset.w]=+i.value;save();toast('Match weights updated','var(--ai)');render()}});
- const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{S.settings.threshold=+th.value;save();render()};
- $('#wReset',root).onclick=()=>{S.settings.weights={...DEFAULT_SETTINGS.weights};S.settings.threshold=65;save();render();toast('Default weights restored')};
- $('#resetAll',root).onclick=()=>confirmBox('Reset demo data','This replaces everything with the original sample data.','Reset',()=>{S=seed();save();R.chat=null;go('dashboard');toast('Demo data restored')},true);
+ $$('[data-s]',root).forEach(i=>i.onchange=()=>{updateSetting(i.dataset.s,i.value);applyTheme();render();toast('Settings saved')});
+ $$('[data-w]',root).forEach(i=>{i.oninput=()=>{i.nextElementSibling.textContent=i.value};i.onchange=()=>{updateMatchWeight(i.dataset.w,+i.value);toast('Match weights updated','var(--ai)');render()}});
+ const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{setMatchThreshold(+th.value);render()};
+ $('#wReset',root).onclick=()=>{resetMatchWeights();render();toast('Default weights restored')};
+ $('#resetAll',root).onclick=()=>confirmBox('Reset demo data','This replaces everything with the original sample data.','Reset',()=>{resetDemoData();R.chat=null;go('dashboard');toast('Demo data restored')},true);
 }
 function applyTheme(){const t=S.settings.theme;if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t)}
 function helpModal(){

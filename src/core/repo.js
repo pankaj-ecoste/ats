@@ -28,6 +28,8 @@ const repo={
  },
  // keep only the newest `max` records of a newest-first collection
  trim(coll,max){if(S[coll]&&S[coll].length>max){S[coll].length=max;save()}},
+ // replace the whole state (used by 'reset demo data')
+ reset(state){S=state;save();repoNotify({op:'reset',coll:null,id:null,record:null})},
  // single objects that are not lists (settings, postCfg, monthly targets ...)
  root(key,change){
   if(typeof change==='function')change(S[key]);else S[key]=change;

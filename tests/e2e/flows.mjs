@@ -149,6 +149,45 @@ await page.click(`[data-ready="${oa}"]`);
 check('onboarding: mark employee ready finishes the journey', await ev((id) => getA(id).stage === 'Employee Ready', oa));
 await closeAllModals();
 
+// ---- job posting
+const pb = await ev(() => ({ op: S.openings[0].id, board: boards().find((b) => b.type === 'board').id }));
+const postsBefore = await ev(() => S.postings.length);
+await ev((x) => markPosted(getOp(x.op), boards().find((b) => b.id === x.board)), pb);
+await page.fill('#mpu', 'https://example.com/job/1');
+await page.click('#mpsave');
+await modalGone();
+check('posting: saving a listing adds a posting record', await ev((n) => S.postings.length === n + 1 && S.postings.at(-1).url === 'https://example.com/job/1', postsBefore));
+await ev((x) => markPosted(getOp(x.op), boards().find((b) => b.id === x.board)), pb);
+await page.click('#mpdel');
+await modalGone();
+check('posting: removing the record deletes it', await ev((n) => S.postings.length === n, postsBefore));
+await ev(() => postingSettings());
+await page.fill('#psh', '#flowtest');
+await page.click('#pssave');
+await modalGone();
+check('posting settings: saved into the posting config', await ev(() => S.postCfg.hashtags === '#flowtest'));
+
+// ---- pipeline SLA rules
+await ev(() => slaModal());
+const firstSla = await ev(() => document.querySelector('[data-sla]').dataset.sla);
+await page.fill(`[data-sla="${firstSla}"]`, '9');
+await page.click('#slaSave');
+await modalGone();
+check('SLA rules: saved into settings', await ev((k) => S.settings.sla[k] === 9, firstSla));
+
+// ---- settings page
+await page.click('[data-go="settings"]');
+await page.fill('[data-s="company"]', 'Flow Test Co');
+await page.dispatchEvent('[data-s="company"]', 'change');
+check('settings: a field change is saved', await ev(() => S.settings.company === 'Flow Test Co'));
+await page.$eval('[data-w="skills"]', (el) => { el.value = 33; el.dispatchEvent(new Event('change')); });
+check('settings: a match weight change is saved', await ev(() => S.settings.weights.skills === 33));
+await page.click('#wReset');
+check('settings: restore default weights', await ev(() => S.settings.weights.skills === DEFAULT_SETTINGS.weights.skills && S.settings.threshold === 65));
+await page.click('#resetAll');
+await page.click('#cOK');
+check('settings: reset demo data restores the sample company and clears our test data', await ev(() => S.settings.company === DEFAULT_SETTINGS.company && !S.openings.some((o) => o.title.startsWith('Flow Test'))));
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }
