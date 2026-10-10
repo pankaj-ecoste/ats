@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Left in Phase 1: inline onclick, ES modules, strict mode, constants out of code, lint, CI, conventions. Then Phase 2 (backend core).
+- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -24,7 +24,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
 | Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 47 flow checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
-| Linter / formatter / CI | **None** (only `.editorconfig`) |
+| Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
 | Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
@@ -69,6 +69,10 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
+| `eslint.config.mjs` | Lint rules; derives cross-file globals from `src` automatically |
+| `CONTRIBUTING.md` | How to set up, the rules of the code, branches, commits, checklists |
+| `.github/workflows/ci.yml`, `.github/pull_request_template.md` | CI on every push and pull request; PR checklist |
+| `.githooks/pre-commit`, `scripts/setup-hooks.mjs` | Lint + unit tests before each commit; the script enables the hook on `npm install` |
 | `.editorconfig`, `.gitattributes`, `.gitignore` | UTF-8/LF/2 spaces; force LF in git; ignore `node_modules/`, `dist/`, `.env*` (except `.env.example`), logs |
 | `.env` (git-ignored, local only) | Real Supabase URL, anon key, service-role key, pooler `DATABASE_URL` |
 | `.env.example` | Committed template with empty placeholders |
@@ -132,7 +136,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `supabase/migrations/`, `.github/workflows/`, `CONTRIBUTING.md`, `CHANGELOG.md`, ESLint and Prettier config.
+**Not in the tree yet (planned):** `supabase/migrations/`, `CHANGELOG.md`.
 
 ## 4. Done (log)
 
@@ -303,9 +307,9 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 - ☑ `git init`, baseline commit, tag `v0.1.0-prototype` (2026-10-06)
 - ☑ Remote repo `pankaj-ecoste/ats` live and pushed over SSH (2026-10-06)
 - ☐ Protect `main`: pull request and one review required, no force push
-- ☐ Branching: `main` (deployable) ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge
-- ☐ Commit style: Conventional Commits (`feat(offers): …`, `fix(pipeline): …`)
-- ☐ PR template and checklist (tests pass, plan updated, no secrets, load order checked)
+- ☑ Branching rules written in `CONTRIBUTING.md` (`main` ← short-lived `feat/*`, `fix/*`, `chore/*` via pull request; squash merge). Enforcement on GitHub still pending (protect `main`).
+- ☑ Commit style: Conventional Commits, written in `CONTRIBUTING.md`
+- ☑ PR template and checklist (`.github/pull_request_template.md`)
 - ☐ Version tags and `CHANGELOG.md`
 
 **P1.2 Quick safety wins** *(behaviour unchanged)*
@@ -324,16 +328,16 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 - ☐ Move recruiters, interviewers and company defaults out of code into settings and seed data
 
 **P1.4 Tooling**
-- ☐ ESLint and Prettier matching `.editorconfig`; `npm run lint`, `npm run format`
-- ☐ GitHub Actions CI: install, lint, unit tests, build, Playwright smoke on `dist`
-- ☐ Pre-commit hook (lint and unit tests)
-- ☐ Widen unit tests: `setStage` and opening-status derivation, `nextAction`, workbook round-trip, store migrations
+- ☑ ESLint 9 (`eslint.config.mjs`, `npm run lint`): the config reads every `src` file and gives each file the other files' top-level names as globals, so it catches undefined names and the same name declared in two files. **Prettier deliberately not added yet:** the code is written as dense one-liners and a reformat would rewrite every file and bury the history. Revisit after the ES-module conversion.
+- ◐ GitHub Actions CI (`.github/workflows/ci.yml`): install, lint, unit tests, build, all browser tests on source and on `dist`, keeps the built file as an artifact. Written; first run happens on the first push.
+- ☑ Pre-commit hook (`.githooks/pre-commit`, enabled by `npm install` through `scripts/setup-hooks.mjs`): lint + unit tests
+- ☑ Widened unit tests (70): stage rules, opening-status derivation, every service, store migration, architecture guard. Still open: `nextAction` and the workbook export/import round-trip (needs ExcelJS).
 
 **P1.5 Conventions** (written in `CONTRIBUTING.md`)
-- ☐ File naming and folder rules; layer rule `core → data → domain → services → app → features`
-- ☐ Generated files are never hand-edited
-- ☐ New-feature checklist (view, bind, NAV entry, test, plan line)
-- ☐ Secrets only in `.env`; `.env.example` committed
+- ☑ File naming and folder rules; layer rule `core → data → domain → services → app → features`
+- ☑ Generated files are never hand-edited
+- ☑ New-feature and new-action checklists
+- ☑ Secrets only in `.env`; `.env.example` committed
 
 *Exit criteria:* CI green on every pull request; no global reassignments or HTML patching left; all writes go through the mutation layer; the app behaves identically (smoke test and manual check).
 
@@ -482,7 +486,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 2. ☐ Protect `main` on GitHub
 3. ☑ Finish P1.2 (`save()` errors, storage-key migration)
 4. ◐ P1.3: extension points and mutation layer done; left: inline `onclick`, ES modules, strict mode, constants out of code
-5. ☐ P1.4 lint and CI
+5. ◐ P1.4 lint and CI: written, waiting for the first CI run
 6. ☐ Open a pull request for `chore/restructure-p1`; merge; start Phase 2 on a new branch
 
 ## 8. Open decisions (need an owner)
@@ -522,6 +526,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-10 | Tooling: ESLint with auto-derived cross-file globals (clean), CI workflow, pre-commit hook, PR template, `CONTRIBUTING.md`, new scripts `lint`, `check`, `test:e2e:all`, `test:e2e:dist` | Claude Code |
 | 2026-10-08 | Mutation layer finished: every write now goes through `repo` via 13 service files (openings, candidates, applications, screening and interviews, offers, onboarding, posting, settings, report, sheets); `domain/sheet-values.js`; autofocus fix in `ui.js`; 70 unit tests, 47 browser flow checks, architecture guard test | Claude Code |
 | 2026-10-08 | Mutation layer started: `core/repo.js`, `services/` (activity, tasks, stages), `hooks.js` moved to `core/`; handlers for notifications and tasks and `setStage` now go through services; 11 new unit tests, 5 new browser checks; design and per-area checklist in §7.9; decision D15 added | Claude Code |
 | 2026-10-06 | P1.2 finished (storage key migration, save errors) and extension points added (`hooks.js`): no more HTML patching, `setStage` reassignment or `NAV.splice`; 5 new unit tests, new `hooks.mjs` browser test | Claude Code |

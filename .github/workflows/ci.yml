@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# one run per branch; a newer push cancels the older run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, unit tests, build, browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build the single-file app
+        run: npm run build
+
+      - name: Install the browser for the browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests on the source
+        run: npm run test:e2e:all
+
+      - name: Browser tests on the built file
+        run: npm run test:e2e:dist
+
+      - name: Keep the built app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ecoste_Recruit_Tracker
+          path: dist/Ecoste_Recruit_Tracker.html
+          retention-days: 14

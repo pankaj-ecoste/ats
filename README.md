@@ -14,6 +14,7 @@ npm install && npx playwright install chromium
 npm run test:e2e   # browser smoke test of every page (add `-- dist` to test the build)
 npm run test:e2e:hooks   # browser check of the extension points
 npm run test:e2e:flows   # browser check that user actions reach the data through the services
+npm run lint       # ESLint; `npm run check` = lint + unit tests + build
 ```
 
 Requires Node 20+. Nothing needs installing for `dev`, `test` or `build`.
@@ -75,6 +76,8 @@ docs/                          ARCHITECTURE.md, PRODUCTION_ROADMAP.md
 ```
 
 ## Working in this codebase
+
+See `CONTRIBUTING.md` for the full rules, branches and checklists. A pre-commit hook (installed by `npm install`) runs lint and unit tests; CI runs everything.
 
 **Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/core/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
 

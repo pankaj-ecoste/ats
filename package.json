@@ -4,7 +4,9 @@
   "private": true,
   "description": "Ecoste Recruit Tracker: recruitment workspace (openings, applications, interviews, offers, onboarding).",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "gen": "node scripts/gen-form-script.mjs",
@@ -12,9 +14,18 @@
     "test": "node --test \"tests/unit/*.test.mjs\"",
     "test:e2e": "node tests/e2e/smoke.mjs",
     "test:e2e:hooks": "node tests/e2e/hooks.mjs",
-    "test:e2e:flows": "node tests/e2e/flows.mjs"
+    "test:e2e:flows": "node tests/e2e/flows.mjs",
+    "lint": "eslint .",
+    "check": "npm run lint && npm test && npm run build",
+    "test:e2e:all": "npm run test:e2e && npm run test:e2e:hooks && npm run test:e2e:flows",
+    "prepare": "node scripts/setup-hooks.mjs",
+    "test:e2e:dist": "npm run test:e2e -- dist && npm run test:e2e:hooks -- dist && npm run test:e2e:flows -- dist"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "espree": "^11.2.0",
+    "globals": "^17.13.0",
     "playwright": "^1.48.0"
   }
 }

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Runs before every commit: lint and unit tests (a few seconds). Browser tests run in CI.
+# To skip once in an emergency: git commit --no-verify  (CI will still run everything)
+echo "pre-commit: lint"
+npm run lint --silent || { echo "Lint failed. Fix the errors above, then commit again."; exit 1; }
+echo "pre-commit: unit tests"
+npm test --silent || { echo "Unit tests failed. Fix them, then commit again."; exit 1; }
