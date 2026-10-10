@@ -1,6 +1,7 @@
 /* =====================================================
    GOOGLE SHEET → APPLICATIONS AUTO-IMPORT
    ===================================================== */
+"use strict";
 const GDRIVE='Google Drive';
 const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const AS_FIELDS=[['name','Candidate name',1,['name','candidate','full name','applicant']],['email','Email',0,['email','e-mail','mail']],['phone','Phone',0,['phone','mobile','contact','number','whatsapp']],
@@ -126,7 +127,7 @@ function bindAutoImport(root){const b=$('#asconnect',root);if(!b)return;b.onclic
 // hook into the Google Sheets page and the Applications page
 /* extension points: see src/app/hooks.js */
 fillSlot('sheets.top',autoImportCard);
-fillSlot('applications.toolbar',()=>{const cfg=asCfg();return cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:`<button class="btn" onclick="go('sheets')">${ic('refresh')}Auto-import from Google Sheet</button>`});
+fillSlot('applications.toolbar',()=>{const cfg=asCfg();return cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:`<button class="btn" data-act="go" data-a1="sheets">${ic('refresh')}Auto-import from Google Sheet</button>`});
 onBind('sheets',bindAutoImport);
 onBind('applications',bindSyncNow);
 // start: first check shortly after load, then on the interval

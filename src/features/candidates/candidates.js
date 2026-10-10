@@ -1,9 +1,10 @@
 /* Candidate list, profile and messaging */
 /* ---------- candidates ---------- */
+"use strict";
 let candQ='';
 function vCandidates(){
  const l=S.candidates.filter(c=>(c.name+c.skills.join(' ')+c.company+c.location+c.designation).toLowerCase().includes(candQ.toLowerCase()));
- return `<div class="page-h"><div><h1>Candidates</h1><p>${S.candidates.length} people in your talent pool</p></div><button class="btn pri" onclick="addCandidate()">${ic('upload')}Add candidate</button></div>
+ return `<div class="page-h"><div><h1>Candidates</h1><p>${S.candidates.length} people in your talent pool</p></div><button class="btn pri" data-act="addCandidate">${ic('upload')}Add candidate</button></div>
  <section class="panel"><div class="filters"><input class="inp" id="cq" placeholder="Search by name, skill, company, city" value="${esc(candQ)}" style="min-width:280px"></div>
  <div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Experience</th><th>Location</th><th>Top skills</th><th>Applied for</th><th>Best match</th><th>Stage</th><th>Source</th></tr></thead><tbody>
  ${l.map(c=>{const a=primaryApp(c.id);const m=a?matchA(a):null;return `<tr class="click" data-cand="${c.id}"><td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td><td>${c.exp} yrs</td><td>${esc(c.location)}</td><td>${c.skills.slice(0,3).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}${c.skills.length>3?`<span class="muted small">+${c.skills.length-3}</span>`:''}</td><td>${appsOfC(c.id).map(x=>esc(getOp(x.opId).title)).join('<br>')}</td><td>${m?ring(m.score):'—'}</td><td>${a?stagePill(a.stage):'—'}</td><td class="small">${esc(c.source)}</td></tr>`}).join('')}
@@ -32,7 +33,7 @@ function vCandidate(){
   case 'notes':body=`<section class="panel"><div class="pbody"><textarea class="inp" id="noteIn" rows="3" placeholder="Add a note for the hiring team"></textarea><div style="margin-top:8px"><button class="btn pri sm" id="noteAdd">Save note</button></div></div>${c.notes.map(n=>`<div class="list-it" style="align-items:flex-start">${av(n.by)}<div class="grow"><b>${esc(n.by)}</b> <span class="muted small">${timeAgo(n.ts)}</span><p style="margin:2px 0 0;white-space:pre-line">${esc(n.text)}</p></div></div>`).join('')}</section>`;break;
   default:body=`<section class="panel">${activityList(S.activity.filter(x=>x.text.includes(c.name)))}</section>`;
  }
- return `<div class="navrow"><button class="btn ghost sm" onclick="go('${R.back||'candidates'}')">${ic('back')}Back</button>${navBar(R.navList||[],c.id,'candidate')}</div>
+ return `<div class="navrow"><button class="btn ghost sm" data-act="go" data-a1="${R.back||'candidates'}">${ic('back')}Back</button>${navBar(R.navList||[],c.id,'candidate')}</div>
  <section class="panel" style="margin-bottom:16px"><div class="pbody" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
   ${av(c.name,'lg')}<div class="grow" style="min-width:220px"><h1 style="margin:0;font-size:22px">${esc(c.name)}</h1><div class="muted">${esc(c.designation)} at ${esc(c.company)} · ${c.exp} yrs · ${esc(c.location)}</div>
   <div class="row" style="margin-top:6px">${stagePill(a.stage)}${apps.length>1?`<select class="inp" id="appSel" style="width:auto;padding:3px 8px;font-size:12px">${apps.map(x=>`<option value="${x.id}" ${x.id===a.id?'selected':''}>${esc(getOp(x.opId).title)}</option>`).join('')}</select>`:`<span class="muted small">for ${esc(o.title)}</span>`}</div></div>

@@ -1,5 +1,6 @@
 /* Resume viewer and parsed-field editor */
 /* ---------- resume viewer ---------- */
+"use strict";
 function resumeHTML(c,o){
  let t=esc(c.resumeText);
  const all=o?o.mandatory.concat(o.preferred):[];

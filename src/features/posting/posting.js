@@ -1,6 +1,7 @@
 /* =====================================================
    JOB POSTING ON OTHER SITES
    ===================================================== */
+"use strict";
 const DEFAULT_BOARDS=[
  {id:'linkedin_jobs',name:'LinkedIn Jobs',type:'board',fmt:'full',color:'#0A66C2',src:'LinkedIn',url:'https://www.linkedin.com/talent/post-a-job'},
  {id:'naukri',name:'Naukri',type:'board',fmt:'full',color:'#275DF5',src:'Naukri',url:'https://recruit.naukri.com/'},
@@ -155,5 +156,5 @@ addNav(['posting','Job posting','send'],'openings');
 
 // opening detail: posting tab
 function postingTabHTML(o){R.post.op=o.id;const live=S.postings.filter(p=>p.opId===o.id&&postStatus(p)[1]==='green');
- return `${formBanner(o)}<section class="panel"><header><div><h3>Live on ${live.length} job site${live.length===1?'':'s'}</h3><p>Copy a post, open the site, then mark it posted</p></div><button class="btn pri" onclick="go('posting','${o.id}')">${ic('send')}All sites and social</button></header><div class="pbody"><div class="boards">${boards().filter(x=>x.type==='board').map(x=>boardCard(o,x)).join('')}</div></div></section>`}
+ return `${formBanner(o)}<section class="panel"><header><div><h3>Live on ${live.length} job site${live.length===1?'':'s'}</h3><p>Copy a post, open the site, then mark it posted</p></div><button class="btn pri" data-act="go" data-a1="posting" data-a2="${o.id}">${ic('send')}All sites and social</button></header><div class="pbody"><div class="boards">${boards().filter(x=>x.type==='board').map(x=>boardCard(o,x)).join('')}</div></div></section>`}
 onBind('opening',r=>{if(R.tab==='posting')bindPosting(r)});

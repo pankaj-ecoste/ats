@@ -252,6 +252,60 @@ await page.click('#cOK');
 check('auto-import: disconnecting clears the connection', await ev(() => S.autoSync === null || !S.autoSync.fileId));
 check('auto-import: imported applications stay after disconnecting', await ev(() => S.candidates.filter((x) => x.email.startsWith('flowsheet')).length === 2));
 
+// ---- buttons wired with data-act (they used to be inline onclick attributes)
+const act = async (sel, name, test, arg) => {
+  await page.locator(sel).first().click();
+  check(name, await ev(test, arg));
+  await closeAllModals();
+};
+await ev(() => { R.dashTab = 'today'; go('dashboard'); });
+await act('[data-act="addCandidate"]', 'buttons: dashboard "add candidate" opens the resume dialog', () => !!document.getElementById('acParse'));
+await act('[data-act="openingForm"]', 'buttons: dashboard "new opening" opens the opening form', () => !!document.getElementById('opF'));
+await act('[data-act="showTodayCalendar"]', 'buttons: dashboard link to the interview calendar shows the day view', () => R.view === 'interviews' && R.calView === 'day');
+await ev(() => go('dashboard'));
+await act('[data-act="go"][data-a1="pipeline"]', 'buttons: dashboard link goes to the pipeline', () => R.view === 'pipeline');
+await ev(() => go('tasks'));
+await act('[data-act="taskForm"]', 'buttons: tasks "new task" opens the task form', () => !!document.getElementById('tS'));
+await ev(() => go('offers'));
+await act('[data-act="pickForOffer"]', 'buttons: offers "new offer" opens the candidate picker', () => document.querySelectorAll('.scrim').length === 1);
+await ev(() => go('interviews'));
+await act('[data-act="scheduleGI"]', 'buttons: interviews "schedule group" opens the group form', () => !!document.getElementById('giS'));
+await act('[data-act="schedulePI"]', 'buttons: interviews "schedule interview" opens the personal form', () => !!document.getElementById('piS'));
+const opId = await ev(() => S.openings[0].id);
+await ev((id) => go('opening', id), opId);
+await act('[data-act="openingForm"][data-a1]', 'buttons: opening "edit" opens the form for that opening', (id) => document.querySelector('#opF [name="id"]').value === id, opId);
+await act('[data-act="addCandidate"][data-a1]', 'buttons: opening "add application" opens the dialog for that opening', (id) => document.getElementById('acOp').value === id, opId);
+await act('[data-act="scheduleGI"][data-a1]', 'buttons: opening "schedule group" opens the form for that opening', (id) => document.getElementById('giOp').value === id, opId);
+await act('[data-act="openingApplicationsBoard"]', 'buttons: opening "pipeline" shows that opening on the applications board', (id) => R.view === 'applications' && R.af.op === id && R.appView === 'board', opId);
+await ev((id) => go('opening', id), opId);
+await act('[data-act="go"][data-a1="posting"]', 'buttons: opening "post job" goes to the posting page for it', (id) => R.view === 'posting' && R.param === id, opId);
+await ev((id) => go('opening', id), opId);
+await act('[data-act="go"][data-a1="openings"]', 'buttons: opening "back" returns to the list', () => R.view === 'openings');
+await ev(() => go('candidates'));
+await act('[data-act="addCandidate"]', 'buttons: candidates "add candidate" opens the dialog', () => !!document.getElementById('acParse'));
+const cid = await ev(() => { const list = S.candidates.map((c) => c.id); return list[1]; });
+await ev((id) => go('candidate', id), cid);
+await act('.navrow [data-act="go"]', 'buttons: candidate "back" returns to a list', () => R.view !== 'candidate');
+await ev(() => { go('candidates'); go('candidate', S.candidates[0].id); });
+const paramBefore = await ev(() => R.param);
+await page.locator('.navpn [data-act="go"]').last().click();
+check('buttons: previous/next record moves to another candidate', (await ev(() => R.param)) !== paramBefore);
+
+// ---- team lists come from settings
+await page.click('[data-go="settings"]');
+await page.fill('#teamRec', 'Flow Recruiter One\nFlow Recruiter Two');
+await page.fill('#teamInt', 'Flow Interviewer');
+await page.click('#teamSave');
+check('team: saved names replace the recruiter and interviewer lists', await ev(() => JSON.stringify(recruiters()) === JSON.stringify(['Flow Recruiter One', 'Flow Recruiter Two']) && JSON.stringify(interviewers()) === JSON.stringify(['Flow Interviewer'])));
+await ev(() => openingForm());
+check('team: the opening form offers the saved names', await ev(() => [...document.querySelectorAll('#opF [name="recruiter"] option')].map((o) => o.textContent).join() === 'Flow Recruiter One,Flow Recruiter Two' && [...document.querySelectorAll('#opF [name="manager"] option')].map((o) => o.textContent).join() === 'Flow Interviewer'));
+await closeAllModals();
+await page.click('[data-go="settings"]');
+await page.fill('#teamRec', '');
+await page.fill('#teamInt', '');
+await page.click('#teamSave');
+check('team: clearing both lists restores the built-in names', await ev(() => recruiters().length === DEFAULT_RECRUITERS.length));
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }

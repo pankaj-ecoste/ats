@@ -1,4 +1,5 @@
 /* Ecoste Recruit Tracker <-> Google Sheets workbook: one schema, used by the web app and the template builder. */
+"use strict";
 (function(root,STAGES){
 "use strict";
 const MAXR=300; // rows pre-filled with formulas and dropdowns

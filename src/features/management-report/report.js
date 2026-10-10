@@ -1,5 +1,6 @@
 /* Management report view, modals, dashboard tab hook */
 /* ---- the report ---- */
+"use strict";
 function vReport(){
  if(!S.events)seedHistory();if(!S.callLog)S.callLog=[];if(!S.monthly)S.monthly={};
  const c=repCfg();const rd=R.rep.date;const wk=mondayOf(rd),pwk=addDays(-7,parseD(wk)),wkE=addDays(6,parseD(wk)),pwkE=addDays(-1,parseD(wk));

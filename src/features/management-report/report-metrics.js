@@ -1,5 +1,6 @@
 /* Management report: metric calculations */
 /* ---- metrics ---- */
+"use strict";
 function metrics(a,b){
  const ev=t=>S.events.filter(e=>e.t===t&&inR(e.d,a,b)).length;
  const realInt=(kind)=>S.interviews.filter(i=>i.kind===kind&&i.status==='Completed'&&inR(i.date,a,b)).length;

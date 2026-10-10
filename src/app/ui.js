@@ -1,5 +1,6 @@
 /* Modal stack, toast, confirm box, form helpers */
 /* ---------- modal & toast ---------- */
+"use strict";
 let modalStack=[];
 function modal({title,body,foot='',size='',onMount}){
  const el=document.createElement('div');el.className='scrim';

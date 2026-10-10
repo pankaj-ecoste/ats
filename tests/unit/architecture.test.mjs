@@ -56,6 +56,15 @@ test('services, domain and core do not touch the UI', () => {
   assert.deepEqual(offenders, []);
 });
 
+test('markup has no inline event handlers (use data-act and src/app/ui-actions.js)', () => {
+  const INLINE = /[\s`'"]on(click|change|input|submit|keydown|keyup|focus|blur|mouse\w+|dblclick)\s*=\s*["']/;
+  const offenders = [];
+  for (const f of ['app', 'features', 'core', 'services', 'domain', 'data'].flatMap(files)) {
+    f.lines.forEach((line, i) => { if (INLINE.test(line.replace(/\.on[a-z]+\s*=/g, ''))) offenders.push(`${f.path}:${i + 1}  ${line.trim().slice(0, 100)}`); });
+  }
+  assert.deepEqual(offenders, []);
+});
+
 test('the exceptions list only names files that exist', () => {
   const have = new Set(all.map((f) => f.path));
   for (const a of ALLOWED) assert.ok(have.has(a.file), a.file);

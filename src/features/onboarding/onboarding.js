@@ -1,5 +1,6 @@
 /* Joining and onboarding checklists */
 /* ---------- joining & onboarding ---------- */
+"use strict";
 function scheduleJoining(aid){
  const a=getA(aid),c=getC(a.cid),f=offerOfA(aid);
  modal({title:'Schedule joining',body:`<div class="row" style="margin-bottom:14px">${av(c.name)}<div><b>${esc(c.name)}</b><div class="muted small">${esc(getOp(a.opId).title)}</div></div></div>

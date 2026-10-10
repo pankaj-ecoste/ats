@@ -17,7 +17,7 @@ core  ->  data  ->  domain  ->  services  ->  app  ->  features  ->  app/main.js
 
 A layer may use layers to its left. `core`, `data`, `domain` and `services` never touch the DOM at all, which is what lets `tests/unit/load-app.mjs` run them in Node.
 
-All files are classic scripts in one global scope. Only `core/`, `data/` and `domain/` run in strict mode, because only that part of the prototype did. Turning strict mode on elsewhere is a separate, deliberate change.
+All files are classic scripts in one global scope and every file runs in strict mode. They become ES modules in Phase 6 (see the plan); until then ESLint gives each file the other files' top-level names as globals, so undefined and duplicate names fail the build.
 
 ## Things that will surprise you
 

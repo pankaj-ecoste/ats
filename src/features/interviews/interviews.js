@@ -1,5 +1,6 @@
 /* Interviews page, calendar and detail */
 /* ---------- interviews page ---------- */
+"use strict";
 function intTable(l){
  if(!l.length)return '<div class="empty"><b>No interviews yet</b>Schedule one to see it here.</div>';
  return `<div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Opening</th><th>Round</th><th>Date</th><th>Interviewer</th><th>Mode</th><th>Status</th><th>Result</th><th></th></tr></thead><tbody>${l.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(i=>{const a=getA(i.appId),c=getC(a.cid),st=intStatus(i);
@@ -31,7 +32,7 @@ function vInterviews(){
   <div>${ints.map(i=>{const c=getC(getA(i.appId).cid);return `<span title="${esc(c.name)}" style="margin-right:-6px;display:inline-block;border:2px solid var(--surface);border-radius:50%">${av(c.name)}</span>`}).join('')}</div>
   <div class="row" style="margin-top:12px"><button class="btn sm" data-gd="${g.id}">Invitations</button>${cancelled?'':`<button class="btn sm pri" data-ge="${g.id}">${g.evaluated?'Review evaluation':'Evaluate'}</button>`}<span class="muted small">${conf}/${ints.length} confirmed · ${esc(g.interviewers.join(', '))}</span></div></div></section>`}).join('')||'<div class="empty"><b>No group interviews yet</b>Select several shortlisted candidates and schedule one.</div>'}</div>`;
  return `<div class="page-h"><div><h1>Interviews</h1><p>${S.interviews.filter(i=>i.status==='Scheduled'&&i.date>=today()).length} upcoming · ${S.interviews.filter(i=>intStatus(i)==='Pending Feedback').length} awaiting feedback</p></div>
- <div class="row"><button class="btn" onclick="scheduleGI()">${ic('users')}Group interview</button><button class="btn pri" onclick="schedulePI()">${ic('plus')}Personal interview</button></div></div>
+ <div class="row"><button class="btn" data-act="scheduleGI">${ic('users')}Group interview</button><button class="btn pri" data-act="schedulePI">${ic('plus')}Personal interview</button></div></div>
  <div class="tabs">${tabs.map(t=>`<button class="${R.intTab===t[0]?'on':''}" data-it="${t[0]}">${t[1]}</button>`).join('')}</div>${body}`;
 }
 function calendarHTML(){

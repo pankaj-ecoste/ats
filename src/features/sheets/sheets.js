@@ -1,5 +1,6 @@
 /* Workbook export/import page */
 /* ---------- Google Sheets option ---------- */
+"use strict";
 const EXCELJS_URL='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 let excelP=null;
 function loadExcel(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);if(excelP)return excelP;
@@ -25,7 +26,7 @@ async function exportWorkbook(kind){
 function toState(parsed){
  const R0=parsed.rows,warn=[...parsed.warn];const out={};
  const curC=id=>S.candidates.find(c=>c.id===id);
- if(R0.Openings)out.openings=R0.Openings.map((o,i)=>({id:o.id||('OP-'+(2000+i)),title:o.title||'Untitled opening',dept:o.dept||'Operations',positions:o.positions||1,location:o.location||'—',mode:o.mode||'Onsite',type:o.type||'Full-time',expMin:o.expMin??0,expMax:o.expMax??(o.expMin||0)+3,salMin:o.salMin??0,salMax:o.salMax??(o.salMin||0),education:o.education||'Graduate',mandatory:o.mandatory||[],preferred:o.preferred||[],desc:o.desc||'',resp:o.resp||'',req:o.req||'',recruiter:o.recruiter||S.settings.user,manager:o.manager||INTERVIEWERS[0],opened:o.opened||today(),target:o.target||addDays(45),priority:o.priority||'Medium',status:o.status||'Open'}));
+ if(R0.Openings)out.openings=R0.Openings.map((o,i)=>({id:o.id||('OP-'+(2000+i)),title:o.title||'Untitled opening',dept:o.dept||'Operations',positions:o.positions||1,location:o.location||'—',mode:o.mode||'Onsite',type:o.type||'Full-time',expMin:o.expMin??0,expMax:o.expMax??(o.expMin||0)+3,salMin:o.salMin??0,salMax:o.salMax??(o.salMin||0),education:o.education||'Graduate',mandatory:o.mandatory||[],preferred:o.preferred||[],desc:o.desc||'',resp:o.resp||'',req:o.req||'',recruiter:o.recruiter||S.settings.user,manager:o.manager||interviewers()[0],opened:o.opened||today(),target:o.target||addDays(45),priority:o.priority||'Medium',status:o.status||'Open'}));
  if(R0.Candidates)out.candidates=R0.Candidates.map((c,i)=>{const id=c.id||('C-'+(5000+i));const ex=curC(id)||{};
   const n={...ex,id,name:c.name||'Unnamed',email:c.email||'',phone:c.phone||'',designation:c.designation||'—',company:c.company||'—',exp:c.exp??0,location:c.location||'—',reloc:!!c.reloc,education:c.education||'Graduate',eduField:c.eduField||'General',university:c.university||'—',gradYear:c.gradYear||'',skills:c.skills||[],curSal:c.curSal??0,expSal:c.expSal??0,notice:c.notice??30,certifications:c.certifications||[],achievements:c.achievements||[],source:c.source||'Careers Page',created:c.created||today(),
    history:ex.history||[{company:c.company||'—',designation:c.designation||'—',from:'—',to:'Present',summary:'Imported from Google Sheets.'}],documents:ex.documents||[{name:'Resume.pdf',status:'Pending'}],notes:ex.notes||[]};

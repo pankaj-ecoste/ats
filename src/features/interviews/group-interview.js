@@ -1,5 +1,6 @@
 /* Group interview scheduling and evaluation */
 /* ---------- group interview ---------- */
+"use strict";
 function scheduleGI(opId,pre=[]){
  opId=opId||S.openings.find(o=>appsOfOp(o.id).some(a=>['Group Interview','Shortlisted','Screening'].includes(a.stage)))?.id||S.openings[0].id;
  const body=()=>{const eligible=appsOfOp(opId).filter(a=>['Group Interview','Shortlisted','Screening'].includes(a.stage)&&!S.interviews.some(i=>i.appId===a.id&&i.kind==='Group'&&!i.rec&&i.status!=='Cancelled'));
@@ -8,7 +9,7 @@ function scheduleGI(opId,pre=[]){
   <label class="f">Interview mode<select class="inp" id="giM"><option>Office</option><option>Google Meet</option><option>Zoom</option><option>MS Teams</option></select></label>
   <label class="f">Location<input class="inp" id="giL" value="Northwind Office, ${esc(getOp(opId).location)}"></label><label class="f">Meeting link<input class="inp" id="giLink" placeholder="https://meet.google.com/…"></label>
   <label class="f">Panel name<input class="inp" id="giP" value="${esc(getOp(opId).dept)} hiring panel"></label>
-  <label class="f" style="grid-column:span 2">Interviewers<div class="row">${INTERVIEWERS.map(n=>`<label class="small" style="display:flex;gap:5px;align-items:center"><input type="checkbox" class="chk" data-ivr value="${n}" ${n===getOp(opId).manager?'checked':''}>${n}</label>`).join('')}</div></label></div>
+  <label class="f" style="grid-column:span 2">Interviewers<div class="row">${interviewers().map(n=>`<label class="small" style="display:flex;gap:5px;align-items:center"><input type="checkbox" class="chk" data-ivr value="${n}" ${n===getOp(opId).manager?'checked':''}>${n}</label>`).join('')}</div></label></div>
   <h4 style="margin:18px 0 8px;display:flex;justify-content:space-between">Candidates (${eligible.length} eligible)<label class="small" style="font-weight:500;display:flex;gap:6px;align-items:center"><input type="checkbox" class="chk" id="giAll">Select all</label></h4>
   ${eligible.length?`<div class="panel" style="box-shadow:none">${eligible.map(a=>{const c=getC(a.cid),m=matchA(a);return `<label class="list-it" style="cursor:pointer"><input type="checkbox" class="chk" data-gc="${a.id}" ${pre.includes(a.id)||a.stage==='Group Interview'?'checked':''}>${av(c.name)}<div class="grow"><b>${esc(c.name)}</b><div class="muted small">${c.exp} yrs · ${esc(c.location)} · ${a.stage}</div></div>${ring(m.score)}</label>`}).join('')}</div>`:'<div class="empty"><b>No eligible candidates</b>Shortlist or screen candidates for this opening first.</div>'}`};
  modal({title:'Schedule group interview',size:'w',body:body(),foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="giS">${ic('users')}Schedule and send invites</button>`,

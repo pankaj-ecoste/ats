@@ -1,5 +1,6 @@
 /* Offers list, letter and editor */
 /* ---------- offers ---------- */
+"use strict";
 function offerTable(l){
  if(!l.length)return '<div class="empty"><b>No offers yet</b>Offers appear here once a selected candidate gets one.</div>';
  return `<div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Designation</th><th>CTC</th><th>Joining</th><th>Manager</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody>${l.map(f=>{const a=getA(f.appId),c=getC(a.cid);
@@ -10,7 +11,7 @@ function bindOfferTable(root){$$('[data-offer]',root).forEach(el=>el.onclick=e=>
 function vOffers(){
  const st=['All',...OFFER_STATUS];const l=S.offers.filter(o=>R.offerFilter==='All'||o.status===R.offerFilter).slice().reverse();
  const acc=S.offers.filter(o=>o.status==='Accepted').length,dec=S.offers.filter(o=>o.status==='Declined').length;
- return `<div class="page-h"><div><h1>Offers</h1><p>${S.offers.length} offers · acceptance rate ${acc+dec?Math.round(acc/(acc+dec)*100):100}%</p></div><button class="btn pri" onclick="pickForOffer()">${ic('plus')}Create offer</button></div>
+ return `<div class="page-h"><div><h1>Offers</h1><p>${S.offers.length} offers · acceptance rate ${acc+dec?Math.round(acc/(acc+dec)*100):100}%</p></div><button class="btn pri" data-act="pickForOffer">${ic('plus')}Create offer</button></div>
  <section class="panel"><div class="filters"><div class="seg">${st.map(s=>`<button class="${R.offerFilter===s?'on':''}" data-of="${s}">${s} ${s==='All'?S.offers.length:S.offers.filter(o=>o.status===s).length||''}</button>`).join('')}</div></div>${offerTable(l)}</section>`;
 }
 function bindOffers(root){$$('[data-of]',root).forEach(b=>b.onclick=()=>{R.offerFilter=b.dataset.of;render()});bindOfferTable(root)}

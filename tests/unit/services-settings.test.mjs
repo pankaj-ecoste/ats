@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'repo', 'updateSetting', 'updateMatchWeight', 'setMatchThreshold', 'resetMatchWeights', 'saveSla', 'resetDemoData', 'saveOpening', 'getOp',
-    'DEFAULT_SETTINGS', 'recordSocialShare', 'savePosting', 'deletePosting', 'savePostingSettings', 'removeBoard', 'resetBoards', 'saveBoards', 'SOURCES', 'today'],
+    'DEFAULT_SETTINGS', 'saveTeam', 'recruiters', 'interviewers', 'DEFAULT_RECRUITERS', 'DEFAULT_INTERVIEWERS', 'recordSocialShare', 'savePosting', 'deletePosting', 'savePostingSettings', 'removeBoard', 'resetBoards', 'saveBoards', 'SOURCES', 'today'],
 });
 
 test('settings: a field, a weight and the threshold can each be changed', () => {
@@ -83,4 +83,21 @@ test('boards: edit urls and sources, add a site before the social ones, remove, 
   assert.deepEqual(plain(app.S.boards.map((b) => b.id)), ['a', 'b']);
   app.resetBoards([{ id: 'z' }]);
   assert.deepEqual(plain(app.S.boards), [{ id: 'z' }]);
+});
+
+test('team: built-in names are used until a team is saved, then the saved names win', () => {
+  const app = fresh();
+  assert.deepEqual(plain(app.recruiters()), plain(app.DEFAULT_RECRUITERS));
+  assert.deepEqual(plain(app.interviewers()), plain(app.DEFAULT_INTERVIEWERS));
+  app.saveTeam({ recruiters: ['Asha', ' Ravi ', 'Asha', ''], interviewers: ['Meena'] });
+  assert.deepEqual(plain(app.recruiters()), ['Asha', 'Ravi']);
+  assert.deepEqual(plain(app.interviewers()), ['Meena']);
+});
+
+test('team: saving an empty list goes back to the built-in names', () => {
+  const app = fresh();
+  app.saveTeam({ recruiters: ['Asha'], interviewers: ['Meena'] });
+  app.saveTeam({ recruiters: ['', '  '], interviewers: [] });
+  assert.deepEqual(plain(app.recruiters()), plain(app.DEFAULT_RECRUITERS));
+  assert.deepEqual(plain(app.interviewers()), plain(app.DEFAULT_INTERVIEWERS));
 });

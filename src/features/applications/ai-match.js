@@ -1,5 +1,6 @@
 /* AI match breakdown block and modal, note form */
 /* ---------- AI match modal ---------- */
+"use strict";
 function aiMatchBlock(a,full=true){
  const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);
  const brk=[['Skills',m.skills],['Experience',m.experience],['Education',m.education],['Location',m.location],['Salary',m.salary],['Notice',m.notice]];

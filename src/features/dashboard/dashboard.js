@@ -1,5 +1,6 @@
 /* Dashboard and funnel */
 /* ---------- dashboard ---------- */
+"use strict";
 function funnelData(apps){
  const reached=i=>apps.filter(a=>a.maxStage>=i).length;
  const T=S.settings.threshold;
@@ -39,14 +40,14 @@ function vDashboard(){
  }).filter(x=>x.flags.length).sort((a,b)=>b.flags.length-a.flags.length);
  const hr=now().getHours();
  return `<div class="page-h"><div><h1>Good ${hr<12?'morning':hr<17?'afternoon':'evening'}, ${esc(S.settings.user.split(' ')[0])}</h1><p>${fmtD(today())}. ${todays.filter(i=>i.status!=='Cancelled').length} interviews today and ${S.tasks.filter(t=>!t.done&&t.due<=today()).length} tasks due.</p></div>
- <div class="row"><button class="btn" onclick="addCandidate()">${ic('upload')}Add candidate</button><button class="btn pri" onclick="openingForm()">${ic('plus')}New opening</button></div></div>
+ <div class="row"><button class="btn" data-act="addCandidate">${ic('upload')}Add candidate</button><button class="btn pri" data-act="openingForm">${ic('plus')}New opening</button></div></div>
  <div class="kpis">${k.map((x,i)=>`<div class="kpi" tabindex="0" data-kpi="${i}"><span><i style="background:${x[2]}"></i>${x[0]}</span><b>${x[1]}</b><em>${x[3]}</em></div>`).join('')}</div>
  <div class="grid g-dash">
-  <section class="panel"><header><div><h3>Recruitment funnel</h3><p>All openings. Percentages show conversion from the previous stage.</p></div><button class="btn sm" onclick="go('pipeline')">${ic('board')}Pipeline control</button></header><div class="pbody">${funnelHTML(A)}</div></section>
+  <section class="panel"><header><div><h3>Recruitment funnel</h3><p>All openings. Percentages show conversion from the previous stage.</p></div><button class="btn sm" data-act="go" data-a1="pipeline">${ic('board')}Pipeline control</button></header><div class="pbody">${funnelHTML(A)}</div></section>
   <section class="panel"><header><h3>Today's activity</h3></header><div>${act.map(x=>`<div class="list-it"><span style="color:var(--tx3);width:18px">${ic(x[2])}</span><span class="grow">${x[0]}</span><b style="font-size:16px">${x[1]}</b></div>`).join('')}</div></section>
  </div>
  <div class="grid g-dash" style="margin-top:16px">
-  <section class="panel"><header><div><h3>Today's interviews</h3><p>${todays.length} scheduled</p></div><button class="btn sm ghost" onclick="R.calView='day';R.calDate=today();go('interviews')">Open calendar</button></header>
+  <section class="panel"><header><div><h3>Today's interviews</h3><p>${todays.length} scheduled</p></div><button class="btn sm ghost" data-act="showTodayCalendar">Open calendar</button></header>
   <div class="tbl-wrap">${todays.length?`<table><thead><tr><th>Candidate</th><th>Position</th><th>Type</th><th>Time</th><th>Interviewer</th><th>Status</th></tr></thead><tbody>${todays.map(i=>{const a=getA(i.appId),c=getC(a.cid),st=intStatus(i);return `<tr class="click" data-int="${i.id}"><td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b></div></div></td><td>${esc(getOp(a.opId).title)}</td><td>${i.kind==='Group'?'<span class="pill cyan">Group</span>':esc(i.round)}</td><td>${fmtT(i.time)}</td><td>${esc(i.interviewers.join(', '))}</td><td><span class="pill ${INT_COLOR[st]}">${st}</span></td></tr>`}).join('')}</tbody></table>`:'<div class="empty"><b>No interviews today</b>Schedule one from Interviews.</div>'}</div></section>
   <section class="panel"><header><div><h3>Openings needing attention</h3><p>Low volume, pending feedback or ageing</p></div></header><div>${attention.map(x=>`<div class="list-it click" style="cursor:pointer;align-items:flex-start" data-op="${x.o.id}"><div class="grow"><b>${esc(x.o.title)}</b> <span class="muted small">${x.o.id}</span><div style="margin-top:4px">${x.flags.map(f=>`<span class="pill ${f[1]}" style="margin:2px 4px 2px 0">${f[0]}</span>`).join('')}</div></div><span class="pill ${OP_COLOR[x.o.status]}">${x.o.status}</span></div>`).join('')||'<div class="empty">All openings are on track.</div>'}</div></section>
  </div>`;

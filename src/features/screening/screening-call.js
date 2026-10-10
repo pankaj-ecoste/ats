@@ -1,5 +1,6 @@
 /* Screening call workspace */
 /* ---------- screening call ---------- */
+"use strict";
 function screeningCall(aid){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const prev=a.screening||{};
  const navList=R.view==='candidate'&&(R.navList||[]).includes(c.id)?R.navList:(()=>{const l=navListFromDOM();return l.includes(c.id)?l:[c.id]})();

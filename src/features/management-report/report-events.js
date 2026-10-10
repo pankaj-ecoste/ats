@@ -1,4 +1,5 @@
 /* ===================== Management hiring report ===================== */
+"use strict";
 const repCfg=()=>{if(!S.settings.report)S.settings.report={...REP_DEF};return S.settings.report};
 R.rep={date:today()};
 const mondayOf=s=>{const d=parseD(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)};

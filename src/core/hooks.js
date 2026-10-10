@@ -25,6 +25,15 @@ const EVENT_LISTENERS={};
 function onEvent(name,fn){(EVENT_LISTENERS[name]||(EVENT_LISTENERS[name]=[])).push(fn)}
 function emitEvent(name,payload){(EVENT_LISTENERS[name]||[]).forEach(f=>f(payload))}
 
+/* ---------- actions: markup says WHAT (data-act, data-a1, data-a2), code says HOW ---------- */
+const UI_ACTIONS={};
+function registerAction(name,fn){UI_ACTIONS[name]=fn}
+function runAction(name,args=[]){
+ const f=UI_ACTIONS[name];
+ if(!f)throw new Error('Unknown action: '+name);
+ return f(...args);
+}
+
 /* ---------- navigation: sidebar order is declared here, not by load order ---------- */
 function addNav(item,afterKey){
  const i=NAV.findIndex(n=>n[0]===afterKey);

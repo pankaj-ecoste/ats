@@ -1,9 +1,10 @@
 /* Reports page */
 /* ---------- reports ---------- */
+"use strict";
 function vReports(){
  const A=S.applications;
  const src={};A.forEach(a=>{const s=getC(a.cid).source;src[s]=src[s]||{n:0,hired:0};src[s].n++;if(a.maxStage>=8)src[s].hired++});
- const recs=RECRUITERS.map(r=>{const l=A.filter(a=>a.recruiter===r);return {r,n:l.length,sh:l.filter(a=>a.maxStage>=1).length,int:l.filter(a=>a.maxStage>=3).length,off:l.filter(a=>a.maxStage>=6).length,j:l.filter(a=>a.maxStage>=8).length,avg:l.length?Math.round(l.reduce((s,a)=>s+matchA(a).score,0)/l.length):0}});
+ const recs=recruiters().map(r=>{const l=A.filter(a=>a.recruiter===r);return {r,n:l.length,sh:l.filter(a=>a.maxStage>=1).length,int:l.filter(a=>a.maxStage>=3).length,off:l.filter(a=>a.maxStage>=6).length,j:l.filter(a=>a.maxStage>=8).length,avg:l.length?Math.round(l.reduce((s,a)=>s+matchA(a).score,0)/l.length):0}});
  const hires=A.filter(a=>a.maxStage>=8);const tth=hires.length?Math.round(hires.reduce((s,a)=>s+daysBetween(a.date,today()),0)/hires.length):0;
  const perOp=S.openings.map(o=>{const l=appsOfOp(o.id);return {o,n:l.length,act:l.filter(a=>!['Rejected','On Hold'].includes(a.stage)).length,filled:l.filter(a=>a.maxStage>=8).length}});
  const maxN=Math.max(...perOp.map(x=>x.n),1);

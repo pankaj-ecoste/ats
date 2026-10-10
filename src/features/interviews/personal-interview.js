@@ -1,5 +1,6 @@
 /* Personal interview scheduling and scorecard */
 /* ---------- personal interview ---------- */
+"use strict";
 function schedulePI(aid){
  const elig=S.applications.filter(a=>!['Rejected','Employee Ready','Onboarding'].includes(a.stage));
  aid=aid||elig.find(a=>a.stage==='Personal Interview')?.id||elig[0].id;
@@ -7,7 +8,7 @@ function schedulePI(aid){
  const nextRound=['HR','Technical','Managerial','Final'].find(r=>!done.includes(r))||'Final';
  modal({title:'Schedule personal interview',size:'w',body:`<div class="fgrid g3f"><label class="f" style="grid-column:span 2">Candidate and opening<select class="inp" id="piA">${elig.map(a=>`<option value="${a.id}" ${a.id===aid?'selected':''}>${esc(getC(a.cid).name)} — ${esc(getOp(a.opId).title)} (${a.stage})</option>`).join('')}</select></label>
  <label class="f">Round<select class="inp" id="piR">${['HR','Technical','Managerial','Final'].map(r=>`<option ${r===nextRound?'selected':''}>${r}</option>`).join('')}</select></label>
- <label class="f">Interviewer<select class="inp" id="piI">${INTERVIEWERS.concat(RECRUITERS).map(n=>`<option ${n===getOp(a0.opId).manager?'selected':''}>${n}</option>`).join('')}</select></label>
+ <label class="f">Interviewer<select class="inp" id="piI">${interviewers().concat(recruiters()).map(n=>`<option ${n===getOp(a0.opId).manager?'selected':''}>${n}</option>`).join('')}</select></label>
  <label class="f">Date<input class="inp" type="date" id="piD" value="${addDays(1)}"></label><label class="f">Time<input class="inp" type="time" id="piT" value="15:00"></label>
  <label class="f">Duration (min)<input class="inp" type="number" id="piDur" value="60"></label><label class="f">Mode<select class="inp" id="piM"><option>Google Meet</option><option>Zoom</option><option>MS Teams</option><option>Office</option><option>Phone</option></select></label>
  <label class="f">Meeting link<input class="inp" id="piL" value="https://meet.google.com/${Math.random().toString(36).slice(2,5)}-${Math.random().toString(36).slice(2,6)}-${Math.random().toString(36).slice(2,5)}"></label>

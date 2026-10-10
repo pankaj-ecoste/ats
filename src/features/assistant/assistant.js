@@ -1,5 +1,6 @@
 /* AI Assistant (rule-based answers over local state) */
 /* ---------- AI assistant ---------- */
+"use strict";
 function aiAnswer(q){
  const t=q.toLowerCase();
  const op=S.openings.find(o=>t.includes(o.title.toLowerCase())||o.title.toLowerCase().split(/[ /]/).filter(w=>w.length>3).some(w=>t.includes(w)));

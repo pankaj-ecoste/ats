@@ -1,6 +1,7 @@
 /* Cross-feature UI actions: stage change with feedback, next action, journey. Data changes live in src/services/ */
 /* ---------- actions ---------- */
 // UI wrapper over the moveStage() service: adds the toast and the re-render
+"use strict";
 function setStage(aid,stage,quiet){
  const r=moveStage(aid,stage);if(!r)return;
  if(!quiet){toast(`${r.candidate.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}

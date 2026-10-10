@@ -20,9 +20,9 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 70/70 pass |
+| `npm test` (node:test, no deps) | 78/78 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 47 flow checks (run with installed Chrome via `CHROME_PATH`) |
+| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
 | Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
@@ -108,7 +108,8 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `src/services/report.js` | `addEvent`, the stage-change event recorder, `setReportThreshold`, `clearDemoHistory`, call log, monthly targets, `setDropRisk`, `setBackup`, `recordDropout` |
 | `src/services/sheets.js` | `applyWorkbookImport`, `logSheetEvent`, `importSheetRows`, auto-import config (`saveAutoSyncConfig`, `recordSyncRun`, `recordSyncFailure`, `setAutoSyncEnabled`, `disconnectAutoSync`) |
 | `src/app/actions.js` | `setStage` (UI wrapper over `moveStage`: toast + re-render), `nextAction`, `journey` |
-| `src/core/hooks.js` | Extension points: `fillSlot`/`slotHTML`, `onBind`, `decorateView`, `onEvent`/`emitEvent`, `addNav` |
+| `src/core/hooks.js` | Extension points: `fillSlot`/`slotHTML`, `onBind`, `decorateView`, `onEvent`/`emitEvent`, `addNav`, `registerAction`/`runAction` |
+| `src/app/ui-actions.js` | Table of button actions (`go`, `addCandidate`, `openingForm`, ...) and the one click listener that runs them |
 | `src/app/render.js` | `VIEWS` registry and `render()` (runs bind hooks) |
 | `src/app/main.js` | Bootstrap, loads last |
 | `src/features/dashboard/` | Dashboard |
@@ -133,6 +134,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/e2e/hooks.mjs` | Playwright: slots, bind hooks, dashboard decorator, stage event, nav order, tasks and notifications wiring (13 checks) |
 | `tests/e2e/flows.mjs` | Playwright: 47 checks that user actions reach the data (openings, candidates, interviews, offers to employee-ready, posting, settings, report, Google Sheet auto-import with the connector stubbed) |
 | `tests/unit/services.test.mjs`, `services-people`, `services-interviews`, `services-offers`, `services-settings`, `services-report`, `services-sheets` | Unit tests for every service: stage rules, opening-status derivation, interviews, offers, onboarding, posting, settings, report events, sheet import |
+| `tests/unit/hooks.test.mjs` | Actions, slots, bind hooks, events, nav, decorators |
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
@@ -179,7 +181,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | ~~5~~ | ~~`TODAY` frozen at page load~~ — fixed | `core/utils.js` | Tab open overnight shows wrong date | P1.2 |
 | ~~6~~ | ~~`save()` swallows all errors~~ — fixed; still open: `load()` falls back to demo data; `load()` returns demo data if version ≠ 3 | `core/store.js` | Silent data loss | P1.4 / P2 |
 | 7 | 15 inline `onclick="..."` attributes | router, dashboard, openings, candidates, … | Globals dependency; injection risk | P1.3 |
-| 8 | Strict mode only in `core/data/domain` | rest of `src/` | Hidden global leaks | P1.3 |
+| ~~8~~ | ~~Strict mode only in `core/data/domain`~~ — fixed, all files strict | | | |
 | 9 | Whole-page `innerHTML` render | `app/render.js` | Loses focus/scroll; no pagination | P4 |
 | ~~10~~ | ~~Storage key `spectra-ats-v3`~~ — migrated | `core/store.js` | Cosmetic, but migrate carefully | P1.4 |
 | 11 | `window.claude.use('mcp')` for Sheet auto-import (no fallback) | `sheets/auto-import.js` | Does nothing outside claude.ai | P3 |
@@ -323,9 +325,10 @@ Phases 3, 4 and 5 can overlap once Phase 2 is done. Phase 6 can run in parallel 
 - ☑ `setStage` emits `stage:changing`; `report-events.js` subscribes (no global reassignment)
 - ☑ `addNav(item, afterKey)` replaces `NAV.splice` (sidebar order unchanged)
 - ☑ **Mutation layer: see §7.9.** Handlers call services; services write only through `repo`. Enforced by `architecture.test.mjs`. **This is the seam Phase 2 swaps for Supabase.**
-- ☐ Replace the 15 inline `onclick` attributes with bound handlers
-- ☐ Convert classic scripts to ES modules with explicit imports; strict mode everywhere
-- ☐ Move recruiters, interviewers and company defaults out of code into settings and seed data
+- ☑ All 22 inline `onclick` attributes (and the `onsubmit`) are gone. Buttons carry `data-act` / `data-a1` / `data-a2`; the actions are registered in `src/app/ui-actions.js` and run by one capture-phase listener. 21 browser checks click each kind of button.
+- ☑ Strict mode is on in every `src` file (`scripts/add-strict.mjs` did the rollout; all tests pass).
+- ⏸ **Decision: ES modules move to Phase 6**, together with the Vite build and TypeScript. Converting about 60 files to explicit imports now would be a large mechanical rewrite with a real risk of load-order bugs, and its benefits (no undefined or duplicate names, layer rules) are already enforced by ESLint and `architecture.test.mjs`. The conversion becomes cheap later because the cross-file dependencies are now explicit: screens call services, services call `repo`.
+- ◐ Recruiters and interviewers now come from `S.settings.team` through `recruiters()` / `interviewers()` (selectors), editable in Settings → Team; the built-in names are only defaults. In Phase 2 this becomes the `profiles` table. Company name and signatory defaults still wait for decision D6.
 
 **P1.4 Tooling**
 - ☑ ESLint 9 (`eslint.config.mjs`, `npm run lint`): the config reads every `src` file and gives each file the other files' top-level names as globals, so it catches undefined names and the same name declared in two files. **Prettier deliberately not added yet:** the code is written as dense one-liners and a reformat would rewrite every file and bury the history. Revisit after the ES-module conversion.
@@ -485,7 +488,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
 2. ☐ Protect `main` on GitHub
 3. ☑ Finish P1.2 (`save()` errors, storage-key migration)
-4. ◐ P1.3: extension points and mutation layer done; left: inline `onclick`, ES modules, strict mode, constants out of code
+4. ☑ P1.3 done except company defaults (waits on D6) and ES modules (moved to Phase 6)
 5. ◐ P1.4 lint and CI: written, waiting for the first CI run
 6. ☐ Open a pull request for `chore/restructure-p1`; merge; start Phase 2 on a new branch
 
@@ -526,6 +529,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-10 | Inline `onclick` removed (`data-act` + `ui-actions.js`); recruiter and interviewer lists moved into settings (`recruiters()`, `interviewers()`, Settings → Team); `hooks.test.mjs`; 20 new browser checks | Claude Code |
 | 2026-10-10 | Tooling: ESLint with auto-derived cross-file globals (clean), CI workflow, pre-commit hook, PR template, `CONTRIBUTING.md`, new scripts `lint`, `check`, `test:e2e:all`, `test:e2e:dist` | Claude Code |
 | 2026-10-08 | Mutation layer finished: every write now goes through `repo` via 13 service files (openings, candidates, applications, screening and interviews, offers, onboarding, posting, settings, report, sheets); `domain/sheet-values.js`; autofocus fix in `ui.js`; 70 unit tests, 47 browser flow checks, architecture guard test | Claude Code |
 | 2026-10-08 | Mutation layer started: `core/repo.js`, `services/` (activity, tasks, stages), `hooks.js` moved to `core/`; handlers for notifications and tasks and `setStage` now go through services; 11 new unit tests, 5 new browser checks; design and per-area checklist in §7.9; decision D15 added | Claude Code |

@@ -1,5 +1,6 @@
 /* Add candidate / parse resume flow */
 /* ---------- add candidate / parse ---------- */
+"use strict";
 function addCandidate(opId){
  const sample=`Ritika Sen
 Senior Java Engineer · Bengaluru · ritika.sen@mail.com · +91 98450 11223

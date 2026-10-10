@@ -43,13 +43,14 @@ The load order is `core → data → domain → services → app → features �
 1. **Screens never write data.** A handler reads the form, calls a **service** from `src/services/`, then shows the toast and re-renders. No `S.something.push(...)`, no `save()` in `app/` or `features/`.
 2. **Services never touch the screen.** No `toast`, `modal`, `render`, `go`, `document`, `window`. They return what happened.
 3. **Services change data only through `repo`** (`insert`, `update`, `remove`, `root`, `trim`, `reset`). That one place is where the database plugs in during Phase 2.
-4. **Extend another screen with `src/core/hooks.js`:** `fillSlot` / `slotHTML`, `onBind`, `decorateView`, `onEvent` / `emitEvent`, `addNav`. Never patch another feature's HTML and never reassign its functions.
-5. **Business rules go in `domain/` or a service and get a unit test.** If you can't test it without a browser, it is in the wrong place.
-6. **No two files may declare the same top-level name** (lint catches this).
-7. **Generated files are never edited by hand** (`src/generated/`). Edit the source and run `npm run gen`.
-8. **No secrets, keys or real candidate data in git.** Keys live in `.env` (ignored). `.env.example` shows the names only.
+4. **No inline handlers.** A button says `data-act="name" data-a1="arg"`; the action is registered once in `src/app/ui-actions.js`. Never write `onclick="..."`.
+5. **Extend another screen with `src/core/hooks.js`:** `fillSlot` / `slotHTML`, `onBind`, `decorateView`, `onEvent` / `emitEvent`, `addNav`. Never patch another feature's HTML and never reassign its functions.
+6. **Business rules go in `domain/` or a service and get a unit test.** If you can't test it without a browser, it is in the wrong place.
+7. **No two files may declare the same top-level name** (lint catches this).
+8. **Generated files are never edited by hand** (`src/generated/`). Edit the source and run `npm run gen`.
+9. **No secrets, keys or real candidate data in git.** Keys live in `.env` (ignored). `.env.example` shows the names only.
 
-`tests/unit/architecture.test.mjs` enforces rules 1 and 2. A short list of known exceptions sits at the top of that file; do not add to it without a reason in the pull request.
+`tests/unit/architecture.test.mjs` enforces rules 1 and 2; lint enforces rule 7. A short list of known exceptions sits at the top of that file; do not add to it without a reason in the pull request.
 
 ## Adding things
 

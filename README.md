@@ -41,7 +41,7 @@ src/
     store.js                     global state S, defaults, load/save
     selectors.js                 lookups over S
     repo.js                      the only code that inserts, updates or removes records in S
-    hooks.js                     extension points: slots, bind hooks, events, addNav
+    hooks.js                     extension points: slots, bind hooks, events, addNav, button actions
   data/
     seed.js                      demo dataset
   domain/                      Business rules, no DOM
@@ -55,6 +55,7 @@ src/
     router.js                    route state R, NAV, go()
     shell.js                     sidebar, top bar, search, notifications
     ui.js                        modal, toast, confirm
+    ui-actions.js                button actions (data-act) and the one click listener
     actions.js                   stage changes, activity log, next action
     render.js                    view registry VIEWS, render()
     main.js                      bootstrap (always loaded last)
@@ -80,6 +81,8 @@ docs/                          ARCHITECTURE.md, PRODUCTION_ROADMAP.md
 See `CONTRIBUTING.md` for the full rules, branches and checklists. A pre-commit hook (installed by `npm install`) runs lint and unit tests; CI runs everything.
 
 **Extending another screen.** Never edit another feature's HTML with `String.replace` or reassign its functions. Use `fillSlot`, `onBind`, `onEvent` or `addNav` from `src/core/hooks.js`; if the host view has no slot where you need one, add `${slotHTML('<view>.<place>')}` to it.
+
+**Buttons.** Do not write `onclick="fn()"` in markup. Write `data-act="name" data-a1="arg"` and register `name` in `src/app/ui-actions.js`.
 
 **Changing data.** A handler never writes to `S`. It calls a service from `src/services/` (`addTask`, `moveStage`, ...), which changes records only through `repo.insert/update/remove/root` and returns the result; the handler then shows the toast and re-renders. Services are DOM-free, so they are unit-tested in Node, and `tests/unit/architecture.test.mjs` fails the build if app or feature code writes to `S` or calls `save()` directly, or if a service touches the UI. This is the seam where Supabase plugs in (Phase 2).
 

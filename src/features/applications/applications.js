@@ -1,5 +1,6 @@
 /* Applications table, board, filters, bulk actions */
 /* ---------- applications ---------- */
+"use strict";
 function filteredApps(){
  const f=R.af;
  let l=S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);
@@ -35,16 +36,16 @@ function vApplications(){
  const f=R.af;const list=filteredApps();const opt=(arr,v,all)=>`<option value="">${all}</option>`+arr.map(x=>`<option value="${esc(x[0])}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('');
  const bulk=R.sel.size?`<div class="bulk"><b>${R.sel.size} selected</b><button class="btn sm" data-bulk="short">Shortlist</button><button class="btn sm" data-bulk="gi">Schedule group interview</button>
   <select class="inp" id="bulkStage" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Move to stage…</option>${STAGES.concat(['On Hold']).map(s=>`<option>${s}</option>`).join('')}</select>
-  <select class="inp" id="bulkRec" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Assign recruiter…</option>${RECRUITERS.map(s=>`<option>${s}</option>`).join('')}</select>
+  <select class="inp" id="bulkRec" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Assign recruiter…</option>${recruiters().map(s=>`<option>${s}</option>`).join('')}</select>
   <button class="btn sm bad" data-bulk="rej">Reject</button><button class="btn sm ghost" data-bulk="clear">Clear</button></div>`:'';
  const board=()=>{const l=list;const cols=STAGES.concat(['On Hold','Rejected']);return `<div class="board">${cols.map(s=>{const it=l.filter(a=>a.stage===s);return `<div class="col" data-col="${s}"><h4>${stagePill(s)}<span class="muted">${it.length}</span></h4><div class="cards">${it.map(a=>{const c=getC(a.cid),m=matchA(a);return `<div class="kc" draggable="true" data-drag="${a.id}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${esc(c.name)}</b>${ring(m.score)}</div><div class="muted small">${esc(getOp(a.opId).title)}</div><div class="muted small">${c.exp} yrs · ${esc(c.location)} · ${c.notice}d notice</div><div style="margin-top:8px">${nextBtn(a)}</div></div>`}).join('')}</div></div>`}).join('')}</div>`};
  return `<div class="page-h"><div><h1>Applications</h1><p>${list.length} of ${S.applications.length} applications · AI match runs automatically when a resume arrives</p></div>
- <div class="row">${slotHTML('applications.toolbar')}<div class="seg"><button class="${R.appView==='table'?'on':''}" data-av="table">${ic('list','style="width:14px;vertical-align:-2px"')} Table</button><button class="${R.appView==='board'?'on':''}" data-av="board">${ic('board','style="width:14px;vertical-align:-2px"')} Board</button></div><button class="btn pri" onclick="addCandidate()">${ic('upload')}Add application</button></div></div>
+ <div class="row">${slotHTML('applications.toolbar')}<div class="seg"><button class="${R.appView==='table'?'on':''}" data-av="table">${ic('list','style="width:14px;vertical-align:-2px"')} Table</button><button class="${R.appView==='board'?'on':''}" data-av="board">${ic('board','style="width:14px;vertical-align:-2px"')} Board</button></div><button class="btn pri" data-act="addCandidate">${ic('upload')}Add application</button></div></div>
  <section class="panel"><div class="filters">
   <input class="inp" id="afq" placeholder="Search name, opening, ID" value="${esc(f.q)}" style="min-width:180px">
   <select class="inp" data-f="op">${opt(S.openings.map(o=>[o.id,o.title]),f.op,'All openings')}</select>
   <select class="inp" data-f="status">${opt(STAGES.concat(['On Hold','Rejected']).map(s=>[s,s]),f.status,'All statuses')}</select>
-  <select class="inp" data-f="rec">${opt(RECRUITERS.map(s=>[s,s]),f.rec,'All recruiters')}</select>
+  <select class="inp" data-f="rec">${opt(recruiters().map(s=>[s,s]),f.rec,'All recruiters')}</select>
   <input class="inp" data-f="skill" placeholder="Skill" value="${esc(f.skill)}" style="width:100px">
   <input class="inp" data-f="loc" placeholder="Location" value="${esc(f.loc)}" style="width:100px">
   <select class="inp" data-f="exp">${opt([['1','1+ yrs'],['3','3+ yrs'],['5','5+ yrs'],['7','7+ yrs']],f.exp,'Any experience')}</select>

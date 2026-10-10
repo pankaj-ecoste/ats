@@ -1,4 +1,5 @@
 /* ---------- Recruitment Pipeline Control Center ---------- */
+"use strict";
 const DEFAULT_SLA={app:2,ai:2,short:2,screen:3,gi:5,pi:7,sel:2,offer:5,onb:10};
 const PC_COLS=[
  {k:'app',label:'Application',c:'var(--tx3)',drop:'New',test:a=>a.stage==='New'&&matchA(a).score<S.settings.threshold},
@@ -126,7 +127,7 @@ function vPipeline(){
   <input class="inp" id="pcq" placeholder="Search candidate, opening, skill" value="${esc(f.q)}" style="min-width:210px">
   <select class="inp" data-pf="flag">${flags.map(x=>`<option value="${x[0]}" ${x[0]===f.flag?'selected':''}>${x[1]}</option>`).join('')}</select>
   <select class="inp" data-pf="op">${opt(S.openings.map(o=>[o.id,o.title]),f.op,'All openings')}</select>
-  <select class="inp" data-pf="rec">${opt(RECRUITERS.map(s=>[s,s]),f.rec,'All recruiters')}</select>
+  <select class="inp" data-pf="rec">${opt(recruiters().map(s=>[s,s]),f.rec,'All recruiters')}</select>
   <select class="inp" data-pf="owner">${opt(owners.map(s=>[s,s]),f.owner,'Any action owner')}</select>
   <label class="small" style="display:flex;align-items:center;gap:6px;color:var(--tx2)">Match ≥ <input type="range" min="0" max="95" step="5" data-pf="min" value="${f.min}" style="width:80px;accent-color:var(--ai)"><b>${f.min}%</b></label>
   <label class="small" style="display:flex;align-items:center;gap:6px;color:var(--tx2)"><input type="checkbox" class="chk" id="pcParked" ${f.parked?'checked':''}>Show rejected &amp; on hold</label>
