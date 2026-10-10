@@ -49,7 +49,7 @@ People sign in with a **username and a password** that an admin sets. There is n
 | Admin | Change a role | update `profiles.role` |
 | Anyone signed in | Change their own password | Supabase Auth `updateUser({ password })` |
 
-The database refuses every account that was not made through these functions, so the public sign-up endpoint cannot be used even if it is left on. There must always be at least one active admin. An admin cannot switch off their own account.
+The database refuses every account that was not made through these functions, so the public sign-up endpoint cannot be used even if it is left on. There must always be at least one active admin. An admin cannot switch off their own account. The very first account is always an admin, whatever role was asked for. A switched-off account is banned for 100 years (Supabase's login service cannot read the date `infinity` and answers with a server error), so sign-in answers "This account is switched off".
 
 **One limit to know:** a password reset or a switch-off ends the person's sessions and stops new sign-ins at once, and a switched-off account is blind straight away because every table checks the account is active. A *password reset alone* does not cancel an access token already issued; it expires on its own (one hour by default, a Supabase setting; see `docs/SECURITY_CHECKLIST.md`). To cut someone off immediately, switch the account off.
 

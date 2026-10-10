@@ -3,7 +3,7 @@
 function renderSide(){
  const cnt={applications:S.applications.filter(a=>a.stage==='New').length,interviews:S.interviews.filter(i=>i.date===today()&&i.status!=='Cancelled').length,tasks:S.tasks.filter(t=>!t.done).length,offers:S.offers.filter(o=>['Draft','Generated','Sent','Negotiation'].includes(o.status)).length};
  $('#side').innerHTML=`<div class="brand"><div class="brand-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><small>Recruit Tracker</small></div>
- <nav class="nav" aria-label="Main">${NAV.map(n=>n[0]==='sep'?'<div class="sep"></div>':`<button class="${R.view===n[0]?'on':''}" data-go="${n[0]}">${ic(n[2])}<span>${n[1]}</span>${cnt[n[0]]?`<span class="ct">${cnt[n[0]]}</span>`:''}</button>`).join('')}</nav>
+ <nav class="nav" aria-label="Main">${NAV.filter(n=>!n[3]||n[3]()).map(n=>n[0]==='sep'?'<div class="sep"></div>':`<button class="${R.view===n[0]?'on':''}" data-go="${n[0]}">${ic(n[2])}<span>${n[1]}</span>${cnt[n[0]]?`<span class="ct">${cnt[n[0]]}</span>`:''}</button>`).join('')}</nav>
  <div class="side-foot"><div class="rgbbar"></div>${esc(S.settings.company)}</div>`;
  $$('[data-go]',$('#side')).forEach(b=>b.onclick=()=>go(b.dataset.go));
 }
@@ -15,7 +15,7 @@ function renderTop(){
  <div style="position:relative"><button class="tbtn" id="qaBtn" aria-label="Quick add" title="Quick add">${ic('plus')}</button><div class="dd hide" id="qaDD" style="right:0;min-width:220px"></div></div>
  <div style="position:relative"><button class="tbtn" id="nBtn" aria-label="Notifications">${ic('bell')}${un?`<span class="dot">${un}</span>`:''}</button><div class="dd hide" id="nDD" style="right:0;width:340px"></div></div>
  <button class="tbtn" id="helpBtn" aria-label="Help">${ic('help')}</button>
- <div class="me">${av(S.settings.user)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(S.settings.user)}</b><small class="muted">Recruiter</small></div></div>`;
+ ${CONNECTED&&ME?`<div style="position:relative"><button class="me-btn" id="meBtn" aria-label="Account menu" aria-haspopup="true">${av(ME.fullName)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(ME.fullName)}</b><small class="muted">${esc(ROLE_LABEL[ME.role]||ME.role)}</small></div></button><div class="dd hide" id="meDD" style="right:0;min-width:200px"><div class="it" data-act="changePassword">Change password</div><div class="it" data-act="signOut">Sign out</div></div></div>`:`<div class="me">${av(S.settings.user)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(S.settings.user)}</b><small class="muted">Recruiter</small></div></div>`}`;
  $('#menuBtn').onclick=()=>$('#side').classList.toggle('open');
  const gs=$('#gsearch'),gr=$('#gres');
  gs.oninput=()=>{const q=gs.value.trim().toLowerCase();if(!q){gr.classList.add('hide');return}
@@ -43,6 +43,7 @@ function renderTop(){
   $('#markAll').onclick=ev=>{ev.preventDefault();markAllNotificationsRead();renderTop()};
   $$('.it',nd).forEach(el=>el.onclick=()=>{const n=markNotificationRead(el.dataset.id);nd.classList.add('hide');go(...n.go)})};
  $('#helpBtn').onclick=helpModal;
+ const mb=$('#meBtn');if(mb)mb.onclick=e=>{e.stopPropagation();closeDD('meDD');$('#meDD').classList.toggle('hide')};
 }
 function closeDD(except){$$('.dd').forEach(d=>{if(d.id!==except)d.classList.add('hide')})}
 document.addEventListener('click',e=>{if(!e.target.closest('.dd')&&!e.target.closest('.tbtn')&&!e.target.closest('.search'))closeDD()});

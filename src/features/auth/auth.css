@@ -1,0 +1,10 @@
+/* Sign-in screen. While signed out the app itself is hidden. */
+.signed-out .app,.signed-out #toasts{display:none}
+.auth{display:none}
+.signed-out .auth{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.auth-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh2,0 8px 30px rgba(0,0,0,.08));padding:28px;display:flex;flex-direction:column;gap:14px}
+.auth-card h1{margin:0;font-size:22px}
+.auth-card p{margin:0}
+.auth-logo img{height:34px;display:block}
+.auth-err{min-height:18px;color:var(--red);font-size:13px;font-weight:600}
+.me-btn{display:flex;align-items:center;gap:8px;background:none;border:0;padding:0 0 0 8px;border-left:1px solid var(--line);margin-left:4px;cursor:pointer;font:inherit;color:inherit;text-align:left}

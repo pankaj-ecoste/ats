@@ -9,6 +9,10 @@ The app is a client-only, single-page application written in plain JavaScript wi
 - **Rendering.** Each view is a pair `[viewFn, bindFn]` in `VIEWS` (`src/app/render.js`). `viewFn()` returns an HTML string, `render()` assigns it to `#content`, then `bindFn(root)` attaches handlers. Every change re-renders the whole page.
 - **Mutations.** Every user action goes through a service in `src/services/`, which changes data only through `repo` (`src/core/repo.js`: insert, update, remove, root, trim, reset) and returns the result. The handler then shows the toast and calls `render()`. `repo` saves and notifies `repoOnChange` listeners, which is where a database adapter attaches. Known exceptions, listed in `tests/unit/architecture.test.mjs`: the sample-history generator (`management-report/report-events.js`) and four lazy defaults (`boards()`, `postCfg()`, `asCfg()`, `S.postings`). `setStage()` in `src/app/actions.js` is the main shared mutation; it emits `stage:changing` before writing.
 
+## Two modes
+
+`core/supabase.js` creates a Supabase client only when `src/generated/config.js` holds a project URL and anon key. That is **connected mode**: the app shows a sign-in screen first (`features/auth`), and admins get a Users page. Without them the app is in **demo mode**: no sign-in, data in this browser, exactly as the prototype worked. Tests and CI run in demo mode. Until the data layer is connected (plan P2.3), connected mode still keeps the records in this browser behind the sign-in.
+
 ## Layers and dependency direction
 
 ```

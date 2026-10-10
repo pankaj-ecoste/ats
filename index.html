@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="src/features/posting/posting.css">
 <link rel="stylesheet" href="src/features/sheets/auto-import.css">
 <link rel="stylesheet" href="src/features/management-report/report.css">
+<link rel="stylesheet" href="src/features/auth/auth.css">
 </head>
 <body>
 <div class="app">
@@ -37,9 +38,12 @@
 <!-- Scripts: classic scripts sharing one global scope, so ORDER MATTERS.
      core -> data -> domain -> services -> app -> features -> app/main.js (always last).
      scripts/build-single.mjs reads this list to produce the single-file build. -->
+<script src="src/generated/config.js"></script>
+<script src="src/vendor/supabase.js"></script>
 <script src="src/core/assets.js"></script>
 <script src="src/generated/form-script.js"></script>
 <script src="src/core/utils.js"></script>
+<script src="src/core/supabase.js"></script>
 <script src="src/core/icons.js"></script>
 <script src="src/core/constants.js"></script>
 <script src="src/data/seed.js"></script>
@@ -64,6 +68,7 @@
 <script src="src/services/settings.js"></script>
 <script src="src/services/report.js"></script>
 <script src="src/services/sheets.js"></script>
+<script src="src/services/auth.js"></script>
 <script src="src/app/router.js"></script>
 <script src="src/app/shell.js"></script>
 <script src="src/app/ui.js"></script>
@@ -91,6 +96,8 @@
 <script src="src/features/sheets/sheets.js"></script>
 <script src="src/features/pipeline/pipeline.js"></script>
 <script src="src/features/posting/posting.js"></script>
+<script src="src/features/auth/auth.js"></script>
+<script src="src/features/users/users.js"></script>
 <script src="src/features/sheets/auto-import.js"></script>
 <script src="src/features/management-report/report-events.js"></script>
 <script src="src/features/management-report/report-metrics.js"></script>

@@ -11,7 +11,7 @@ const walk = (dir) => readdirSync(dir).flatMap((n) => {
 
 let changed = 0;
 for (const file of walk('src')) {
-  if (file.replaceAll('\\', '/').includes('src/generated/')) continue;
+  if (/src\/(generated|vendor)\//.test(file.replaceAll('\\', '/'))) continue;
   const code = readFileSync(file, 'utf8');
   const ast = espree.parse(code, { ecmaVersion: 'latest', sourceType: 'script', comment: true, range: true });
   const first = ast.body[0];

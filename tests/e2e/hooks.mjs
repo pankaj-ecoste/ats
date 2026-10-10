@@ -8,6 +8,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const target = process.argv[2] === 'dist' ? 'dist/Ecoste_Recruit_Tracker.html' : 'index.html';
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const page = await browser.newPage();
+// these tests cover the app itself, so they always run in demo mode, whatever .env says (sign-in is tested in auth.mjs)
+await page.addInitScript(() => { globalThis.__APP_CONFIG_OVERRIDE = { supabaseUrl: '', anonKey: '' }; });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(pathToFileURL(resolve(root, target)).href);

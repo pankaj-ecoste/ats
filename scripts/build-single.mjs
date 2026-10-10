@@ -28,6 +28,18 @@ let html = read('index.html')
 const left = html.match(/(?:href|src)="src\/[^"]+"/);
 if (left) throw new Error(`Not inlined: ${left[0]}`);
 
+// Secret guard: the built file is sent to every browser, so it must never contain a database URL with a password
+// or a service-role key. Public values (project URL, anon key) are fine.
+const leaks = [];
+if (/postgres(?:ql)?:\/\/[^\s"'<>]+:[^\s"'<>@]+@/i.test(html)) leaks.push('a database connection string with a password');
+for (const jwt of html.match(/eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+/g) || []) {
+  try {
+    const role = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8')).role;
+    if (role && role !== 'anon') leaks.push(`a Supabase key with role "${role}"`);
+  } catch { /* not a token */ }
+}
+if (leaks.length) throw new Error(`Refusing to build: the output contains ${leaks.join(' and ')}. Remove it from the sources.`);
+
 const out = resolve(root, 'dist/Ecoste_Recruit_Tracker.html');
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);

@@ -32,7 +32,7 @@ function topLevelNames(code) {
   return names;
 }
 
-const srcFiles = walk('src').map((p) => relative('.', p).replaceAll('\\', '/'));
+const srcFiles = walk('src').map((p) => relative('.', p).replaceAll('\\', '/')).filter((f) => !f.startsWith('src/vendor/'));
 const declared = new Map(srcFiles.map((f) => [f, topLevelNames(readFileSync(f, 'utf8'))]));
 
 const rules = {
@@ -53,14 +53,14 @@ const rules = {
 };
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'src/generated/**', '.claude/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'src/generated/**', 'src/vendor/**', '.claude/**'] },
   // one block per source file, so each sees the other files' declarations as globals
   ...srcFiles.map((file) => {
     const others = {};
     for (const [f, names] of declared) if (f !== file) names.forEach((kind, n) => { others[n] = kind; });
     return {
       files: [file],
-      languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser, module: 'writable', SheetsIO: 'readonly', ...others } },
+      languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser, module: 'writable', SheetsIO: 'readonly', supabase: 'readonly', ...others } },
       rules,
     };
   }),

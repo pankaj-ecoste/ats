@@ -4,16 +4,15 @@
 // Every account it makes has a username starting "zz" plus a random tag, and all of them (and their audit rows) are removed at the end.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
 import { connect, loadEnv } from '../../scripts/db.mjs';
+import { createTestAdmin, DOMAIN, newTag, removeTestAccounts } from '../support/accounts.mjs';
 
 loadEnv();
 const skip = process.env.DATABASE_URL && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? false : 'DATABASE_URL, SUPABASE_URL and SUPABASE_ANON_KEY are not all set';
 const base = (process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const anon = process.env.SUPABASE_ANON_KEY;
-const tag = 'zz' + randomBytes(3).toString('hex');
+const tag = newTag();
 const name = (n) => `${tag}_${n}`;
-const DOMAIN = 'ats.ecoste.in';
 let db;
 const S = {};   // shared between the steps: tokens, ids
 
@@ -29,32 +28,15 @@ const signIn = (user, password) => post('/auth/v1/token?grant_type=password', { 
 const rpc = (fn, args, token) => post(`/rest/v1/rpc/${fn}`, args, token);
 const message = (r) => JSON.stringify(r.json || '');
 
-async function cleanup() {
-  if (!db) return;
-  const like = `${tag}\\_%@${DOMAIN}`;
-  const ids = (await db.query('select id from auth.users where email like $1', [like])).rows.map((r) => r.id);
-  if (ids.length) {
-    await db.query('delete from auth.users where id = any($1::uuid[])', [ids]);   // profiles go with them, and that writes audit rows too
-    // so the audit rows are removed last. Only this test's own accounts are touched.
-    await db.query('alter table public.audit_log disable trigger no_delete');
-    try {
-      await db.query("delete from public.audit_log where actor_id = any($1::uuid[]) or row_id = any($2::text[]) or (table_name = 'profiles' and (coalesce(old_data, new_data) ->> 'id') = any($2::text[]))", [ids, ids]);
-    } finally {
-      await db.query('alter table public.audit_log enable trigger no_delete');
-    }
-  }
-}
-
 before(async () => {
   if (skip) return;
   db = connect();
   await db.connect();
-  await cleanup();
-  // the server creates the first admin, as `npm run db:create-admin` does
-  S.adminId = (await db.query("select app.create_login($1, 'admin-pass-1', 'Test Admin', 'admin'::public.app_role) as id", [name('admin')])).rows[0].id;
+  await removeTestAccounts(db, tag);
+  S.adminId = await createTestAdmin(db, tag, 'admin-pass-1');
 });
 after(async () => {
-  try { await cleanup(); } finally { if (db) await db.end(); }
+  try { if (db) await removeTestAccounts(db, tag); } finally { if (db) await db.end(); }
 });
 
 test('an admin account made by the server can sign in with its username and password', { skip }, async () => {
@@ -128,7 +110,9 @@ test('switching an account off blocks sign-in and cuts off data access immediate
   const live = (await signIn(name('rec'), 'reset-by-admin-1')).json.access_token;
   assert.equal((await get('/rest/v1/profiles?select=id', live)).json.length >= 2, true, 'a member sees colleagues');
   assert.equal((await rpc('admin_set_active', { p_user: S.recId, p_active: false }, S.admin)).status, 204);
-  assert.equal((await signIn(name('rec'), 'reset-by-admin-1')).ok, false, 'cannot sign in');
+  const refused = await signIn(name('rec'), 'reset-by-admin-1');
+  assert.equal(refused.status, 400, 'a clean refusal, not a server error: ' + message(refused));
+  assert.match(message(refused), /banned/i);
   const stillValid = await get('/rest/v1/profiles?select=id', live);   // a token issued earlier is still a valid token ...
   assert.deepEqual(stillValid.json, [{ id: S.recId }], '... but the database shows it only its own row');
   assert.deepEqual((await get('/rest/v1/openings?select=id', live)).json, []);

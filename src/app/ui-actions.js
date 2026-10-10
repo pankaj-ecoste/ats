@@ -12,6 +12,12 @@ registerAction('pickForOffer',()=>pickForOffer());
 registerAction('showTodayCalendar',()=>{R.calView='day';R.calDate=today();go('interviews')});
 registerAction('openingApplicationsBoard',opId=>{R.af.op=opId;R.appView='board';go('applications')});
 
+registerAction('changePassword',()=>{closeDD();changePasswordModal()});
+registerAction('signOut',()=>{closeDD();doSignOut()});
+registerAction('userNew',()=>newUserModal());
+registerAction('userReset',id=>resetPasswordModal(id));
+registerAction('userToggle',id=>toggleUser(id));
+
 document.addEventListener('click',e=>{
  const el=e.target.closest('[data-act]');
  if(!el||el.disabled)return;
