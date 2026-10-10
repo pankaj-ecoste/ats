@@ -1,9 +1,10 @@
 // Database migrations for the Supabase (Postgres) project.   Needs DATABASE_URL in .env (the pooler connection string).
 //   npm run db:migrate     apply every pending file in supabase/migrations/ (each in its own transaction)
 //   npm run db:status      list applied and pending migrations
+//   npm run db:create-admin -- <username> [password]   create an admin login from the server (first admin, or recovery). Prints a generated password once if none is given.
 //   npm run db:reset       DEV ONLY: drop everything this project created and re-apply. Needs ALLOW_DB_RESET=1 and --yes
 // A migration that was already applied must never be edited: its checksum is stored, and a changed file stops the run.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +69,15 @@ export async function migrate(c, log = console.log) {
   return n;
 }
 
+// Server-side way to create an admin, for the very first account or to get back in after a lockout.
+async function createAdmin(c, username, password) {
+  if (!username) throw new Error('Usage: npm run db:create-admin -- <username> [password]');
+  const generated = !password;
+  if (generated) password = randomBytes(9).toString('base64url');
+  await c.query("select app.create_login($1, $2, $3, 'admin'::public.app_role)", [username, password, username]);
+  console.log(`admin account created: username "${username}"` + (generated ? `, password ${password}  (shown once: write it down, then change it after signing in)` : ''));
+}
+
 async function reset(c) {
   if (process.env.ALLOW_DB_RESET !== '1' || !process.argv.includes('--yes')) {
     throw new Error('Refusing to reset. This deletes all data created by the migrations. Run: ALLOW_DB_RESET=1 npm run db:reset -- --yes');
@@ -88,6 +98,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     await c.connect();
     if (cmd === 'migrate') await migrate(c);
+    else if (cmd === 'create-admin') await createAdmin(c, process.argv[3], process.argv[4]);
     else if (cmd === 'reset') { await reset(c); await migrate(c); }
     else if (cmd === 'status') for (const m of await status(c)) console.log(`${m.applied ? (m.changed ? 'CHANGED ' : 'applied ') : 'pending '} ${m.file}`);
     else throw new Error(`unknown command: ${cmd}`);

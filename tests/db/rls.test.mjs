@@ -26,16 +26,33 @@ async function attempt(sql, params) {
     return { error: e.message, rows: [], rowCount: 0 };
   }
 }
-// act as a signed-in user (or anon) for the length of fn; everything fn changes is undone afterwards
-async function as(id, fn) {
+// act as a signed-in user (or anon) for the length of fn; everything fn changes is undone afterwards,
+// unless { keep: true }, in which case the changes stay (wrap the test in isolated() so they are still cleaned up)
+async function as(id, fn, { keep = false } = {}) {
   await q('savepoint u');
   try {
     await q(id ? 'set local role authenticated' : 'set local role anon');
     if (id) await q("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)", [JSON.stringify({ sub: id, role: 'authenticated' }), id]);
     return await fn();
   } finally {
-    await q('rollback to savepoint u');
-    await q('release savepoint u');
+    if (keep) {
+      await q('reset role');
+      await q("select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true)");
+      await q('release savepoint u');
+    } else {
+      await q('rollback to savepoint u');
+      await q('release savepoint u');
+    }
+  }
+}
+// run a whole test and undo everything it changed, so tests cannot leak into each other
+async function isolated(fn) {
+  await q('savepoint iso');
+  try {
+    return await fn();
+  } finally {
+    await q('rollback to savepoint iso');
+    await q('release savepoint iso');
   }
 }
 const ids = (r) => r.rows.map((x) => x.id).sort();
@@ -50,9 +67,11 @@ before(async () => {
   await q('begin');
   // start from an empty set of profiles so the "first user becomes admin" rule can be tested
   await q('delete from public.profiles');
+  await q("select set_config('app.allow_user_create', 'on', true)");   // the door that only the admin functions open
   for (const [name, id] of Object.entries(U)) {
-    await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `${name}@ecoste.in`, JSON.stringify({ full_name: name })]);
+    await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `${name}@ats.ecoste.in`, JSON.stringify({ full_name: name })]);
   }
+  await q("select set_config('app.allow_user_create', 'off', true)");
   // give each user their role (a console change with no signed-in user is trusted, so the guard does not apply)
   for (const [name, id] of Object.entries(U)) await q('update public.profiles set role = $1 where id = $2', [ROLE[name], id]);
 
@@ -77,18 +96,104 @@ after(async () => {
 test('the first account becomes admin, later ones wait as pending', { skip }, async () => {
   // done in a savepoint: removing every profile also clears the manager and owner links on the fixtures
   await q('savepoint first');
+  await q("select set_config('app.allow_user_create', 'on', true)");
   await q('delete from public.profiles');
-  await q("insert into auth.users (id, email, aud, role) values ($1, 'first@ecoste.in', 'authenticated', 'authenticated')", [randomUUID()]);
-  await q("insert into auth.users (id, email, aud, role) values ($1, 'second@ecoste.in', 'authenticated', 'authenticated')", [randomUUID()]);
+  await q("insert into auth.users (id, email, aud, role) values ($1, 'first@ats.ecoste.in', 'authenticated', 'authenticated')", [randomUUID()]);
+  await q("insert into auth.users (id, email, aud, role) values ($1, 'second@ats.ecoste.in', 'authenticated', 'authenticated')", [randomUUID()]);
   const roles = Object.fromEntries((await q('select email, role from public.profiles')).rows.map((x) => [x.email, x.role]));
   await q('rollback to savepoint first');
   await q('release savepoint first');
-  assert.deepEqual(roles, { 'first@ecoste.in': 'admin', 'second@ecoste.in': 'pending' });
+  assert.deepEqual(roles, { 'first@ats.ecoste.in': 'admin', 'second@ats.ecoste.in': 'pending' });
 });
 
-test('sign-up is refused for an email outside the company domain', { skip }, async () => {
+test('sign-up is refused for an address outside the company domain', { skip }, async () => {
+  await q("select set_config('app.allow_user_create', 'on', true)");
   const r = await attempt("insert into auth.users (id, email, aud, role) values ($1, 'someone@gmail.com', 'authenticated', 'authenticated')", [randomUUID()]);
-  assert.match(r.error, /company email addresses/);
+  await q("select set_config('app.allow_user_create', 'off', true)");
+  assert.match(r.error, /company accounts/);
+});
+
+test('nobody can sign themselves up: an account made outside the admin functions is refused', { skip }, async () => {
+  const r = await attempt("insert into auth.users (id, email, aud, role) values ($1, 'stranger@ats.ecoste.in', 'authenticated', 'authenticated')", [randomUUID()]);
+  assert.match(r.error, /created by an admin/);
+});
+
+/* ---------- account management by an admin ---------- */
+test('an admin creates an account with a username, password and role; the profile and login row exist', { skip }, async () => {
+  await as(U.admin, async () => {
+    const r = await attempt("select public.admin_create_user('Maya.R', 'pass-1234', 'Maya Rao', 'recruiter') as id");
+    assert.ok(r.rows[0] && r.rows[0].id, r.error);
+    const p = (await attempt('select username, full_name, role, active, email from public.profiles where id = $1', [r.rows[0].id])).rows[0];
+    assert.deepEqual(p, { username: 'maya.r', full_name: 'Maya Rao', role: 'recruiter', active: true, email: 'maya.r@ats.ecoste.in' });
+  });
+});
+
+test('the login row is written the way Supabase Auth expects (hashed password, empty tokens, email identity)', { skip }, async () => {
+  await isolated(async () => {
+    await q("select set_config('app.allow_user_create', 'on', true)");
+    const id = (await q("select app.create_login('shape.check', 'pass-1234', 'Shape Check', 'recruiter') as id")).rows[0].id;
+    const row = (await q("select u.email, u.encrypted_password like '$2%' as hashed, u.confirmation_token, u.recovery_token, u.email_change, i.provider from auth.users u join auth.identities i on i.user_id = u.id where u.id = $1", [id])).rows[0];
+    assert.deepEqual(row, { email: 'shape.check@ats.ecoste.in', hashed: true, confirmation_token: '', recovery_token: '', email_change: '', provider: 'email' });
+  });
+});
+
+test('account creation is checked: admin only, valid username, strong enough password, no duplicates, a real role', { skip }, async () => {
+  await as(U.recruiter, async () => assert.match((await attempt("select public.admin_create_user('newbie', 'pass-1234', 'N', 'recruiter')")).error, /Only an admin/));
+  await as(U.admin, async () => {
+    assert.match((await attempt("select public.admin_create_user('ab', 'pass-1234', 'N', 'recruiter')")).error, /Username must be/);
+    assert.match((await attempt("select public.admin_create_user('Has Space', 'pass-1234', 'N', 'recruiter')")).error, /Username must be/);
+    assert.match((await attempt("select public.admin_create_user('newbie', 'short', 'N', 'recruiter')")).error, /at least 8/);
+    assert.match((await attempt("select public.admin_create_user('newbie', 'pass-1234', 'N', 'pending')")).error, /real role/);
+    assert.match((await attempt("select public.admin_create_user('Recruiter', 'pass-1234', 'N', 'recruiter')")).error, /already taken/);
+  });
+});
+
+test('an admin resets a password; only an admin can; it signs the person out; the password is never logged', { skip }, async () => {
+  await isolated(async () => {
+    await q('insert into auth.sessions (id, user_id) values (gen_random_uuid(), $1)', [U.recruiter]);
+    const before = (await q('select encrypted_password p from auth.users where id = $1', [U.recruiter])).rows[0].p;
+    await as(U.hm1, async () => assert.match((await attempt('select public.admin_set_password($1, $2)', [U.recruiter, 'brand-new-pass'])).error, /Only an admin/));
+    await as(U.recruiter, async () => assert.match((await attempt('select public.admin_set_password($1, $2)', [U.recruiter, 'brand-new-pass'])).error, /Only an admin/));
+    await as(U.admin, async () => {
+      assert.match((await attempt('select public.admin_set_password($1, $2)', [U.recruiter, 'short'])).error, /at least 8/);
+      assert.equal((await attempt('select public.admin_set_password($1, $2)', [U.recruiter, 'brand-new-pass'])).error, undefined);
+      assert.match((await attempt('select public.admin_set_password($1, $2)', [randomUUID(), 'brand-new-pass'])).error, /No such account/);
+    }, { keep: true });
+    const after = (await q('select encrypted_password p from auth.users where id = $1', [U.recruiter])).rows[0].p;
+    assert.notEqual(after, before);
+    assert.equal((await q('select count(*)::int n from auth.sessions where user_id = $1', [U.recruiter])).rows[0].n, 0, 'old sessions are gone');
+    const log = (await q("select new_data from public.audit_log where table_name = 'auth.password' and row_id = $1", [U.recruiter])).rows;
+    assert.equal(log.length, 1, 'the reset is audited');
+    assert.ok(!JSON.stringify(log[0].new_data).includes('brand-new-pass'));
+  });
+});
+
+test('an admin switches an account off and on: off means banned, signed out and blind; not their own', { skip }, async () => {
+  await isolated(async () => {
+    await q('insert into auth.sessions (id, user_id) values (gen_random_uuid(), $1)', [U.hm2]);
+    await as(U.recruiter, async () => assert.match((await attempt('select public.admin_set_active($1, false)', [U.hm2])).error, /Only an admin/));
+    await as(U.admin, async () => {
+      assert.match((await attempt('select public.admin_set_active($1, false)', [U.admin])).error, /your own account/);
+      assert.equal((await attempt('select public.admin_set_active($1, false)', [U.hm2])).error, undefined);
+    }, { keep: true });
+    const off = (await q('select (select active from public.profiles where id = $1) active, (select banned_until from auth.users where id = $1) banned, (select count(*)::int from auth.sessions where user_id = $1) sessions', [U.hm2])).rows[0];
+    assert.equal(off.active, false);
+    assert.ok(off.banned, 'cannot sign in');
+    assert.equal(off.sessions, 0);
+    await as(U.hm2, async () => assert.equal((await attempt('select * from public.openings')).rows.length, 0, 'sees nothing while switched off'));
+    await as(U.admin, async () => assert.equal((await attempt('select public.admin_set_active($1, true)', [U.hm2])).error, undefined), { keep: true });
+    const on = (await q('select (select active from public.profiles where id = $1) active, (select banned_until from auth.users where id = $1) banned', [U.hm2])).rows[0];
+    assert.deepEqual([on.active, on.banned], [true, null]);
+  });
+});
+
+test('the last active admin cannot be demoted or switched off, but can once there is a second admin', { skip }, async () => {
+  await isolated(async () => {
+    assert.match((await attempt("update public.profiles set role = 'recruiter' where id = $1", [U.admin])).error, /at least one active admin/);
+    assert.match((await attempt('update public.profiles set active = false where id = $1', [U.admin])).error, /at least one active admin/);
+    await q("update public.profiles set role = 'admin' where id = $1", [U.recruiter]);
+    assert.equal((await attempt("update public.profiles set role = 'recruiter' where id = $1", [U.admin])).error, undefined);
+  });
 });
 
 /* ---------- not signed in, and pending ---------- */
@@ -106,7 +211,7 @@ test('a pending user sees nothing except their own profile', { skip }, async () 
     for (const t of ['openings', 'candidates', 'applications', 'offers', 'tasks', 'company_settings']) {
       assert.equal((await attempt(`select * from public.${t}`)).rows.length, 0, t);
     }
-    assert.deepEqual((await attempt('select email from public.profiles')).rows.map((x) => x.email), ['pending@ecoste.in']);
+    assert.deepEqual((await attempt('select email from public.profiles')).rows.map((x) => x.email), ['pending@ats.ecoste.in']);
   });
 });
 

@@ -23,7 +23,8 @@
     "db:status": "node scripts/db.mjs status",
     "db:migrate": "node scripts/db.mjs migrate",
     "db:reset": "node scripts/db.mjs reset",
-    "test:db": "node --test tests/db/*.test.mjs"
+    "test:db": "node --test --test-concurrency=1 tests/db/*.test.mjs",
+    "db:create-admin": "node scripts/db.mjs create-admin"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

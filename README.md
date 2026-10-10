@@ -14,7 +14,7 @@ npm install && npx playwright install chromium
 npm run test:e2e   # browser smoke test of every page (add `-- dist` to test the build)
 npm run test:e2e:hooks   # browser check of the extension points
 npm run test:e2e:flows   # browser check that user actions reach the data through the services
-npm run db:migrate  # apply database migrations (needs .env); `db:status`, `test:db` too; see docs/DATABASE.md
+npm run db:migrate  # apply database migrations (needs .env); also `db:status`, `db:create-admin`, `test:db`; see docs/DATABASE.md
 npm run lint       # ESLint; `npm run check` = lint + unit tests + build
 ```
 

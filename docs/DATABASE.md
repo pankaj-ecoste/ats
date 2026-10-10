@@ -7,7 +7,8 @@ The data lives in a Supabase project (PostgreSQL 17). The schema is defined only
 ```bash
 npm run db:status      # which migrations are applied or pending
 npm run db:migrate     # apply pending migrations, each in its own transaction
-npm run test:db        # access-rule tests against the real database (everything is rolled back)
+npm run test:db        # access-rule tests (rolled back) and real sign-in tests against the live project
+npm run db:create-admin -- priya   # create the first admin, or a new one after a lockout
 ALLOW_DB_RESET=1 npm run db:reset -- --yes   # DEV ONLY: drop and rebuild. Never against real data.
 ```
 
@@ -31,9 +32,26 @@ Needs `DATABASE_URL` in `.env` (the Supabase pooler string). `DATABASE_URL`, the
 | `management` | Read-only: openings, applications, stage history, postings and the report tables. No candidate details, no salary, no offers. |
 | `pending` | A new sign-up waiting for an admin. Sees nothing but their own profile. |
 
-Sign-up is limited to the email domains in `company_settings.allowed_email_domains` (default `ecoste.in`). The first account ever created becomes `admin`; every later one is `pending` until an admin gives it a role. Someone not signed in (`anon`) can read nothing at all; the public application form will go through a server function using the service key.
+A switched-off account sees and changes nothing, even with a token it already holds (a restrictive policy on every table, migration 0006). Someone not signed in (`anon`) can read nothing at all; the public application form will go through a server function using the service key.
 
 Guards that restrict a user (profile changes, offer approval, task edits) apply to signed-in app users only. A change from the server or the database console is trusted, which is how an admin recovers if they lock themselves out.
+
+## Signing in
+
+People sign in with a **username and a password** that an admin sets. There is no sign-up page, no email and no Google. Supabase Auth identifies users by an email field, so each username maps to a hidden internal address `<username>@ats.ecoste.in` (nothing is ever sent to it; the app adds the suffix). Usernames are 3 to 30 characters: lowercase letters, digits, dot, dash, underscore. Passwords need at least 8 characters.
+
+| Who | Can do | How |
+|---|---|---|
+| Server (you, once) | Create the first admin, or a new one after a lockout | `npm run db:create-admin -- <username>` (prints a generated password once) |
+| Admin | Create an account with a role | `rpc admin_create_user(username, password, full name, role)` |
+| Admin | Reset someone's password; this also signs them out everywhere | `rpc admin_set_password(user id, new password)` |
+| Admin | Switch an account off or on (off = cannot sign in, sees nothing, signed out) | `rpc admin_set_active(user id, true/false)` |
+| Admin | Change a role | update `profiles.role` |
+| Anyone signed in | Change their own password | Supabase Auth `updateUser({ password })` |
+
+The database refuses every account that was not made through these functions, so the public sign-up endpoint cannot be used even if it is left on. There must always be at least one active admin. An admin cannot switch off their own account.
+
+**One limit to know:** a password reset or a switch-off ends the person's sessions and stops new sign-ins at once, and a switched-off account is blind straight away because every table checks the account is active. A *password reset alone* does not cancel an access token already issued; it expires on its own (one hour by default, a Supabase setting; see `docs/SECURITY_CHECKLIST.md`). To cut someone off immediately, switch the account off.
 
 ## Tables
 
@@ -61,5 +79,4 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- Google sign-in is not switched on yet; it needs the Google OAuth client from your Google Cloud project (Phase 2.2).
-- The app does not read or write these tables yet (Phase 2.3).
+- The app has no login screen and does not read or write these tables yet (Phase 2.2 and 2.3).

@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; next are Google sign-in and the app's data layer. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
+- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; next are the app's login screen, the Users screen and the data layer. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -25,7 +25,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 | Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project has the full schema, rules and access policies (4 migrations, 22 passing access tests). The app is **not connected yet** and still uses browser `localStorage` |
+| Database / backend | Supabase project has the full schema, rules, access policies and username login (6 migrations; 29 access tests and 11 real sign-in tests pass). The app is **not connected yet** and still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -69,9 +69,11 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
-| `supabase/migrations/0001..0004_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
-| `scripts/db.mjs` | Migration runner: `db:migrate`, `db:status`, `db:reset` (dev only) |
-| `tests/db/rls.test.mjs` | 22 access-rule tests against the real database, all rolled back (`npm run test:db`) |
+| `supabase/migrations/0001..0006_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
+| `scripts/db.mjs` | Migration runner and server tools: `db:migrate`, `db:status`, `db:create-admin`, `db:reset` (dev only) |
+| `tests/db/rls.test.mjs` | 29 access-rule and account-management tests against the real database, all rolled back (`npm run test:db`) |
+| `tests/db/login.test.mjs` | 11 real sign-in tests over HTTP against Supabase Auth; creates `zz...` accounts and removes them afterwards |
+| `docs/SECURITY_CHECKLIST.md` | What to do on the Supabase, GitHub and hosting side before go-live (yours to action) |
 | `docs/DATABASE.md` | Roles, tables, rules, how to change the schema |
 | `eslint.config.mjs` | Lint rules; derives cross-file globals from `src` automatically |
 | `CONTRIBUTING.md` | How to set up, the rules of the code, branches, commits, checklists |
@@ -142,7 +144,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `CHANGELOG.md`, `src/data/api.js` (the Supabase adapter), the login screen.
+**Not in the tree yet (planned):** `CHANGELOG.md`, `src/data/api.js` (the Supabase adapter), the login and Users screens.
 
 ## 4. Done (log)
 
@@ -281,7 +283,7 @@ Migrations live in `supabase/migrations/` as numbered SQL files. Every table get
 Browser app (today's vanilla JS, then modules, optionally React later)
    │  supabase-js (anon key + user session)
    ▼
-Supabase: Auth (Google SSO)  ·  Postgres + RLS  ·  Storage (resumes, letters)
+Supabase: Auth (username + password, accounts made by an admin)  ·  Postgres + RLS  ·  Storage (resumes, letters)
    │                                   ▲
    ├─ Edge Functions: public application form intake, email send, résumé text extraction, calendar invites
    └─ Scheduled jobs (pg_cron): SLA alerts, reminders, sheet intake
@@ -405,9 +407,9 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☐ Seed script for development only; production starts empty
 
 **P2.2 Auth and roles** (M)
-- ◐ Sign-up guard and `profiles` row are done in the database (company email domains only; first account is admin, later ones wait as `pending`). **Still to do:** switch Google sign-in on in Supabase (needs the Google OAuth client id and secret from your Google Cloud project) and add the login screen to the app.
-- ☐ Admin screen to invite users and set roles (in the app; roles can already be set in the database)
-- ☑ RLS policies per §7.2 with 22 SQL tests against the real database (`npm run test:db`): not signed in, pending, admin, recruiter, management, two hiring managers, interviewer; offer approval; tasks; notifications; profiles; settings; stage and opening-status triggers; append-only history; cascade delete; audit trail
+- ☑ **Login is username + password, set by an admin (decided 2026-10-10; no Google, no email, no sign-up page).** Each username maps to a hidden internal address `<username>@ats.ecoste.in`. The admin creates accounts, resets passwords (which also signs the person out) and switches accounts off or on, through `admin_create_user`, `admin_set_password` and `admin_set_active`. The database refuses any account not made that way. A user can change their own password. The first admin is created from the server: `npm run db:create-admin -- <username>`.
+- ☐ **Login screen and Users screen in the app** (sign in; change own password; admin: list, create, reset password, change role, switch on or off). The database side is done and tested; this is the next piece of work.
+- ☑ RLS policies per §7.2, tested against the real database (`npm run test:db`): 29 access tests (every role, offer approval, tasks, notifications, profiles, settings, triggers, append-only history, account management, last-admin protection) and 11 real sign-in tests over HTTP against Supabase's login service (create, sign in, wrong password, no self sign-up, change own password, admin reset ends the old session, switch off cuts access immediately). Writing them found and fixed two real bugs: guards blocking trusted server changes, and a switched-off interviewer or manager keeping access to their own records (migration 0006).
 
 **P2.3 Data layer** (L)
 - ☐ `src/data/api.js` implementing the mutation layer against Supabase; in-memory adapter kept for tests and demo
@@ -510,7 +512,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 |---|---|---|---|
 | D1 | Database platform: **decided, Supabase** (region Seoul; moving to Mumbai would need a new project) | done | n/a |
 | D2 | Repo location: **decided, github.com/pankaj-ecoste/ats** | done | n/a |
-| D3 | Sign-in method: Google Workspace SSO for `@ecoste.in`? | Yes | P2.2 |
+| ~~D3~~ | ~~Sign-in method~~ — **decided: username + password created by an admin; the admin can reset passwords** | done | n/a |
 | D4 | Is Google Sheet staying as intake only, or still a system of record? | Intake/export only | P4 |
 | D5 | Which channels must really send: email, calendar, WhatsApp? | Email + calendar | P3 |
 | D6 | Real company name/address/signatory to replace "Northwind Technologies" defaults? | Ask HR | P2.4 |
@@ -543,6 +545,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-10 | **Username login:** migrations 0005 (username accounts, admin functions, last-admin guard, no self sign-up) and 0006 (switched-off accounts see nothing); `db:create-admin`; 11 real sign-in tests; `docs/SECURITY_CHECKLIST.md`; D3 decided (no Google) | Claude Code |
 | 2026-10-10 | **Phase 2.1 and the database half of 2.2:** 4 migrations applied to the dev Supabase project (27 tables, 59 policies, triggers for stage history, opening status, audit trail and offer approval); `scripts/db.mjs`; 22 access tests on the real database; `docs/DATABASE.md`; decisions D16, D17 | Claude Code |
 | 2026-10-10 | Inline `onclick` removed (`data-act` + `ui-actions.js`); recruiter and interviewer lists moved into settings (`recruiters()`, `interviewers()`, Settings → Team); `hooks.test.mjs`; 20 new browser checks | Claude Code |
 | 2026-10-10 | Tooling: ESLint with auto-derived cross-file globals (clean), CI workflow, pre-commit hook, PR template, `CONTRIBUTING.md`, new scripts `lint`, `check`, `test:e2e:all`, `test:e2e:dist` | Claude Code |
