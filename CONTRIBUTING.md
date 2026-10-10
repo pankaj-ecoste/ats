@@ -52,6 +52,10 @@ The load order is `core → data → domain → services → app → features �
 
 `tests/unit/architecture.test.mjs` enforces rules 1 and 2; lint enforces rule 7. A short list of known exceptions sits at the top of that file; do not add to it without a reason in the pull request.
 
+## Database changes
+
+Schema changes are new numbered files in `supabase/migrations/`, never edits to an applied one. Every new table gets row level security and policies in the same file, and a case in `tests/db/rls.test.mjs`. Full steps in `docs/DATABASE.md`. Never run `db:reset` against a database that holds real data.
+
 ## Adding things
 
 **A new action (for example "archive an opening"):**

@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-06
-- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
+- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; next are Google sign-in and the app's data layer. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -25,7 +25,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 | Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project exists but is **empty and not connected**; the app still uses browser `localStorage` |
+| Database / backend | Supabase project has the full schema, rules and access policies (4 migrations, 22 passing access tests). The app is **not connected yet** and still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -69,6 +69,10 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
+| `supabase/migrations/0001..0004_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
+| `scripts/db.mjs` | Migration runner: `db:migrate`, `db:status`, `db:reset` (dev only) |
+| `tests/db/rls.test.mjs` | 22 access-rule tests against the real database, all rolled back (`npm run test:db`) |
+| `docs/DATABASE.md` | Roles, tables, rules, how to change the schema |
 | `eslint.config.mjs` | Lint rules; derives cross-file globals from `src` automatically |
 | `CONTRIBUTING.md` | How to set up, the rules of the code, branches, commits, checklists |
 | `.github/workflows/ci.yml`, `.github/pull_request_template.md` | CI on every push and pull request; PR checklist |
@@ -138,7 +142,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `supabase/migrations/`, `CHANGELOG.md`.
+**Not in the tree yet (planned):** `CHANGELOG.md`, `src/data/api.js` (the Supabase adapter), the login screen.
 
 ## 4. Done (log)
 
@@ -262,6 +266,14 @@ All tables have `id uuid`, `created_at`, `updated_at`, `created_by`. Existing sh
 | `intake_batches` | `sheetLog`, `autoSync` | One row per sheet or form import, with counts and errors |
 
 Migrations live in `supabase/migrations/` as numbered SQL files. Every table gets row-level security in the same migration that creates it.
+
+**As built (2026-10-10), where it differs from the table above.**
+- **Ids stay text** (`OP-1001`, `C-2001`, `APP-3101`) instead of uuid plus a `code` column. It keeps the app and the database speaking the same ids. Rows that belong to a login use the login's uuid. **Consequence for Phase 2.3:** the app currently builds new ids from counters plus `Math.random()` (for example `APP-` + 3100 + count + random 0 to 899), which can collide when two people add records at the same moment. The data layer must switch to collision-proof ids (prefix plus 8 random characters from `crypto`) before two users share a database.
+- **Salary is its own table** (`candidate_compensation`) so it can be hidden from roles that may see the rest of the profile.
+- **Scorecards:** `interview_scores` has one row per interviewer (arrays of scores); the interview row keeps the final result, as in the app.
+- **Settings:** `company_settings` is a single row. SLA days, report alert levels, the posting config and the Google Sheet connection sit in its `config` column. Recruiters and interviewers come from `profiles`.
+- **Extra tables** the app needed: `screenings`, `interview_groups`, `onboarding_checklists`, `report_events`, `call_log`, `monthly_targets`, `job_boards`, `sheet_log`, `activity` (the readable feed, separate from the audit log).
+- **Audit log** is filled by triggers, not by the app, and records only changed fields.
 
 ### 7.5 Target architecture
 
@@ -388,14 +400,14 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 *Goal:* one shared database; people log in; the app reads and writes Supabase instead of `localStorage`.
 
 **P2.1 Schema and migrations** (M)
-- ☐ `supabase/` folder and CLI set up; migrations for every table in §7.4, in dependency order
-- ☐ Foreign keys, indexes, enums for stages and statuses; trigger for opening status; `stage_events` filled by trigger
+- ☑ `supabase/migrations/` with 4 migrations applied to the dev project (2026-10-10): `0001_foundation`, `0002_domain_tables`, `0003_rules_and_audit`, `0004_row_level_security`. 27 tables, 59 policies, row security on every table. Runner: `scripts/db.mjs` (`db:migrate`, `db:status`, `db:reset` for dev only; checksums stop anyone editing an applied file). Full description in `docs/DATABASE.md`.
+- ☑ Foreign keys, indexes, check constraints for stages and statuses; triggers for furthest stage, date in stage, `stage_events`, opening status, audit trail, offer approval; append-only history
 - ☐ Seed script for development only; production starts empty
 
 **P2.2 Auth and roles** (M)
-- ☐ Google Workspace sign-in for `@ecoste.in`; `profiles` row created on first login
-- ☐ Admin screen to invite users and set roles
-- ☐ RLS policies per §7.2, with SQL tests for every role
+- ◐ Sign-up guard and `profiles` row are done in the database (company email domains only; first account is admin, later ones wait as `pending`). **Still to do:** switch Google sign-in on in Supabase (needs the Google OAuth client id and secret from your Google Cloud project) and add the login screen to the app.
+- ☐ Admin screen to invite users and set roles (in the app; roles can already be set in the database)
+- ☑ RLS policies per §7.2 with 22 SQL tests against the real database (`npm run test:db`): not signed in, pending, admin, recruiter, management, two hiring managers, interviewer; offer approval; tasks; notifications; profiles; settings; stage and opening-status triggers; append-only history; cascade delete; audit trail
 
 **P2.3 Data layer** (L)
 - ☐ `src/data/api.js` implementing the mutation layer against Supabase; in-memory adapter kept for tests and demo
@@ -509,6 +521,8 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | D11 | Email provider (Resend, Postmark, or Google Workspace SMTP)? | Resend | P3 |
 | D12 | Data retention: how long are rejected candidates kept? | 12 months, then anonymise (confirm with legal) | P7 |
 | D13 | Who is the product owner who signs off each phase? | Head of Talent Acquisition | all |
+| D16 | Role scoping as built: management sees no candidate names, contact details, salary or offers; interviewers see only their own interviews; hiring managers only their own openings. Right for you? | As built (see `docs/DATABASE.md`) | P2.2 |
+| D17 | Data-deletion requests: `audit_log` keeps copies of changed personal data. Delete or anonymise those rows when a candidate asks to be erased? | Yes, through one logged admin function | P7 |
 | D14 | Staging and prod Supabase projects: same region as dev (Seoul) or Mumbai? | Mumbai for prod if data-residency matters | P7 |
 | D15 | Supabase sync style: cache + background write queue (A) or async everywhere (B)? | A (see §7.9) | start of P2 |
 
@@ -529,6 +543,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-10 | **Phase 2.1 and the database half of 2.2:** 4 migrations applied to the dev Supabase project (27 tables, 59 policies, triggers for stage history, opening status, audit trail and offer approval); `scripts/db.mjs`; 22 access tests on the real database; `docs/DATABASE.md`; decisions D16, D17 | Claude Code |
 | 2026-10-10 | Inline `onclick` removed (`data-act` + `ui-actions.js`); recruiter and interviewer lists moved into settings (`recruiters()`, `interviewers()`, Settings → Team); `hooks.test.mjs`; 20 new browser checks | Claude Code |
 | 2026-10-10 | Tooling: ESLint with auto-derived cross-file globals (clean), CI workflow, pre-commit hook, PR template, `CONTRIBUTING.md`, new scripts `lint`, `check`, `test:e2e:all`, `test:e2e:dist` | Claude Code |
 | 2026-10-08 | Mutation layer finished: every write now goes through `repo` via 13 service files (openings, candidates, applications, screening and interviews, offers, onboarding, posting, settings, report, sheets); `domain/sheet-values.js`; autofocus fix in `ui.js`; 70 unit tests, 47 browser flow checks, architecture guard test | Claude Code |

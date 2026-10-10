@@ -19,13 +19,18 @@
     "check": "npm run lint && npm test && npm run build",
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:hooks && npm run test:e2e:flows",
     "prepare": "node scripts/setup-hooks.mjs",
-    "test:e2e:dist": "npm run test:e2e -- dist && npm run test:e2e:hooks -- dist && npm run test:e2e:flows -- dist"
+    "test:e2e:dist": "npm run test:e2e -- dist && npm run test:e2e:hooks -- dist && npm run test:e2e:flows -- dist",
+    "db:status": "node scripts/db.mjs status",
+    "db:migrate": "node scripts/db.mjs migrate",
+    "db:reset": "node scripts/db.mjs reset",
+    "test:db": "node --test tests/db/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "eslint": "^9.39.5",
     "espree": "^11.2.0",
     "globals": "^17.13.0",
+    "pg": "^8.23.1",
     "playwright": "^1.48.0"
   }
 }
