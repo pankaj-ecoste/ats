@@ -1,6 +1,6 @@
 # Database
 
-The data lives in a Supabase project (PostgreSQL 17). The schema is defined only by the numbered files in `supabase/migrations/`. The app does not use it yet (Phase 2.3); today's app still keeps its data in the browser.
+The data lives in a Supabase project (PostgreSQL 17). The schema is defined only by the numbered files in `supabase/migrations/`. In connected mode the app reads from it after sign-in (`src/data/api.js`); writing is the next step (Phase 2.3). In demo mode the app keeps its data in the browser.
 
 ## Commands
 
@@ -79,4 +79,4 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- The app has no login screen and does not read or write these tables yet (Phase 2.2 and 2.3).
+- The app reads these tables but does not write them yet (Phase 2.3). `tests/db/roundtrip.test.mjs` proves the app's records survive a trip through the tables.

@@ -40,12 +40,22 @@ function showHold(message){
   <h1>${esc(ME?ME.fullName:'')}</h1><p>${esc(message)}</p><button class="btn" data-act="signOut">Sign out</button></div>`;
 }
 
-function enterApp(me){
+let unsavedWatching=false,unsavedShown=false;
+// TEMPORARY (removed when the write path lands, plan P2.3): until then a change in connected mode lives only in this tab
+function warnUnsaved(){
+ if(unsavedWatching)return;unsavedWatching=true;
+ repoOnChange(()=>{if(unsavedShown)return;unsavedShown=true;toast('Changes are not saved to the server yet. They will be lost when you reload.','var(--red)')});
+}
+
+async function enterApp(me){
  if(!me)return showLogin();
  if(!me.active)return showHold('This account is switched off. Ask an admin.');
  if(me.role==='pending')return showHold('Your account is waiting for an admin to give it a role. Ask an admin, then sign in again.');
+ authRoot().innerHTML=`<div class="auth-card"><div class="auth-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><p class="muted" role="status">Loading your data…</p></div>`;
+ try{await loadFromServer(sb,me)}
+ catch(e){return showHold('The data could not be loaded. Reload the page to try again. ('+e.message+')')}
+ warnUnsaved();
  hideAuth();
- if(S.settings.user!==me.fullName)updateSetting('user',me.fullName);   // notes and tasks carry the real name
  R.view='dashboard';R.param=null;
  render();
 }

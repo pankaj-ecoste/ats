@@ -19,7 +19,8 @@ function load(){
  return seed();
 }
 let saveT,saveFailed=false;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{
+// connected mode keeps business data on the server, never in this browser's storage
+function save(){if(typeof CONNECTED!=='undefined'&&CONNECTED)return;clearTimeout(saveT);saveT=setTimeout(()=>{
  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));saveFailed=false}
  catch(e){
   // tell the user once per failure streak; a full or blocked storage means changes are NOT being kept

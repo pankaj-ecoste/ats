@@ -6,7 +6,7 @@ This repository is the original single-file prototype split into a maintainable 
 
 ## Run it
 
-The app has two modes. **Demo mode** (no Supabase configured): no sign-in, data kept in this browser. **Connected mode** (`SUPABASE_URL` and `SUPABASE_ANON_KEY` set in `.env`): people sign in with a username and password an admin set. `npm run dev` and `npm run build` read `.env` and write `src/generated/config.js` (public values only). The tests run in demo mode, except `test:e2e:auth`, which signs in for real.
+The app has two modes. **Demo mode** (no Supabase configured): no sign-in, data kept in this browser. **Connected mode** (`SUPABASE_URL` and `SUPABASE_ANON_KEY` set in `.env`): people sign in with a username and password an admin set. `npm run dev` and `npm run build` read `.env` and write `src/generated/config.js` (public values only). The tests run in demo mode, except `test:e2e:auth` and `test:e2e:data`, which sign in for real. In connected mode the app currently reads from the database but does not write yet.
 
 ```bash
 npm run dev        # http://localhost:5173  (or just open index.html; no build step is needed)
@@ -18,6 +18,7 @@ npm run test:e2e:hooks   # browser check of the extension points
 npm run test:e2e:flows   # browser check that user actions reach the data through the services
 npm run db:migrate  # apply database migrations (needs .env); also `db:status`, `db:create-admin`, `test:db`; see docs/DATABASE.md
 npm run test:e2e:auth   # sign-in screen and Users page against the live project (skips without .env)
+npm run test:e2e:data   # records in the live project show up in the app (skips without .env)
 npm run lint       # ESLint; `npm run check` = lint + unit tests + build
 ```
 
