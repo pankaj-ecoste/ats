@@ -5,7 +5,7 @@ function log(text,type='info',appId){
  repo.trim('activity',300);
 }
 function notify(text,goArgs=['dashboard']){
- repo.insert('notifications',{id:uid('N'),text,ts:Date.now(),read:false,go:goArgs});
+ repo.insert('notifications',{id:crypto.randomUUID(),text,ts:Date.now(),read:false,go:goArgs});
 }
 // returns the notification so the caller can navigate to n.go
 function markNotificationRead(id){return repo.update('notifications',id,{read:true})}

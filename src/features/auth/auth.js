@@ -40,12 +40,10 @@ function showHold(message){
   <h1>${esc(ME?ME.fullName:'')}</h1><p>${esc(message)}</p><button class="btn" data-act="signOut">Sign out</button></div>`;
 }
 
-let unsavedWatching=false,unsavedShown=false;
-// TEMPORARY (removed when the write path lands, plan P2.3): until then a change in connected mode lives only in this tab
-function warnUnsaved(){
- if(unsavedWatching)return;unsavedWatching=true;
- repoOnChange(()=>{if(unsavedShown)return;unsavedShown=true;toast('Changes are not saved to the server yet. They will be lost when you reload.','var(--red)')});
-}
+// saving runs in the background; tell the person when it fails, and when it works again
+onEvent('data:error',({message})=>toast(message+' Your screen may now differ from what is saved: reload to see the saved version.','var(--red)'));
+onEvent('data:ok',()=>toast('Saving works again','var(--green)'));
+window.addEventListener('beforeunload',e=>{if(CONNECTED&&writesPending()>0){e.preventDefault();e.returnValue=''}});
 
 async function enterApp(me){
  if(!me)return showLogin();
@@ -54,7 +52,7 @@ async function enterApp(me){
  authRoot().innerHTML=`<div class="auth-card"><div class="auth-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><p class="muted" role="status">Loading your data…</p></div>`;
  try{await loadFromServer(sb,me)}
  catch(e){return showHold('The data could not be loaded. Reload the page to try again. ('+e.message+')')}
- warnUnsaved();
+ startWriting(sb,me);
  hideAuth();
  R.view='dashboard';R.param=null;
  render();
@@ -71,7 +69,7 @@ async function bootAuth(){
 
 async function doSignOut(){
  signingOut=true;
- try{await signOut()}catch(e){/* the screen changes either way */}
+ try{await stopWriting();await signOut()}catch(e){/* the screen changes either way */}
  signingOut=false;
  showLogin();
 }

@@ -18,7 +18,7 @@ function bindOpenings(root){
  $$('[data-op]',root).forEach(el=>el.onclick=()=>go('opening',el.dataset.op));
 }
 function openingForm(id){
- const o=id?getOp(id):{id:'OP-'+(1000+S.openings.length+1),title:'',dept:'Engineering',positions:1,location:'',mode:'Hybrid',type:'Full-time',expMin:2,expMax:5,salMin:6,salMax:12,education:'Graduate',mandatory:[],preferred:[],desc:'',resp:'',req:'',recruiter:S.settings.user,manager:interviewers()[0],opened:today(),target:addDays(45),priority:'Medium',status:'Open'};
+ const o=id?getOp(id):{id:uid('OP'),title:'',dept:'Engineering',positions:1,location:'',mode:'Hybrid',type:'Full-time',expMin:2,expMax:5,salMin:6,salMax:12,education:'Graduate',mandatory:[],preferred:[],desc:'',resp:'',req:'',recruiter:S.settings.user,manager:interviewers()[0],opened:today(),target:addDays(45),priority:'Medium',status:'Open'};
  const sel=(n,opts,v)=>`<select class="inp" name="${n}">${opts.map(x=>`<option ${x==v?'selected':''}>${x}</option>`).join('')}</select>`;
  modal({title:id?'Edit opening':'New opening',size:'w',body:`<form id="opF" class="fgrid g3f">
  <label class="f">Opening ID<input class="inp" name="id" value="${o.id}" readonly></label>

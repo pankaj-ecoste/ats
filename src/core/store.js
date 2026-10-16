@@ -19,8 +19,10 @@ function load(){
  return seed();
 }
 let saveT,saveFailed=false;
-// connected mode keeps business data on the server, never in this browser's storage
-function save(){if(typeof CONNECTED!=='undefined'&&CONNECTED)return;clearTimeout(saveT);saveT=setTimeout(()=>{
+// connected mode keeps business data on the server, never in this browser's storage; only the colour theme (a per-browser choice) stays here
+const THEME_KEY='ecoste-theme';
+function savedTheme(){try{return localStorage.getItem(THEME_KEY)||'auto'}catch(e){return 'auto'}}
+function save(){if(typeof CONNECTED!=='undefined'&&CONNECTED){try{localStorage.setItem(THEME_KEY,S.settings.theme||'auto')}catch(e){}return}clearTimeout(saveT);saveT=setTimeout(()=>{
  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));saveFailed=false}
  catch(e){
   // tell the user once per failure streak; a full or blocked storage means changes are NOT being kept

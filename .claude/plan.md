@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-16
-- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; the login screen and Users page are in. **P2.3 (data layer) has started:** ids are collision-proof and the app now *reads* everything from Supabase after sign-in. Next is the write path (the background queue that saves each change). Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
+- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; the login screen and Users page are in. **P2.3 (data layer) core is done:** ids are collision-proof, the app reads everything from Supabase after sign-in, and every change is saved back in the background. Two recruiters can now share data in connected mode. Left in P2.3: notifications for other people, loading and error states, pagination, and a few role-aware screens (see the design notes in Phase 2). Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -20,12 +20,12 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 102/102 pass |
+| `npm test` (node:test, no deps) | 114/114 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in checks and 14 data checks (run with installed Chrome via `CHROME_PATH`) |
+| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 14 data and 23 write checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project has the full schema, rules, access policies and username login (8 migrations; 56 database tests pass: 29 access, 11 real sign-in, 16 round trip). In connected mode the app **reads** from the database after sign-in; it does **not write yet** (changes live in the open tab only, and a red message says so). Demo mode still uses browser `localStorage` |
+| Database / backend | Supabase project has the full schema, rules, access policies and username login (8 migrations; 56 database tests pass: 29 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -73,8 +73,10 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `scripts/gen-config.mjs`, `scripts/vendor.mjs` | Write `src/generated/config.js` (public URL and anon key from `.env`; empty means demo mode); copy the Supabase library into `src/vendor/` |
 | `src/generated/config.js` (not committed), `src/vendor/supabase.js` | The two values the browser needs to reach Supabase; the vendored Supabase library (no public CDN) |
 | `src/data/mapping.js` | Pure translation between database rows and the app's records, both directions: `makePeople` (names to profile ids and back), `stateFromRows`, `TO_ROW`, `rowsFromState` |
-| `src/data/api.js` | `fetchTable` (reads in pages of 1000), `fetchAll`, `loadFromServer(client, me)`: replaces `S` with what the database holds |
+| `src/data/api.js` | Reading: `fetchTable` (pages of 1000), `fetchAll`, `loadFromServer(client, me)` replaces `S`. Writing: `createWriter` (ordered queue, retries, one error message per run of failures), `applyChange`, `writeRecord`, `syncCollection`, `startWriting`, `stopWriting`, `writesPending` |
 | `tests/db/roundtrip.test.mjs` | 16 tests: the sample data goes into every table, comes back, and must be identical (found 4 real mismatches, see log) |
+| `tests/e2e/writes.mjs` | Live browser test, 23 checks: use cases run as a signed-in admin, rows checked in the project, reload brings it all back, a recruiter's forbidden change is refused in plain words; removes everything it made |
+| `tests/unit/data-writer.test.mjs` | 12 tests of the writer with a fake database client |
 | `tests/e2e/data.mjs` | Live browser test: records put in the project, a person signs in, pages show them; no business data in browser storage; each person sees only their own notifications |
 | `tests/unit/data-mapping.test.mjs`, `ids.test.mjs` | Mapping, paging and id format |
 | `src/core/supabase.js` | Creates the browser's Supabase client, or none in demo mode (`CONNECTED`, `sb`) |
@@ -158,7 +160,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `CHANGELOG.md`; the write half of `src/data/api.js`.
+**Not in the tree yet (planned):** `CHANGELOG.md`.
 
 ## 4. Done (log)
 
@@ -428,8 +430,9 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 **P2.3 Data layer** (L)
 - ☑ Collision-proof ids (2026-10-16): `uid()` uses `crypto`; `ids.test.mjs` checks the format and 100,000 unique ids
 - ☑ **Read path (2026-10-16):** after sign-in the app loads every table the person may read (`src/data/api.js`), maps rows to the app's records (`src/data/mapping.js`) and replaces `S`. Connected mode never saves business data to `localStorage`. Proven by 16 round-trip tests (sample data through every table and back, identical) and 14 live browser checks.
-- ☐ **Write path:** `repoOnChange` listener that turns each change into a database write (`TO_ROW` already does the record-to-rows half), queued in the background with retry and an error message; replaces the temporary red "not saved yet" message. Then one feature at a time with live checks: openings → candidates → applications → interviews → offers → onboarding → tasks → settings and reports.
-- ☐ Decide how people who are not accounts are handled (see "Design notes for the write path" below)
+- ☑ **Write path (2026-10-16):** a `repoOnChange` listener turns each change into database calls (`src/data/api.js`). Changes are copied when made and written one at a time in order; a network drop is retried (1, 3, 8, 20 s); a refusal is shown once in plain words and later changes carry on; closing the tab with saves pending asks first; sign-out waits for pending saves. An update or delete that access rules hide (zero rows changed, which the database does not report as an error) is detected and reported. Covers openings, candidates (profile, salary, documents), applications (with screening), group and personal interviews, offers, onboarding, tasks, notifications, activity, postings, report events, call log, monthly targets, job sites, company settings and the Google Sheet connection, and whole-collection workbook imports.
+- ☑ People who are not accounts: in connected mode the recruiter, manager and interviewer pickers offer accounts only (`PEOPLE.names(...)`); the demo-only parts of Settings (typed team lists, signed-in picker, demo reset) are hidden; `repo.reset` refuses. The theme stays in this browser.
+- ☐ **Still open in P2.3:** one notification per recipient (today a notification goes to the person who caused it), loading and error states on screens, pagination for applications and candidates (the loader currently reads everything, newest activity included), refusing duplicate full names on the Users page, role-aware screens for `management` (reads applications but not candidates) and for hidden salary (`null` should show as a dash), realtime refresh of other people's changes (last write wins today)
 - ☐ Loading and error states in the UI; replace whole-state `save()` with per-record writes
 - ☐ Pagination on applications and candidates
 
@@ -440,9 +443,9 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 *Exit criteria:* two recruiters on two computers see the same data; a user with the wrong role is blocked at the database; tests cover RLS; no business data left in `localStorage`.
 
-**Design notes for the write path (found while building the read path).**
+**Design notes for the write path (found while building the read path; the first and the theme note are now done).**
 - **People are names in the app, ids in the database.** `makePeople` translates through `profiles.full_name` (or the username). A name with no matching account becomes `null` in the database and is lost on the next load. So in connected mode the pickers for recruiter, manager and interviewer must offer only accounts (`PEOPLE.names(role)`), not typed names or the built-in default lists. If two accounts share a full name the first wins; the Users page should refuse duplicate full names.
-- **Notifications are per person in the database, shared in the app.** The loader gives each person only their own (the database policy). `notify()` today creates one shared entry; the writer must create one row per recipient (the opening's recruiter, the task owner...), decided per kind of message.
+- **Notifications are per person in the database, shared in the app.** The loader gives each person only their own (the database policy). `notify()` creates one entry for the person who caused it; one row per recipient (the opening's recruiter, the task owner...) is still to do, decided per kind of message. Notification ids are uuids.
 - **Salary is `null`, not 0, when hidden or not entered** (hiring managers, interviewers and candidates with no salary row). Screens that show salary should show "—" for `null`; `match()` already treats it as no expectation.
 - **Sample report history** (`seedHistory`) must not run when connected (production starts empty, P2.4). Today it only runs on the empty in-memory state before sign-in and is replaced by the load.
 - **`management` role** reads applications but not candidates, so screens that look up the candidate of an application will get `undefined`. Needs role-aware screens (P2.2/P2.3 follow-up) before a management account is used for real.
@@ -570,6 +573,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-16 | **Write path:** the writer in `src/data/api.js` (ordered queue, snapshot of each change, retries, one plain error per run of failures, detection of changes that access rules silently drop), settings parts that only suit the demo hidden when connected, accounts-only pickers, `repo.reset` refused when connected, new openings get collision-proof ids (the last counter id), notification ids are uuids, theme kept in the browser. 12 writer unit tests (114 total) and 23 live write checks. **Found and fixed by the tests:** (1) updates hidden by access rules changed zero rows and looked like success; (2) three quick stage moves were written as three copies of the last stage, losing history, until each change was copied when made; (3) test cleanup left audit rows behind | Claude Code |
 | 2026-10-16 | **Read path:** `src/data/mapping.js` (rows to records and back, people by name), `src/data/api.js` (paged loader), sign-in now loads the data and shows "Loading your data…", connected mode no longer writes to `localStorage`, temporary red notice that changes are not saved yet. 16 round-trip tests and 14 live browser checks. **Found and fixed:** (1) `match()` produced `NaN` for a candidate with no salary, which crashed the Pipeline page; (2) interview status `Pending Feedback` was stored by the sample data and the Excel dropdown but the database (rightly) refuses it, because the app derives it from a past Scheduled interview, so it is now saved as `Scheduled`; (3) the sample data had openings whose status disagreed with the stage rule, the database fixed them; (4) `link` and `notes` mean different column types in different tables (test helper) | Claude Code |
 | 2026-10-16 | **P2.3 started:** collision-proof ids (`uid()` on `crypto`, 8 characters), applied to candidates, applications and notifications; 2 new unit tests (95 total), browser tests green | Claude Code |
 | 2026-10-10 | **App-side login:** sign-in screen, account menu, change password, Users page; demo vs connected mode; Supabase library vendored; build refuses to output a service key or a database URL; migrations 0007 (create a login in one step) and 0008 (switched-off accounts get a clean refusal; 'infinity' made Supabase return a server error); 14 unit tests + 27 live browser checks | Claude Code |

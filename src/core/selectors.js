@@ -2,8 +2,9 @@
 "use strict";
 /* ---------- lookups ---------- */
 // the team lives in settings (S.settings.team) so it can be edited; the built-in names are only the starting point
-const recruiters=()=>{const t=S.settings.team;return t&&t.recruiters&&t.recruiters.length?t.recruiters:DEFAULT_RECRUITERS};
-const interviewers=()=>{const t=S.settings.team;return t&&t.interviewers&&t.interviewers.length?t.interviewers:DEFAULT_INTERVIEWERS};
+// connected: only people with an account can be picked, because a typed name has no account to save against
+const recruiters=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter']);const t=S.settings.team;return t&&t.recruiters&&t.recruiters.length?t.recruiters:DEFAULT_RECRUITERS};
+const interviewers=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter','hiring_manager','interviewer']);const t=S.settings.team;return t&&t.interviewers&&t.interviewers.length?t.interviewers:DEFAULT_INTERVIEWERS};
 const getOp=id=>S.openings.find(o=>o.id===id);
 const getC=id=>S.candidates.find(c=>c.id===id);
 const getA=id=>S.applications.find(a=>a.id===id);

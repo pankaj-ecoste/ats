@@ -1,6 +1,6 @@
 # Database
 
-The data lives in a Supabase project (PostgreSQL 17). The schema is defined only by the numbered files in `supabase/migrations/`. In connected mode the app reads from it after sign-in (`src/data/api.js`); writing is the next step (Phase 2.3). In demo mode the app keeps its data in the browser.
+The data lives in a Supabase project (PostgreSQL 17). The schema is defined only by the numbered files in `supabase/migrations/`. In connected mode the app reads from it after sign-in and saves every change back (`src/data/api.js`). In demo mode the app keeps its data in the browser.
 
 ## Commands
 
@@ -79,4 +79,5 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- The app reads these tables but does not write them yet (Phase 2.3). `tests/db/roundtrip.test.mjs` proves the app's records survive a trip through the tables.
+- Not yet done on the app side: one notification per recipient, a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
+- **An update or delete that access rules hide is not an error**: the database changes zero rows and says nothing. Code that writes must ask for the changed rows back and count them (the writer does).
