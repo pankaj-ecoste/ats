@@ -9,6 +9,21 @@ let ME=null;   // who is signed in: {id, username, fullName, role, active}, or n
 const loginEmail=username=>String(username||'').trim().toLowerCase()+'@'+LOGIN_DOMAIN;
 const isAdmin=()=>!!ME&&ME.role==='admin'&&ME.active;
 
+/* ---------- what each role may open (connected mode; the database enforces the same limits, this keeps the screens honest) ---------- */
+// null = every page. A detail page counts as its list.
+const ROLE_PAGES={
+ admin:null,recruiter:null,
+ hiring_manager:['dashboard','openings','applications','candidates','interviews','offers','tasks'],
+ interviewer:['interviews','candidates','tasks'],
+ management:['dashboard','openings','reports'],
+};
+const PAGE_OF={opening:'openings',candidate:'candidates'};
+const roleCanSee=(role,view)=>{const pages=ROLE_PAGES[role];return !pages||pages.includes(PAGE_OF[view]||view)};
+const canSee=view=>!CONNECTED||!ME||roleCanSee(ME.role,view);
+// only admins and recruiters create and change records; everyone else reads (interviewer scorecards are a later step)
+const canEdit=()=>!CONNECTED||!ME||ME.role==='admin'||ME.role==='recruiter';
+const firstPage=()=>{const p=CONNECTED&&ME?ROLE_PAGES[ME.role]:null;return p?p[0]:'dashboard'};
+
 // turns what Supabase says into a sentence a person can act on
 function authError(e){
  const m=String((e&&e.message)||e||'');

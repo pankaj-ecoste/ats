@@ -10,7 +10,7 @@ function confirmJoining(aid,date){
 function recordJoined(aid){
  const c=getC(getA(aid).cid);
  log(`${c.name} joined`,'joined',aid);
- notify(`${c.name} joined today`,['onboarding']);
+ notify(`${c.name} joined today`,['onboarding'],[getA(aid).recruiter]);
 }
 // creates the checklist once
 function ensureOnboardingChecklist(aid){
@@ -26,5 +26,5 @@ function markEmployeeReady(aid){
  const c=getC(getA(aid).cid);
  moveStage(aid,'Employee Ready');
  log(`${c.name} is employee ready`,'joined',aid);
- notify(`${c.name} completed onboarding`,['onboarding']);
+ notify(`${c.name} completed onboarding`,['onboarding'],[getA(aid).recruiter]);
 }

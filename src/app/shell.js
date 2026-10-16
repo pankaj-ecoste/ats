@@ -3,7 +3,7 @@
 function renderSide(){
  const cnt={applications:S.applications.filter(a=>a.stage==='New').length,interviews:S.interviews.filter(i=>i.date===today()&&i.status!=='Cancelled').length,tasks:S.tasks.filter(t=>!t.done).length,offers:S.offers.filter(o=>['Draft','Generated','Sent','Negotiation'].includes(o.status)).length};
  $('#side').innerHTML=`<div class="brand"><div class="brand-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><small>Recruit Tracker</small></div>
- <nav class="nav" aria-label="Main">${NAV.filter(n=>!n[3]||n[3]()).map(n=>n[0]==='sep'?'<div class="sep"></div>':`<button class="${R.view===n[0]?'on':''}" data-go="${n[0]}">${ic(n[2])}<span>${n[1]}</span>${cnt[n[0]]?`<span class="ct">${cnt[n[0]]}</span>`:''}</button>`).join('')}</nav>
+ <nav class="nav" aria-label="Main">${NAV.filter(n=>(!n[3]||n[3]())&&canSee(n[0])).map(n=>n[0]==='sep'?'<div class="sep"></div>':`<button class="${R.view===n[0]?'on':''}" data-go="${n[0]}">${ic(n[2])}<span>${n[1]}</span>${cnt[n[0]]?`<span class="ct">${cnt[n[0]]}</span>`:''}</button>`).join('')}</nav>
  <div class="side-foot"><div class="rgbbar"></div>${esc(S.settings.company)}</div>`;
  $$('[data-go]',$('#side')).forEach(b=>b.onclick=()=>go(b.dataset.go));
 }
@@ -12,7 +12,7 @@ function renderTop(){
  $('#top').innerHTML=`<button class="tbtn menu-btn" id="menuBtn" aria-label="Open menu">${ic('menu')}</button>
  <div class="search">${ic('search')}<input id="gsearch" placeholder="Search candidates, applications, openings, interviews, offers" autocomplete="off" aria-label="Global search"><div class="dd hide" id="gres" style="left:0;right:0"></div></div>
  <div class="grow"></div>
- <div style="position:relative"><button class="tbtn" id="qaBtn" aria-label="Quick add" title="Quick add">${ic('plus')}</button><div class="dd hide" id="qaDD" style="right:0;min-width:220px"></div></div>
+ <div style="position:relative"${canEdit()?'':' hidden'}><button class="tbtn" id="qaBtn" aria-label="Quick add" title="Quick add">${ic('plus')}</button><div class="dd hide" id="qaDD" style="right:0;min-width:220px"></div></div>
  <div style="position:relative"><button class="tbtn" id="nBtn" aria-label="Notifications">${ic('bell')}${un?`<span class="dot">${un}</span>`:''}</button><div class="dd hide" id="nDD" style="right:0;width:340px"></div></div>
  <button class="tbtn" id="helpBtn" aria-label="Help">${ic('help')}</button>
  ${CONNECTED&&ME?`<div style="position:relative"><button class="me-btn" id="meBtn" aria-label="Account menu" aria-haspopup="true">${av(ME.fullName)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(ME.fullName)}</b><small class="muted">${esc(ROLE_LABEL[ME.role]||ME.role)}</small></div></button><div class="dd hide" id="meDD" style="right:0;min-width:200px"><div class="it" data-act="changePassword">Change password</div><div class="it" data-act="signOut">Sign out</div></div></div>`:`<div class="me">${av(S.settings.user)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(S.settings.user)}</b><small class="muted">Recruiter</small></div></div>`}`;
@@ -20,15 +20,15 @@ function renderTop(){
  const gs=$('#gsearch'),gr=$('#gres');
  gs.oninput=()=>{const q=gs.value.trim().toLowerCase();if(!q){gr.classList.add('hide');return}
   const res=[];
-  const cs=S.candidates.filter(c=>(c.name+c.email+c.skills.join(' ')+c.company).toLowerCase().includes(q)).slice(0,5);
+  const cs=!canSee('candidates')?[]:S.candidates.filter(c=>(c.name+c.email+c.skills.join(' ')+c.company).toLowerCase().includes(q)).slice(0,5);
   if(cs.length)res.push('<h6>Candidates</h6>'+cs.map(c=>`<div class="it" data-k="c" data-id="${c.id}">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)} at ${esc(c.company)}</small></div></div>`).join(''));
-  const as=S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId);return (a.id+c.name+o.title).toLowerCase().includes(q)}).slice(0,5);
+  const as=!canSee('applications')?[]:S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId);return (a.id+c.name+o.title).toLowerCase().includes(q)}).slice(0,5);
   if(as.length)res.push('<h6>Applications</h6>'+as.map(a=>`<div class="it" data-k="a" data-id="${a.id}"><div><b>${esc(getC(a.cid).name)} → ${esc(getOp(a.opId).title)}</b><small>${a.id} · ${a.stage}</small></div></div>`).join(''));
   const os=S.openings.filter(o=>(o.id+o.title+o.dept+o.location).toLowerCase().includes(q)).slice(0,4);
   if(os.length)res.push('<h6>Openings</h6>'+os.map(o=>`<div class="it" data-k="o" data-id="${o.id}"><div><b>${esc(o.title)}</b><small>${o.id}, ${esc(o.location)}</small></div></div>`).join(''));
-  const is=S.interviews.filter(i=>{const a=getA(i.appId);return (getC(a.cid).name+i.round+i.interviewers.join(' ')).toLowerCase().includes(q)}).slice(0,4);
+  const is=!canSee('interviews')?[]:S.interviews.filter(i=>{const a=getA(i.appId);return (getC(a.cid).name+i.round+i.interviewers.join(' ')).toLowerCase().includes(q)}).slice(0,4);
   if(is.length)res.push('<h6>Interviews</h6>'+is.map(i=>`<div class="it" data-k="i" data-id="${i.id}"><div><b>${esc(getC(getA(i.appId).cid).name)}, ${esc(i.round)}</b><small>${fmtD(i.date)} at ${fmtT(i.time)}</small></div></div>`).join(''));
-  const ofs=S.offers.filter(o=>(getC(getA(o.appId).cid).name+o.designation+o.id).toLowerCase().includes(q)).slice(0,4);
+  const ofs=!canSee('offers')?[]:S.offers.filter(o=>(getC(getA(o.appId).cid).name+o.designation+o.id).toLowerCase().includes(q)).slice(0,4);
   if(ofs.length)res.push('<h6>Offers</h6>'+ofs.map(o=>`<div class="it" data-k="f" data-id="${o.id}"><div><b>${esc(getC(getA(o.appId).cid).name)}, ${esc(o.designation)}</b><small>${o.status} · ${inr(o.ctc)} CTC</small></div></div>`).join(''));
   gr.innerHTML=res.join('')||'<div class="empty" style="padding:18px">No matches. Try a skill, name or opening ID.</div>';gr.classList.remove('hide');
   $$('.it',gr).forEach(el=>el.onclick=()=>{gr.classList.add('hide');gs.value='';const id=el.dataset.id;

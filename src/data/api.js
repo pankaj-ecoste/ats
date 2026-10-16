@@ -163,7 +163,16 @@ async function writeRoot(client,ctx,key,value){
  // anything else (the sample-history flag) is not stored
 }
 
+// a notification for somebody else: written for their account. A name with no account has nobody to tell.
+async function sendRecord(client,ctx,ch){
+ if(ch.coll!=='notifications')return;
+ const userId=ctx.people.id(ch.recipient);
+ if(!userId)return;
+ await dbRun(client.from('notifications').insert(TO_ROW.notification(ch.record,ctx.people,userId).notifications),WHAT.notifications);
+}
+
 async function applyChange(client,ctx,ch){
+ if(ch.op==='send')return sendRecord(client,ctx,ch);
  if(ch.op==='insert')return writeRecord(client,ctx,ch.coll,ch.id,ch.record,true);
  if(ch.op==='update')return writeRecord(client,ctx,ch.coll,ch.id,ch.record,false);
  if(ch.op==='remove'){const m=WRITE_MAP[ch.coll];if(m&&m.key)await dbRunOne(client.from(m.table).delete().eq(m.key,ch.id).select(m.key),WHAT[ch.coll]);return}

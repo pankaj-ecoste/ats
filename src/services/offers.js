@@ -18,7 +18,7 @@ function saveOffer(w,status){
 function markOfferSent(fid){
  const f=repo.update('offers',fid,{sent:today()}),a=getA(f.appId),c=getC(a.cid),o=getOp(a.opId);
  log(`Offer sent to ${c.name}`,'offer',a.id);
- notify(`Offer sent to ${c.name} · awaiting response`,['offers']);
+ notify(`Offer sent to ${c.name} · awaiting response`,['offers'],[a.recruiter]);
  addTask({title:`Follow up with ${c.name} on offer`,due:addDays(2),related:o.title,priority:'High',owner:S.settings.user});
  return f;
 }
@@ -28,7 +28,7 @@ function recordOfferResponse(fid,response){
  log(`${c.name} ${response==='Negotiation'?'asked to negotiate the offer':response.toLowerCase()+' the offer'}`,'offer',a.id);
  if(response==='Accepted'){
   moveStage(a.id,'Offer Accepted');
-  notify(`${c.name} accepted the offer 🎉`,['onboarding']);
+  notify(`${c.name} accepted the offer 🎉`,['onboarding'],[a.recruiter]);
  }
  return f;
 }

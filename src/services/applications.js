@@ -9,7 +9,7 @@ function createCandidateApplication(fields,opId){
  repo.insert('applications',{id:aid,cid,opId,date:today(),stage:'New',maxStage:0,recruiter:o.recruiter,screening:null,stageSince:today()});
  const score=match(candidate,o).score;
  log(`${candidate.name} applied for ${o.title}`,'application',aid);
- notify(`New application: ${candidate.name} scored ${score}% for ${o.title}`,['candidate',cid]);
+ notify(`New application: ${candidate.name} scored ${score}% for ${o.title}`,['candidate',cid],[o.recruiter]);
  return {cid,aid,score,candidate};
 }
 function assignRecruiter(appIds,recruiter){appIds.forEach(id=>repo.update('applications',id,{recruiter}))}

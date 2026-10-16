@@ -6,5 +6,5 @@ const VIEWS={dashboard:[vDashboard,bindDashboard],openings:[vOpenings,bindOpenin
  interviews:[vInterviews,bindInterviews],offers:[vOffers,bindOffers],onboarding:[vOnboarding,bindOnboarding],tasks:[vTasks,bindTasks],reports:[vReports,()=>{}],ai:[vAI,bindAI],settings:[vSettings,bindSettings]};
 function render(){
  const navView={opening:'openings',candidate:'candidates'}[R.view]||R.view;const real=R.view;R.view=navView;renderSide();R.view=real;
- renderTop();const name=VIEWS[R.view]?R.view:'dashboard';const [v,b]=VIEWS[name];const root=$('#content');root.innerHTML=v();b(root);runBindHooks(name,root);
+ renderTop();if(!canSee(R.view)){R.view=firstPage();R.param=null}const name=VIEWS[R.view]?R.view:firstPage();const [v,b]=VIEWS[name];const root=$('#content');root.innerHTML=v();b(root);runBindHooks(name,root);
 }

@@ -182,3 +182,13 @@ test('each change keeps the record as it was when the change was made', async ()
   await w.idle();
   assert.deepEqual(client.calls.filter((c) => c.op === 'update').map((c) => c.rows.stage), ['New', 'Shortlisted', 'Screening']);
 });
+
+test('a notification for someone else is written for their account; a name with no account is skipped', async () => {
+  const client = fakeClient(), w = newWriter(client);
+  const record = { id: '11111111-1111-4111-8111-111111111111', text: 'Hi', ts: 1760000000000, read: false, go: ['tasks'] };
+  await w.enqueue({ op: 'send', coll: 'notifications', id: record.id, recipient: 'Priya Sharma', record });
+  await w.enqueue({ op: 'send', coll: 'notifications', id: record.id, recipient: 'Nobody Known', record });
+  assert.deepEqual(ops(client), ['insert notifications']);
+  assert.equal(client.calls[0].rows.user_id, 'u-me');
+  assert.deepEqual(plain(client.calls[0].rows.link), ['tasks']);
+});

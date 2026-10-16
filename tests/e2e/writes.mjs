@@ -76,7 +76,7 @@ async function removeTestRecords() {
   }
 }
 
-const original = await one('select company, signatory from public.company_settings');
+const original = await one('select company, signatory, config from public.company_settings');
 let page;
 try {
   await removeTestRecords();
@@ -102,6 +102,7 @@ try {
     requestDocument(cid, 'PAN card');
     const task = addTask({ title: `Call ${t}`, due: today(), priority: 'High', related: op.title, owner: 'Test Admin' });
     setTaskDone(task.id, true);
+    addTask({ title: `Prepare ${t}`, due: today(), priority: 'Low', related: op.title, owner: 'Test Recruiter' });
     const w = { id: uid('OFR'), appId: aid, designation: op.title, dept: 'Engineering', location: 'Pune', joining: addDays(30), manager: 'Test Admin', empType: 'Full-time', ctc: 800000, breakup: autoSplit(800000),
       status: 'Draft', created: today(), sent: null, custom: null, probation: 6, validity: 7, _new: true };
     saveOffer(w, 'Draft');
@@ -143,6 +144,13 @@ try {
   check('the opening is Filled once its one position reaches onboarding (the database rule)', (await one('select status from public.openings where id = $1', [made.opId])).status === 'Filled');
   const act = await all('select actor_id from public.activity where application_id = $1', [made.aid]);
   check('the activity feed is saved with who did it', act.length >= 3 && act.every((a) => a.actor_id));
+  const rec = (await one("select id from public.profiles where username = $1", [REC])).id, adm = (await one('select id from public.profiles where username = $1', [ADMIN])).id;
+  const toRec = (await all('select text from public.notifications where user_id = $1', [rec])).map((r) => r.text);
+  check('the opening\'s recruiter is told of the new application', toRec.some((x) => x.startsWith('New application: Zed Candidate') && x.includes(tag)));
+  check('the interviewer is told of the interview', toRec.some((x) => /Technical interview with Zed Candidate/.test(x)));
+  check('a task given to someone else tells them', toRec.some((x) => x === `New task for you: Prepare ${tag}`));
+  const toAdm = (await all('select text from public.notifications where user_id = $1', [adm])).map((r) => r.text);
+  check('the person who did it is not told about their own actions', toAdm.length === 0);
   check('no business data is kept in this browser', await page.evaluate(() => ['ecoste-ats', 'spectra-ats-v3'].every((k) => localStorage.getItem(k) === null)));
 
   /* ---- reload: everything comes back ---- */
@@ -167,13 +175,17 @@ try {
   /* ---- a recruiter: allowed work is saved, a forbidden change is refused in plain words ---- */
   page = await freshPage();
   await signIn(page, REC);
+  check('the recruiter finds the notifications waiting for them', await page.evaluate((t) => S.notifications.some((n) => n.text === `New task for you: Prepare ${t}`), tag));
   await page.evaluate((t) => { addTask({ title: `Recruiter task ${t}`, due: today(), priority: 'Low', related: 'x', owner: 'Test Recruiter' }); }, tag);
   await saved(page);
   check('a recruiter can add a task', (await all('select 1 from public.tasks where title = $1', [`Recruiter task ${tag}`])).length === 1);
+  await page.evaluate(() => saveSla({ New: 3, Shortlisted: 4 }));
+  await saved(page);
+  check('a recruiter can change the working configuration (SLA days)', (await page.evaluate(() => window.__dataErrors)).length === 0 && (await one('select config from public.company_settings')).config.sla?.New === 3);
   await page.evaluate((t) => updateSetting('signatory', `Hacked ${t}`), tag);
   await saved(page);
   const refused = await page.evaluate(() => window.__dataErrors);
-  check('a recruiter changing company settings is refused with a plain sentence', refused.length === 1 && /Could not save the settings\. You do not have permission/.test(refused[0]));
+  check('a recruiter changing the company signatory is refused with the database\'s own sentence', refused.length === 1 && /Could not save the settings\. Only an admin can change the company details/.test(refused[0]));
   check('the refused change did not reach the database', (await one('select signatory from public.company_settings')).signatory === `Signatory ${tag}`);
   check('page errors', page.errors.length === 0 || (console.error(page.errors), false));
 } catch (e) {
@@ -183,7 +195,7 @@ try {
 } finally {
   try { await browser.close(); } catch { /* already closed */ }
   try {
-    await db.query('update public.company_settings set company = $1, signatory = $2', [original.company, original.signatory]);
+    await db.query('update public.company_settings set company = $1, signatory = $2, config = $3', [original.company, original.signatory, JSON.stringify(original.config)]);
     await removeTestRecords();
     await removeTestAccounts(db, tag);
   } finally { await db.end(); }

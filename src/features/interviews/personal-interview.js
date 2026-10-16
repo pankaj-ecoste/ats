@@ -30,7 +30,7 @@ function piScorecard(iid){
    const v=sc.filter(Boolean);if(v.length===PI_CRIT.length){const av=v.reduce((a,b)=>a+b,0)/v.length;$('#pOv',el).value=av>=4.3?'Strong':av>=3.6?'Good':av>=2.8?'Average':'Not Suitable'}}));
   $('#pSub',el).onclick=()=>{if(sc.some(x=>!x)){toast('Score every criterion before submitting','var(--red)');return}
    recordScorecard(i.id,{scores:sc,rec:val(el,'#pOv'),decision:val(el,'#pDec'),feedback:val(el,'#pFb')});closeModal();
-   if(i.decision==='Selected'){setStage(a.id,'Selected',true);notify(`${c.name} selected for ${o.title}`,['candidate',c.id]);refresh();selectedModal(a.id)}
+   if(i.decision==='Selected'){setStage(a.id,'Selected',true);notify(`${c.name} selected for ${o.title}`,['candidate',c.id],[a.recruiter]);refresh();selectedModal(a.id)}
    else if(i.decision==='Rejected'){setStage(a.id,'Rejected')}
    else if(i.decision==='Hold'){setStage(a.id,'On Hold')}
    else {refresh();toast('Scorecard saved. Schedule the next round.');schedulePI(a.id)}}}});

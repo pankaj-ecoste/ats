@@ -54,7 +54,7 @@ async function enterApp(me){
  catch(e){return showHold('The data could not be loaded. Reload the page to try again. ('+e.message+')')}
  startWriting(sb,me);
  hideAuth();
- R.view='dashboard';R.param=null;
+ R.view=firstPage();R.param=null;
  render();
 }
 

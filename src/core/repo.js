@@ -28,6 +28,8 @@ const repo={
  },
  // keep only the newest `max` records of a newest-first collection
  trim(coll,max){if(S[coll]&&S[coll].length>max){S[coll].length=max;save()}},
+ // a record that belongs in somebody else's list (their notifications). Nothing changes in this browser; listeners such as the database writer still hear of it.
+ send(coll,recipient,record){repoNotify({op:'send',coll,id:record.id,recipient,record});return record},
  // replace the whole state (used by 'reset demo data')
  reset(state){if(typeof CONNECTED!=='undefined'&&CONNECTED)throw new Error('The shared data cannot be reset from here.');S=state;save();repoNotify({op:'reset',coll:null,id:null,record:null})},
  // single objects that are not lists (settings, postCfg, monthly targets ...)

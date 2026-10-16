@@ -25,8 +25,8 @@ Needs `DATABASE_URL` in `.env` (the Supabase pooler string). `DATABASE_URL`, the
 
 | Role | Can do |
 |---|---|
-| `admin` | Everything. Only admins read the audit log, delete people's data, change roles, edit company settings. |
-| `recruiter` | Day-to-day: create and edit openings, candidates, applications, interviews, offers, tasks. Sees salary. Cannot approve their own offers. |
+| `admin` | Everything. Only admins read the audit log, delete people's data, change roles, edit the company details, signatory and match scoring. |
+| `recruiter` | Day-to-day: create and edit openings, candidates, applications, interviews, offers, tasks, and the working configuration (SLA days, report alert levels, posting setup, Google Sheet connection). Sees salary. Cannot approve their own offers. |
 | `hiring_manager` | Sees only the openings they manage, and the applications, candidates, interviews and offers on them. Approves or rejects those offers (and can change nothing else on an offer). No salary. |
 | `interviewer` | Sees only the interviews they are on, and the application, candidate and opening of those. Writes their own scorecard. No offers, no salary. |
 | `management` | Read-only: openings, applications, stage history, postings and the report tables. No candidate details, no salary, no offers. |
@@ -71,6 +71,7 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Rules the database enforces (so no client can skip them)
 
 - **Stage bookkeeping.** Changing an application's stage updates the furthest stage reached and the date it entered the stage, and writes a row to `stage_events`.
+- **Settings split.** A recruiter may change `company_settings.config` only; the other columns need an admin (migration 0009, trigger `guard`).
 - **Opening status.** An opening's status follows its furthest candidate: Screening from Shortlisted, Interviewing from Group Interview, Offer from Offer, Filled when enough people reach Joining. Draft, On Hold, Closed and Filled openings are left alone.
 - **Offer approval.** Only the opening's hiring manager or an admin can approve or reject. The approver is recorded. An offer waiting for approval, or rejected, cannot be marked Sent.
 - **Append only.** `audit_log` and `stage_events` cannot be edited, and cannot be deleted directly. Deleting an application (a candidate's data-deletion request) removes its stage events with it.
@@ -79,5 +80,5 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- Not yet done on the app side: one notification per recipient, a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
+- Not yet done on the app side: interviewers writing their own scorecard (`interview_scores`), a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
 - **An update or delete that access rules hide is not an error**: the database changes zero rows and says nothing. Code that writes must ask for the changed rows back and count them (the writer does).

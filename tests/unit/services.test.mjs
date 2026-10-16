@@ -79,7 +79,7 @@ test('repo reports every change to listeners', () => {
   const t = app.addTask({ title: 'x', due: app.today(), priority: 'Low', related: 'General', owner: 'Me' });
   app.setTaskDone(t.id, true);
   app.deleteTask(t.id);
-  assert.deepEqual(changes, ['insert:tasks', 'update:tasks', 'remove:tasks']);
+  assert.deepEqual(changes, ['insert:tasks', 'send:notifications', 'update:tasks', 'remove:tasks'], 'a task given to someone else also tells them');
 });
 
 test('tasks: add puts the newest first, done is saved, delete removes', () => {
@@ -117,4 +117,21 @@ test('activity log keeps only the newest 300 entries', () => {
 test('repo.update throws for a record that does not exist', () => {
   const app = fresh();
   assert.throws(() => app.repo.update('tasks', 'missing', { done: true }), /not found/);
+});
+
+test('notify: your own goes into your list, notifications for others are sent on without touching it; no one is told twice', () => {
+  const app = fresh();
+  const me = app.S.settings.user;
+  const sent = [];
+  app.repoOnChange((c) => { if (c.op === 'send') sent.push([c.recipient, c.record.text]); });
+  const n = app.S.notifications.length;
+  app.notify('just me');
+  assert.equal(app.S.notifications.length, n + 1);
+  app.notify('for others', ['dashboard'], ['Asha Rao', 'Asha Rao', '', 'Vikram Singh']);
+  assert.equal(app.S.notifications.length, n + 1, 'not in my list: I was not named');
+  assert.deepEqual(sent, [['Asha Rao', 'for others'], ['Vikram Singh', 'for others']]);
+  app.notify('me and one more', ['dashboard'], [me, 'Asha Rao']);
+  assert.equal(app.S.notifications.length, n + 2);
+  assert.equal(sent.length, 3);
+  assert.notEqual(sent[2][1], undefined);
 });

@@ -15,7 +15,7 @@ function scheduleGroupInterview(f){
   if(getA(id).stage!=='Group Interview')moveStage(id,'Group Interview');
  });
  log(`Group interview scheduled for ${getOp(g.opId).title} with ${g.appIds.length} candidates`,'schedule');
- notify(`Group interview set for ${fmtD(g.date)} with ${g.appIds.length} candidates`,['interviews']);
+ notify(`Group interview set for ${fmtD(g.date)} with ${g.appIds.length} candidates`,['interviews'],[getOp(g.opId).recruiter,...(g.interviewers||[])]);
  return g;
 }
 function setInviteStatus(iid,invite){return repo.update('interviews',iid,{invite})}
@@ -47,6 +47,7 @@ function schedulePersonalInterview(f){
  const a=getA(f.appId);
  if(STAGES.indexOf(a.stage)<4||a.stage==='On Hold')moveStage(f.appId,'Personal Interview');
  log(`${it.round} interview scheduled for ${getC(a.cid).name} on ${fmtD(it.date)}`,'schedule',f.appId);
+ notify(`${it.round} interview with ${getC(a.cid).name} on ${fmtD(it.date)}, ${fmtT(it.time)}`,['interviews'],it.interviewers);
  return it;
 }
 function recordScorecard(iid,{scores,rec,decision,feedback}){

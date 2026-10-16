@@ -69,6 +69,9 @@ const FROM_ROW={
  sheetLog:r=>({ts:dbMs(r.at),text:r.text}),
 };
 
+const hiddenCandidate=id=>({id,name:'Candidate (hidden)',designation:'',company:'',exp:0,location:'',education:'',eduField:'',university:'',gradYear:null,skills:[],curSal:null,expSal:null,
+ notice:0,reloc:false,email:'',phone:'',certifications:[],achievements:[],documents:[],notes:[],source:'',created:'',history:[],resumeText:'',restricted:true});
+
 /* ---------- the whole state ---------- */
 // rows: what the loader fetched, one array per table (a table the account may not read is just empty).
 // Returns the same shape the app keeps in S, except the person-only parts (settings.user, theme) which the caller sets.
@@ -109,6 +112,9 @@ function stateFromRows(rows,people){
   monthly,
   sheetLog:(rows.sheet_log||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at))).map(FROM_ROW.sheetLog),
  };
+ // an application whose candidate this account may not read (management) gets a marked placeholder, so no screen meets a missing record
+ const known=new Set(state.candidates.map(c=>c.id));
+ state.applications.forEach(a=>{if(!known.has(a.cid)){known.add(a.cid);state.candidates.push(hiddenCandidate(a.cid))}});
  // a missing list of boards means "use the built-in ones"; the app fills that in when it first asks
  if((rows.job_boards||[]).length)state.boards=rows.job_boards.slice().sort((a,b)=>a.position-b.position).map(FROM_ROW.board);
  if(cfg.postCfg)state.postCfg=cfg.postCfg;

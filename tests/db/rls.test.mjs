@@ -342,9 +342,19 @@ test('a user cannot make themselves admin; they can rename themselves; an admin 
   await as(U.admin, async () => assert.equal((await attempt("update public.profiles set role = 'recruiter' where id = $1", [U.pending])).rowCount, 1));
 });
 
-test('company settings: every member reads them, only an admin changes them', { skip }, async () => {
+test('company settings: every member reads them; staff change the working configuration, only an admin the company details', { skip }, async () => {
   await as(U.hm2, async () => assert.equal((await attempt('select * from public.company_settings')).rows.length, 1));
-  await as(U.recruiter, async () => assert.equal((await attempt("update public.company_settings set company = 'x'")).rowCount, 0));
+  await as(U.hm2, async () => assert.equal((await attempt("update public.company_settings set config = '{}'")).rowCount, 0, 'a hiring manager changes nothing'));
+  await as(U.interviewer, async () => assert.equal((await attempt("update public.company_settings set config = '{}'")).rowCount, 0));
+  await as(U.recruiter, async () => {
+    assert.equal((await attempt(`update public.company_settings set config = '{"sla":{"New":3}}'`)).rowCount, 1, 'a recruiter changes the working configuration');
+    const r = await attempt("update public.company_settings set company = 'x'");
+    assert.equal(r.rowCount, 0);
+    assert.match(r.error, /Only an admin can change the company details/);
+    assert.equal((await attempt("update public.company_settings set match_threshold = 10")).rowCount, 0, 'not the match scoring either');
+    // saving the whole row with the company details unchanged (as the app does) is allowed
+    assert.equal((await attempt("update public.company_settings set company = company, config = '{\"a\":1}'")).rowCount, 1);
+  });
   await as(U.admin, async () => assert.equal((await attempt("update public.company_settings set company = 'Ecoste'")).rowCount, 1));
 });
 

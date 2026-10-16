@@ -17,7 +17,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const target = process.argv[2] === 'dist' ? 'dist/Ecoste_Recruit_Tracker.html' : 'index.html';
 const cfg = { supabaseUrl: process.env.SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''), anonKey: process.env.SUPABASE_ANON_KEY };
 const tag = newTag();
-const ADMIN = `${tag}_admin`, REC = `${tag}_rec`, PW = 'admin-pass-1';
+const ADMIN = `${tag}_admin`, REC = `${tag}_rec`, MGMT = `${tag}_mgmt`, IVW = `${tag}_ivw`, HM = `${tag}_hm`, PW = 'admin-pass-1';
 const OP = `OP-${tag}`, C1 = `C-${tag}a`, C2 = `C-${tag}b`, A1 = `APP-${tag}a`, A2 = `APP-${tag}b`, GI = `GI-${tag}`, I1 = `INT-${tag}`, OF = `OFR-${tag}`, T1 = `T-${tag}`;
 
 const db = connect();
@@ -75,6 +75,10 @@ try {
   await removeTestAccounts(db, tag);
   const adminId = await createTestAdmin(db, tag, PW, 'Test Admin');
   const recId = (await db.query("select app.create_login($1, $2, 'Test Recruiter', 'recruiter'::public.app_role) as id", [REC, PW])).rows[0].id;
+  const login = async (user, name, role) => (await db.query('select app.create_login($1, $2, $3, $4::public.app_role) as id', [user, PW, name, role])).rows[0].id;
+  await login(MGMT, 'Test Management', 'management');
+  const ivwId = await login(IVW, 'Test Interviewer', 'interviewer');
+  const hmId = await login(HM, 'Test Manager', 'hiring_manager');
 
   await db.query("insert into public.openings (id, title, dept, recruiter_id, manager_id, positions) values ($1, 'Zed Engineer', 'Engineering', $2, $3, 2)", [OP, recId, adminId]);
   await db.query("insert into public.candidates (id, name, email, skills) values ($1, 'Zed Candidate', $3, '{Java,SQL}'), ($2, 'Second Candidate', $4, '{}')", [C1, C2, `${tag}a@example.com`, `${tag}b@example.com`]);
@@ -82,7 +86,7 @@ try {
   await db.query("insert into public.candidate_documents (candidate_id, name, status) values ($1, 'Resume.pdf', 'Received'), ($1, 'ID proof', 'Pending')", [C1]);
   await db.query("insert into public.applications (id, candidate_id, opening_id, stage, recruiter_id) values ($1, $3, $5, 'Offer', $6), ($2, $4, $5, 'New', $6)", [A1, A2, C1, C2, OP, recId]);
   await db.query("insert into public.interview_groups (id, opening_id, on_date, at_time, interviewer_ids) values ($1, $2, current_date, '11:30', $3)", [GI, OP, [recId]]);
-  await db.query("insert into public.interviews (id, application_id, kind, round, group_id, on_date, at_time, interviewer_ids) values ($1, $2, 'Group', 'Group Interview', $3, current_date, '15:00:00', $4)", [I1, A1, GI, [recId]]);
+  await db.query("insert into public.interviews (id, application_id, kind, round, group_id, on_date, at_time, interviewer_ids) values ($1, $2, 'Group', 'Group Interview', $3, current_date, '15:00:00', $4)", [I1, A1, GI, [recId, ivwId]]);
   await db.query("insert into public.offers (id, application_id, ctc, status) values ($1, $2, 1500000, 'Draft')", [OF, A1]);
   await db.query("insert into public.tasks (id, title, owner_id, due_on) values ($1, 'Call Zed', $2, current_date)", [T1, recId]);
   await db.query("insert into public.notifications (user_id, text) values ($1, 'For the admin only'), ($2, 'For the recruiter only')", [adminId, recId]);
@@ -120,6 +124,44 @@ try {
   const views = await page.locator('#side [data-go]').evaluateAll((els) => els.map((e) => e.dataset.go));
   const broken = await openEach(page, views);
   check(`every page opens with real data (${views.length} pages) without an error`, broken.length === 0 || (console.error(broken), false));
+
+  /* ---- management: reads applications but not candidates ---- */
+  const navOf = (p) => p.locator('#side [data-go]').evaluateAll((els) => els.map((e) => e.dataset.go).sort());
+  page = await freshPage();
+  await signIn(page, MGMT);
+  check('management sees dashboard, openings and the report only', (await navOf(page)).join() === 'dashboard,openings,reports');
+  const m = await page.evaluate((ids) => ({ view: R.view, ops: S.openings.some((o) => o.id === ids.op), apps: S.applications.filter((a) => [ids.a1, ids.a2].includes(a.id)).length,
+    hidden: S.candidates.filter((c) => c.restricted).length, names: S.candidates.map((c) => c.name), offers: S.offers.length, quick: getComputedStyle(document.querySelector('#qaBtn').parentElement).display }), { op: OP, a1: A1, a2: A2 });
+  check('management starts on the dashboard and sees the opening and its applications', m.view === 'dashboard' && m.ops && m.apps === 2);
+  check('management sees no candidate names and no offers: a marked placeholder stands in', m.hidden === 2 && m.names.every((n) => n === 'Candidate (hidden)') && m.offers === 0);
+  check('management has no quick-add button', m.quick === 'none');
+  await page.evaluate(() => go('candidates'));
+  check('management opening the candidates page is taken to its first page instead', await page.evaluate(() => R.view === 'dashboard'));
+  const brokenM = await openEach(page, await navOf(page));
+  check('management pages open without an error', brokenM.length === 0 || (console.error(brokenM), false));
+  await page.fill('#gsearch', 'Zed');
+  check('management search never shows a candidate or an offer', !(await page.locator('#gres').innerText()).match(/Zed Candidate|Candidates|Offers/));
+
+  /* ---- an interviewer: only their interview and its candidate ---- */
+  page = await freshPage();
+  await signIn(page, IVW);
+  check('the interviewer sees interviews, candidates and tasks only', (await navOf(page)).join() === 'candidates,interviews,tasks');
+  const iv = await page.evaluate(() => ({ view: R.view, ints: S.interviews.map((i) => i.id), cands: S.candidates.map((c) => c.id), ops: S.openings.map((o) => o.id), sal: S.candidates.map((c) => c.expSal) }));
+  check('the interviewer starts on Interviews and sees only their interview, its candidate and opening', iv.view === 'interviews' && iv.ints.join() === I1 && iv.cands.join() === C1 && iv.ops.join() === OP);
+  check('the interviewer does not see salary', iv.sal.every((x) => x === null));
+  const brokenI = await openEach(page, await navOf(page));
+  check('the interviewer pages open without an error', brokenI.length === 0 || (console.error(brokenI), false));
+
+  /* ---- a hiring manager: their opening, no salary ---- */
+  await db.query('update public.openings set manager_id = $1 where id = $2', [hmId, OP]);
+  page = await freshPage();
+  await signIn(page, HM);
+  const h = await page.evaluate(() => ({ apps: S.applications.length, cands: S.candidates.map((c) => c.id).sort(), offers: S.offers.length, sal: S.candidates.map((c) => c.expSal) }));
+  check('the hiring manager sees their opening\'s applications, candidates and offer', h.apps === 2 && h.cands.length === 2 && h.offers === 1);
+  check('the hiring manager does not see salary expectations', h.sal.every((x) => x === null));
+  check('the hiring manager has no report or settings page', (await navOf(page)).join() === 'applications,candidates,dashboard,interviews,offers,openings,tasks');
+  const brokenH = await openEach(page, await navOf(page));
+  check('the hiring manager pages open without an error', brokenH.length === 0 || (console.error(brokenH), false));
 
   /* ---- the recruiter ---- */
   page = await freshPage();
