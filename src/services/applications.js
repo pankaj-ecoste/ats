@@ -2,9 +2,9 @@
 "use strict";
 // fields: the candidate without an id. Returns {cid, aid, score, candidate}
 function createCandidateApplication(fields,opId){
- const cid='C-'+(2001+S.candidates.length+Math.floor(Math.random()*900));
+ const cid=uid('C');
  const candidate=repo.insert('candidates',{id:cid,...fields});
- const aid='APP-'+(3100+S.applications.length+Math.floor(Math.random()*900));
+ const aid=uid('APP');
  const o=getOp(opId);
  repo.insert('applications',{id:aid,cid,opId,date:today(),stage:'New',maxStage:0,recruiter:o.recruiter,screening:null,stageSince:today()});
  const score=match(candidate,o).score;

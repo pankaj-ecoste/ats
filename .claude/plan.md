@@ -3,7 +3,7 @@
 Single source of truth for **what exists, what was done, what is pending, and how changes are made**.
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
-- **Last updated:** 2026-10-06
+- **Last updated:** 2026-10-16
 - **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; the login screen and Users page are in. Next is the data layer (P2.3): the app reads and writes Supabase. Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
@@ -279,7 +279,7 @@ All tables have `id uuid`, `created_at`, `updated_at`, `created_by`. Existing sh
 Migrations live in `supabase/migrations/` as numbered SQL files. Every table gets row-level security in the same migration that creates it.
 
 **As built (2026-10-10), where it differs from the table above.**
-- **Ids stay text** (`OP-1001`, `C-2001`, `APP-3101`) instead of uuid plus a `code` column. It keeps the app and the database speaking the same ids. Rows that belong to a login use the login's uuid. **Consequence for Phase 2.3:** the app currently builds new ids from counters plus `Math.random()` (for example `APP-` + 3100 + count + random 0 to 899), which can collide when two people add records at the same moment. The data layer must switch to collision-proof ids (prefix plus 8 random characters from `crypto`) before two users share a database.
+- **Ids stay text** (`OP-1001`, `C-2001`, `APP-3101`) instead of uuid plus a `code` column. It keeps the app and the database speaking the same ids. Rows that belong to a login use the login's uuid. **Done 2026-10-16 (P2.3 step 1):** new ids are collision-proof, a prefix plus 8 random characters from `crypto` (`uid('APP')` gives `APP-K7M2QX9D`; no look-alike letters). Candidates, applications, notifications and every other `uid()` call use it. The old counter-plus-random ids could collide when two people added records at the same moment.
 - **Salary is its own table** (`candidate_compensation`) so it can be hidden from roles that may see the rest of the profile.
 - **Scorecards:** `interview_scores` has one row per interviewer (arrays of scores); the interview row keeps the final result, as in the app.
 - **Settings:** `company_settings` is a single row. SLA days, report alert levels, the posting config and the Google Sheet connection sit in its `config` column. Recruiters and interviewers come from `profiles`.
@@ -421,6 +421,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☑ RLS policies per §7.2, tested against the real database (`npm run test:db`): 29 access tests (every role, offer approval, tasks, notifications, profiles, settings, triggers, append-only history, account management, last-admin protection) and 11 real sign-in tests over HTTP against Supabase's login service (create, sign in, wrong password, no self sign-up, change own password, admin reset ends the old session, switch off cuts access immediately). Writing them found and fixed two real bugs: guards blocking trusted server changes, and a switched-off interviewer or manager keeping access to their own records (migration 0006).
 
 **P2.3 Data layer** (L)
+- ☑ Collision-proof ids (2026-10-16): `uid()` uses `crypto`; `ids.test.mjs` checks the format and 100,000 unique ids
 - ☐ `src/data/api.js` implementing the mutation layer against Supabase; in-memory adapter kept for tests and demo
 - ☐ Read paths first (lists, detail), then writes one feature at a time: openings → candidates → applications → interviews → offers → onboarding → tasks
 - ☐ Loading and error states in the UI; replace whole-state `save()` with per-record writes
@@ -554,6 +555,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | Date | Change | By |
 |---|---|---|---|
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
+| 2026-10-16 | **P2.3 started:** collision-proof ids (`uid()` on `crypto`, 8 characters), applied to candidates, applications and notifications; 2 new unit tests (95 total), browser tests green | Claude Code |
 | 2026-10-10 | **App-side login:** sign-in screen, account menu, change password, Users page; demo vs connected mode; Supabase library vendored; build refuses to output a service key or a database URL; migrations 0007 (create a login in one step) and 0008 (switched-off accounts get a clean refusal; 'infinity' made Supabase return a server error); 14 unit tests + 27 live browser checks | Claude Code |
 | 2026-10-10 | **Username login:** migrations 0005 (username accounts, admin functions, last-admin guard, no self sign-up) and 0006 (switched-off accounts see nothing); `db:create-admin`; 11 real sign-in tests; `docs/SECURITY_CHECKLIST.md`; D3 decided (no Google) | Claude Code |
 | 2026-10-10 | **Phase 2.1 and the database half of 2.2:** 4 migrations applied to the dev Supabase project (27 tables, 59 policies, triggers for stage history, opening status, audit trail and offer approval); `scripts/db.mjs`; 22 access tests on the real database; `docs/DATABASE.md`; decisions D16, D17 | Claude Code |

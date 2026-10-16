@@ -17,7 +17,7 @@ export function loadApp({ until = 'src/domain/resume-parser.js', expose = [], st
   const context = vm.createContext({
     console,
     localStorage: { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => { if (failWrites) throw new Error('QuotaExceededError'); store.set(k, String(v)); } },
-    setTimeout, clearTimeout, ...globals,
+    setTimeout, clearTimeout, crypto: globalThis.crypto, ...globals,
   });
   for (const f of files.slice(0, end + 1)) vm.runInContext(readFileSync(resolve(root, f), 'utf8'), context, { filename: f });
   if (after) vm.runInContext(after, context); // e.g. swap in a fake Supabase client

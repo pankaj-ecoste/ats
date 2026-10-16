@@ -23,8 +23,8 @@ test('createCandidateApplication adds the candidate, a New application, an activ
   const op = app.S.openings[0];
   const counts = ['candidates', 'applications', 'activity', 'notifications'].map((k) => app.S[k].length);
   const r = app.createCandidateApplication(candidateFields(), op.id);
-  assert.match(r.cid, /^C-\d+$/);
-  assert.match(r.aid, /^APP-\d+$/);
+  assert.match(r.cid, /^C-[2-9A-HJ-NP-Z]{8}$/);
+  assert.match(r.aid, /^APP-[2-9A-HJ-NP-Z]{8}$/);
   assert.equal(app.getC(r.cid).name, 'Test Person');
   const a = app.getA(r.aid);
   assert.deepEqual(plain([a.cid, a.opId, a.stage, a.maxStage, a.recruiter, a.stageSince]), [r.cid, op.id, 'New', 0, op.recruiter, app.today()]);
