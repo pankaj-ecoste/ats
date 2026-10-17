@@ -183,6 +183,20 @@ try {
   check('the hiring manager has no report or settings page', (await navOf(page)).join() === 'applications,candidates,dashboard,interviews,offers,openings,tasks');
   const brokenH = await openEach(page, await navOf(page));
   check('the hiring manager pages open without an error', brokenH.length === 0 || (console.error(brokenH), false));
+  // the recruiter asks for approval; the hiring manager approves from their own screen
+  await db.query("update public.offers set approval_status = 'Pending' where id = $1", [OF]);
+  page = await freshPage();
+  await signIn(page, HM);
+  await page.evaluate(() => { window.__dataErrors = []; onEvent('data:error', (e) => window.__dataErrors.push(e.message)); go('offers'); });
+  const pend = await page.evaluate(() => ({ approval: offerApproval(S.offers[0]), can: canApprove(S.offers[0]), edit: canEdit(), btn: !!document.querySelector('[data-appr]'), create: !!document.querySelector('[data-act=pickForOffer]') }));
+  check('the hiring manager sees the offer waiting for them, with Approve and Reject, and cannot create offers', pend.approval === 'Pending' && pend.can && !pend.edit && pend.btn && !pend.create);
+  await page.click('[data-appr]');
+  await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  const off = (await db.query('select approval_status, approved_by, ctc, status from public.offers where id = $1', [OF])).rows[0];
+  check('the approval is saved with the manager as approver and nothing else about the offer changes', off.approval_status === 'Approved' && off.approved_by === hmId && Number(off.ctc) === 1500000 && off.status === 'Draft' && (await page.evaluate(() => window.__dataErrors)).length === 0);
+  const told2 = (await db.query("select text from public.notifications where text like 'Offer for Zed Candidate was approved%'")).rows;
+  check('the recruiter is told the offer was approved', told2.length === 1);
+  await db.query("delete from public.notifications where text like 'Offer for Zed Candidate was approved%'");
 
   /* ---- the recruiter ---- */
   page = await freshPage();

@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'saveOffer', 'markOfferSent', 'recordOfferResponse', 'confirmJoining', 'recordJoined', 'beginOnboarding', 'setOnboardingItem',
-    'markEmployeeReady', 'getA', 'getC', 'repo', 'today', 'offerOfA', 'ONB_TEMPLATE'],
+    'markEmployeeReady', 'getA', 'getC', 'getOp', 'repo', 'today', 'offerOfA', 'ONB_TEMPLATE', 'requestOfferApproval', 'decideOffer', 'offerApproval', 'canApprove'],
 });
 
 // an application with no offer yet, early in the pipeline
@@ -107,4 +107,34 @@ test('checklist items log when ticked, not when cleared; mark employee ready fin
   app.markEmployeeReady(a.id);
   assert.equal(a.stage, 'Employee Ready');
   assert.match(app.S.notifications[0].text, /completed onboarding/);
+});
+
+test('approval: asking tells the manager, an offer waiting or rejected cannot be sent, approving frees it and tells the recruiter', () => {
+  const app = fresh();
+  const a = bareApp(app);
+  const stored = app.saveOffer(draft(a), 'Draft');
+  assert.equal(app.offerApproval(stored), 'Not required');
+  app.requestOfferApproval(stored.id);
+  assert.equal(stored.approval, 'Pending');
+  assert.throws(() => app.saveOffer({ ...plain(stored) }, 'Sent'), /needs approval/);
+  app.decideOffer(stored.id, false);
+  assert.equal(stored.approval, 'Rejected');
+  assert.throws(() => app.saveOffer({ ...plain(stored) }, 'Sent'), /needs approval/);
+  app.decideOffer(stored.id, true);
+  assert.equal(stored.approval, 'Approved');
+  assert.equal(app.saveOffer({ ...plain(stored) }, 'Sent').status, 'Sent');
+  assert.ok(app.S.activity.some((x) => /approved by/.test(x.text)));
+  assert.ok(app.canApprove(stored), 'without accounts anyone may decide');
+});
+
+test('approval: changing the pay after approval asks for approval again, other edits keep it', () => {
+  const app = fresh();
+  const a = bareApp(app);
+  const stored = app.saveOffer(draft(a), 'Draft');
+  app.requestOfferApproval(stored.id);
+  app.decideOffer(stored.id, true);
+  app.saveOffer({ ...plain(stored), location: 'Pune' }, 'Generated');
+  assert.equal(stored.approval, 'Approved');
+  app.saveOffer({ ...plain(stored), ctc: 1800000 }, 'Generated');
+  assert.equal(stored.approval, 'Pending');
 });

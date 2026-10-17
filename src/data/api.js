@@ -111,6 +111,10 @@ async function writeScorecard(client,ctx,record){
 
 async function writeRecord(client,ctx,coll,id,record,isNew){
  const m=WRITE_MAP[coll],what=WHAT[coll];
+ if(coll==='offers'&&ctx.role==='hiring_manager'){   // a hiring manager may change nothing but the approval
+  if(!isNew)await dbRunOne(client.from('offers').update({approval_status:record.approval}).eq('id',id).select('id'),what);
+  return;
+ }
  if(coll==='interviews'&&!ctx.staff){if(!isNew)await writeScorecard(client,ctx,record);return}   // interviewers cannot change the interview itself
  const res=rowsOf(coll,record,ctx,isNew);
  for(const [table,rows] of Object.entries(res)){
@@ -218,7 +222,7 @@ function createWriter(client,ctx){
 let WRITER=null,WRITING_LISTENING=false;
 // begin saving this person's changes. Called once after the data is loaded.
 function startWriting(client,me){
- const ctx={meId:me.id,staff:me.role==='admin'||me.role==='recruiter',get people(){return PEOPLE}};
+ const ctx={meId:me.id,role:me.role,staff:me.role==='admin'||me.role==='recruiter',get people(){return PEOPLE}};
  ctx.last=new Map([['settings',JSON.stringify(settingsRow(S))]]);
  WRITER=createWriter(client,ctx);
  if(!WRITING_LISTENING){WRITING_LISTENING=true;repoOnChange(ch=>{if(WRITER)WRITER.enqueue(ch)})}
