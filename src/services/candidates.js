@@ -13,6 +13,26 @@ function updateCandidateProfile(cid,fields){
  log(`Resume data edited for ${c.name}`,'note');
  return c;
 }
+/* ---------- files and duplicates ---------- */
+// the person who already has this email or phone number, or null. A phone number is compared by its last 10 digits (+91 and spaces do not matter).
+const phoneKey=p=>{const d=String(p||'').replace(/\D/g,'');return d.length>=7?d.slice(-10):''};
+function findDuplicateCandidate({email,phone},exceptId){
+ const e=String(email||'').trim().toLowerCase(),p=phoneKey(phone);
+ if(!e&&!p)return null;
+ return S.candidates.find(c=>c.id!==exceptId&&!c.restricted&&((e&&String(c.email||'').trim().toLowerCase()===e)||(p&&phoneKey(c.phone)===p)))||null;
+}
+// the original résumé file (kept in storage); `old` is the path it replaces, or null
+function attachResume(cid,{path,name}){
+ const c=repo.update('candidates',cid,{resumePath:path,resumeName:name});
+ log(`Resume file uploaded for ${c.name}: ${name}`,'note');
+ return c;
+}
+// the real file behind a checklist item; a Pending item becomes Received
+function attachDocumentFile(cid,index,{path,file}){
+ const c=repo.update('candidates',cid,c=>{const d=c.documents[index];d.path=path;d.file=file;if(d.status==='Pending')d.status='Received'});
+ log(`${c.documents[index].name} uploaded for ${c.name}`,'note');
+ return c;
+}
 // today this only records that a message was composed; real delivery arrives in Phase 3
 function recordMessage({cid,aid,channel,template}){
  log(`${channel} sent to ${getC(cid).name}: ${template}`,'message',aid);

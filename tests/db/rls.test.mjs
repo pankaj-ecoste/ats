@@ -334,6 +334,37 @@ test('a scorecard is rolled up onto the interview, and an interviewer may log ac
   await q("delete from public.notifications where text = 'zz-score'");
 });
 
+/* ---------- files ---------- */
+test('files: private buckets, résumés follow the candidate, documents are staff only, letters follow the opening', { skip }, async () => {
+  await q(`insert into storage.objects (bucket_id, name) values ('resumes', 'C-T1/cv.pdf'), ('resumes', 'C-T2/cv.pdf'), ('documents', 'C-T1/pan.pdf'), ('offer-letters', 'A-T1/OF-T1.html'), ('offer-letters', 'A-T2/OF-T2.html')`);
+  const seen = async (bucket) => (await attempt("select name from storage.objects where bucket_id = $1 and name like '%-T%/%' order by name", [bucket])).rows.map((r) => r.name);
+  assert.deepEqual((await q("select id, public from storage.buckets where id in ('resumes','documents','offer-letters') order by id")).rows.map((r) => `${r.id}:${r.public}`), ['documents:false', 'offer-letters:false', 'resumes:false']);
+  await as(U.recruiter, async () => {
+    assert.deepEqual(await seen('resumes'), ['C-T1/cv.pdf', 'C-T2/cv.pdf']);
+    assert.equal((await attempt("insert into storage.objects (bucket_id, name) values ('resumes', 'C-T1/new.pdf')")).rowCount, 1, 'staff upload');
+    assert.deepEqual(await seen('documents'), ['C-T1/pan.pdf']);
+  });
+  await as(U.interviewer, async () => {
+    assert.deepEqual(await seen('resumes'), ['C-T1/cv.pdf'], 'only the résumé of a candidate they interview');
+    assert.deepEqual(await seen('documents'), [], 'never ID proofs or payslips');
+    assert.deepEqual(await seen('offer-letters'), []);
+    assert.match((await attempt("insert into storage.objects (bucket_id, name) values ('resumes', 'C-T1/x.pdf')")).error, /row-level security/, 'no upload');
+  });
+  await as(U.hm1, async () => {
+    assert.deepEqual(await seen('resumes'), ['C-T1/cv.pdf']);
+    assert.deepEqual(await seen('offer-letters'), ['A-T1/OF-T1.html'], 'the letter of their own opening only');
+    assert.deepEqual(await seen('documents'), []);
+  });
+  await as(U.hm2, async () => {
+    assert.deepEqual(await seen('resumes'), ['C-T2/cv.pdf']);
+    assert.deepEqual(await seen('offer-letters'), ['A-T2/OF-T2.html']);
+  });
+  await as(U.management, async () => {
+    for (const b of ['resumes', 'documents', 'offer-letters']) assert.deepEqual(await seen(b), [], `management sees no files in ${b}`);
+  });
+  await as(null, async () => assert.deepEqual(await seen('resumes'), [], 'anonymous sees nothing'));
+});
+
 /* ---------- tasks, notifications, profiles, settings ---------- */
 test('a task owner sees their own tasks and can tick them but not rewrite them', { skip }, async () => {
   await as(U.interviewer, async () => {

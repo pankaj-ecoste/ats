@@ -25,6 +25,15 @@ let html = read('index.html')
     js++; return `<script>\n${code}\n</script>`;
   });
 
+// scripts that only load on demand (the PDF reader): their code travels inside the page as inert text, and loadLazy() runs it when first needed
+html = html.replace(/<script type="text\/x-lazy" data-lazy="(src\/[^"]+)"><\/script>/g, (m, p) => {
+  const code = read(p).trim();
+  if (/<\/script/i.test(code)) throw new Error(`${p} contains "</script" and cannot be inlined safely`);
+  return `<script type="text/x-lazy" data-lazy="${p}">
+${code}
+</script>`;
+});
+
 const left = html.match(/(?:href|src)="src\/[^"]+"/);
 if (left) throw new Error(`Not inlined: ${left[0]}`);
 

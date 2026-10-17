@@ -29,7 +29,7 @@ function vCandidate(){
   case 'applications':body=`<section class="panel">${appTable(apps,false)}</section>`;break;
   case 'interviews':body=`<section class="panel">${intTable(S.interviews.filter(i=>apps.some(x=>x.id===i.appId)))}</section>`;break;
   case 'offers':body=`<section class="panel">${offerTable(S.offers.filter(f=>apps.some(x=>x.id===f.appId)))}</section>`;break;
-  case 'documents':body=`<section class="panel">${c.documents.map((d,k)=>`<div class="list-it">${ic('file','style="width:18px;color:var(--tx3)"')}<b class="grow">${esc(d.name)}</b><span class="pill ${d.status==='Received'?'green':d.status==='Verified'?'blue':'orange'}">${d.status}</span><select class="inp" data-doc="${k}" style="width:auto;padding:4px 8px;font-size:12px">${['Pending','Received','Verified'].map(s=>`<option ${s===d.status?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')}<div class="pbody"><button class="btn sm" id="addDoc">${ic('plus')}Request document</button></div></section>`;break;
+  case 'documents':body=`<section class="panel">${c.documents.map((d,k)=>`<div class="list-it">${ic('file','style="width:18px;color:var(--tx3)"')}<b class="grow">${esc(d.name)}</b>${d.path?`<button class="btn sm" data-dfo="${k}" title="${esc(d.file||'')}">Open file</button>`:''}${CONNECTED&&canEdit()?`<button class="btn sm" data-dfu="${k}">${d.path?'Replace':'Upload'}</button>`:''}<span class="pill ${d.status==='Received'?'green':d.status==='Verified'?'blue':'orange'}">${d.status}</span><select class="inp" data-doc="${k}" style="width:auto;padding:4px 8px;font-size:12px">${['Pending','Received','Verified'].map(s=>`<option ${s===d.status?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')}<div class="pbody"><button class="btn sm" id="addDoc">${ic('plus')}Request document</button></div></section>`;break;
   case 'notes':body=`<section class="panel"><div class="pbody"><textarea class="inp" id="noteIn" rows="3" placeholder="Add a note for the hiring team"></textarea><div style="margin-top:8px"><button class="btn pri sm" id="noteAdd">Save note</button></div></div>${c.notes.map(n=>`<div class="list-it" style="align-items:flex-start">${av(n.by)}<div class="grow"><b>${esc(n.by)}</b> <span class="muted small">${timeAgo(n.ts)}</span><p style="margin:2px 0 0;white-space:pre-line">${esc(n.text)}</p></div></div>`).join('')}</section>`;break;
   default:body=`<section class="panel">${activityList(S.activity.filter(x=>x.text.includes(c.name)))}</section>`;
  }
@@ -53,6 +53,8 @@ function bindCandidate(root){
  $('#cWa',root).onclick=()=>composeMsg(c.id,a.id,'WhatsApp');
  $('#cShort',root).onclick=()=>shortlist(a.id);$('#cRej',root).onclick=()=>rejectApp(a.id);$('#cSch',root).onclick=()=>schedulePI(a.id);
  $('#cOffer',root).onclick=()=>{const of=offerOfA(a.id);of?offerEditor(of.id):offerEditor(null,a.id)};
+ $$('[data-dfo]',root).forEach(b=>b.onclick=()=>openStoredFile(FILE_BUCKETS.document,c.documents[+b.dataset.dfo].path).catch(e=>toast(e.message,'var(--red)')));
+ $$('[data-dfu]',root).forEach(b=>b.onclick=()=>pickFile('.pdf,.jpg,.jpeg,.png,.docx',f=>storeDocument(c.id,+b.dataset.dfu,f)));
  $$('[data-doc]',root).forEach(s=>s.onchange=()=>{setDocumentStatus(c.id,+s.dataset.doc,s.value);render()});
  const ad=$('#addDoc',root);if(ad)ad.onclick=()=>{modal({title:'Request document',body:`<label class="f">Document name<input class="inp" id="dn" placeholder="e.g. Offer letter from previous employer"></label>`,foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="dS">Request</button>`,onMount:el=>$('#dS',el).onclick=()=>{const v=val(el,'#dn');if(!v)return;requestDocument(c.id,v);closeModal();toast('Document requested from '+c.name);render()}})};
  const na=$('#noteAdd',root);if(na)na.onclick=()=>{const v=$('#noteIn',root).value.trim();if(!v)return;addCandidateNote(c.id,v);render()};
@@ -63,4 +65,19 @@ function composeMsg(cid,aid,ch){
  const tpl={'Interview invite':`Hi ${c.name.split(' ')[0]}, thanks for your interest in the ${o.title} role at ${S.settings.company}. We'd like to invite you to the next round. Please share a convenient time this week.`,'Shortlist update':`Hi ${c.name.split(' ')[0]}, good news — your profile has been shortlisted for ${o.title}. Our recruiter will call you shortly for a quick screening.`,'Document request':`Hi ${c.name.split(' ')[0]}, please share your ID proof, education certificates and last 3 payslips so we can proceed.`,'Regret':`Hi ${c.name.split(' ')[0]}, thank you for your time. We won't be moving forward for ${o.title} right now, but we'll keep your profile for future roles.`};
  modal({title:`${ch} ${esc(c.name)}`,body:`<div class="fgrid"><label class="f">To<input class="inp" value="${esc(ch==='Email'?c.email:c.phone)}" readonly></label><label class="f">Template<select class="inp" id="tp">${Object.keys(tpl).map(k=>`<option>${k}</option>`).join('')}</select></label>${ch==='Email'?`<label class="f full">Subject<input class="inp" id="sub" value="${esc(o.title)} at ${esc(S.settings.company)}"></label>`:''}<label class="f full">Message<textarea class="inp" id="bd" rows="6">${esc(tpl['Interview invite'])}</textarea></label></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="snd">${ic('send')}Send ${ch}</button>`,onMount:el=>{$('#tp',el).onchange=e=>$('#bd',el).value=tpl[e.target.value];$('#snd',el).onclick=()=>{recordMessage({cid,aid,channel:ch,template:$('#tp',el).value});closeModal();toast(`${ch} sent to ${c.name}`)}}});
+}
+
+// a file for one item of the document checklist: ID proofs, payslips, certificates (staff only, private)
+const DOCUMENT_EXT=['pdf','jpg','jpeg','png','docx'];
+async function storeDocument(cid,index,file){
+ const ext=String(file.name).toLowerCase().split('.').pop();
+ if(!DOCUMENT_EXT.includes(ext)){toast('Upload a PDF, JPG, PNG or Word (.docx) file.','var(--red)');return}
+ if(file.size>10*1024*1024){toast('This file is larger than 10 MB.','var(--red)');return}
+ try{
+  const old=getC(cid).documents[index].path;
+  const path=await uploadFile(sb,FILE_BUCKETS.document,cid,file);
+  attachDocumentFile(cid,index,{path,file:file.name});
+  if(old)removeFile(sb,FILE_BUCKETS.document,old).catch(()=>{});
+  toast('File saved');render();
+ }catch(e){toast(e.message,'var(--red)')}
 }

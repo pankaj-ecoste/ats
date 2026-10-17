@@ -39,8 +39,8 @@ const FROM_ROW={
    // salary is hidden from some roles (and a candidate may have none yet): null means "not known", never a made-up zero
    curSal:comp?comp.current_lpa:null,expSal:comp?comp.expected_lpa:null,
    notice:r.notice_days,reloc:r.relocate,email:r.email,phone:r.phone,certifications:r.certifications,achievements:r.achievements,
-   documents:(ctx.documents.get(r.id)||[]).map(d=>({name:d.name,status:d.status})),notes:r.notes,source:r.source,created:r.created_on,
-   history:r.history,resumeText:r.resume_text};
+   documents:(ctx.documents.get(r.id)||[]).map(d=>({name:d.name,status:d.status,...(d.storage_path?{path:d.storage_path,file:d.file_name||''}:{})})),notes:r.notes,source:r.source,created:r.created_on,
+   history:r.history,resumeText:r.resume_text,...(r.resume_path?{resumePath:r.resume_path,resumeName:r.resume_name||''}:{})};
  },
  application:(r,P,ctx)=>{
   const s=ctx.screenings.get(r.id);
@@ -145,9 +145,9 @@ const TO_ROW={
   candidates:{id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',designation:c.designation||'',company:c.company||'',exp_years:c.exp||0,location:c.location||'',
    relocate:!!c.reloc,education:c.education||'',edu_field:c.eduField||'',university:c.university||'',grad_year:c.gradYear||null,skills:c.skills||[],
    notice_days:c.notice??30,certifications:c.certifications||[],achievements:c.achievements||[],source:c.source||'',history:c.history||[],notes:c.notes||[],
-   resume_text:c.resumeText||'',created_on:c.created},
+   resume_text:c.resumeText||'',created_on:c.created,resume_path:c.resumePath||null,resume_name:c.resumePath?(c.resumeName||''):null},
   candidate_compensation:{candidate_id:c.id,current_lpa:c.curSal||0,expected_lpa:c.expSal||0},
-  candidate_documents:(c.documents||[]).map(d=>({candidate_id:c.id,name:d.name,status:d.status}))}),
+  candidate_documents:(c.documents||[]).map(d=>({candidate_id:c.id,name:d.name,status:d.status,storage_path:d.path||null,file_name:d.path?(d.file||''):null}))}),
  application:(a,P)=>({
   applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),
    joining_on:a.joining||null,joined_on:a.joinedOn||null,dropped_on:a.dropped||null,drop_risk:a.dropRisk||null,

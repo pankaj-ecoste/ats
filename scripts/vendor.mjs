@@ -13,3 +13,12 @@ const code = readFileSync(out, 'utf8');
 if (/<\/script/i.test(code)) throw new Error('The library contains "</script" and cannot be inlined into the single-file build');
 writeFileSync(out, `/* @supabase/supabase-js ${pkg.version} (UMD build, MIT licence). Third-party code, copied by scripts/vendor.mjs: do not edit. */\n${code}`);
 console.log(`src/vendor/supabase.js  (supabase-js ${pkg.version}, ${(code.length / 1024).toFixed(0)} kB)`);
+
+// PDF reading (Mozilla pdf.js, Apache-2.0). Loaded only when someone uploads a PDF résumé: see loadLazy() and the data-lazy tags in index.html.
+const pdfVersion = JSON.parse(readFileSync(resolve(root, 'node_modules/pdfjs-dist/package.json'), 'utf8')).version;
+for (const [from, to] of [['pdf.min.js', 'pdf.min.js'], ['pdf.worker.min.js', 'pdf.worker.min.js']]) {
+  const text = readFileSync(resolve(root, 'node_modules/pdfjs-dist/build', from), 'utf8');
+  if (/<\/script/i.test(text)) throw new Error(`${from} contains "</script" and cannot be inlined into the single-file build`);
+  writeFileSync(resolve(root, 'src/vendor', to), `/* pdf.js ${pdfVersion} (Apache-2.0 licence). Third-party code, copied by scripts/vendor.mjs: do not edit. */\n${text}`);
+  console.log(`src/vendor/${to}  (pdf.js ${pdfVersion}, ${(text.length / 1024).toFixed(0)} kB)`);
+}

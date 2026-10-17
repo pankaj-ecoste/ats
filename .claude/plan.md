@@ -69,7 +69,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
-| `supabase/migrations/0001..0011_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
+| `supabase/migrations/0001..0012_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
 | `scripts/gen-config.mjs`, `scripts/vendor.mjs` | Write `src/generated/config.js` (public URL and anon key from `.env`; empty means demo mode); copy the Supabase library into `src/vendor/` |
 | `src/generated/config.js` (not committed), `src/vendor/supabase.js` | The two values the browser needs to reach Supabase; the vendored Supabase library (no public CDN) |
 | `src/data/mapping.js` | Pure translation between database rows and the app's records, both directions: `makePeople` (names to profile ids and back), `stateFromRows`, `TO_ROW`, `rowsFromState` |
@@ -466,12 +466,13 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 *Goal:* real documents and real communication.
 
-- ☐ Storage buckets (private) with access policies: `resumes`, `documents`, `offer-letters`
-- ☐ PDF/DOCX upload; Edge Function extracts text and feeds the existing parser; duplicate detection on email and phone
-- ☐ Document checklist with real files and verification status
-- ☐ Email through a provider (Resend or Postmark): templates for invite, rejection, offer; every send recorded in `messages` with delivery status
-- ☐ Google Calendar invites for interviews (organiser = recruiter), reschedule and cancel
-- ☐ Offer letter saved as PDF; offer approval step
+- ☑ **Storage buckets (2026-10-17, migration 0012):** private `resumes` (10 MB: pdf, docx, doc, txt, md), `documents` (10 MB: pdf, jpg, png, docx, doc) and `offer-letters` (5 MB: html, pdf). The first folder of a path is the candidate id (résumés, documents) or the application id (letters), and the access rules read it: résumés follow `sees_candidate` (staff, the opening's manager, the panel), documents are staff only, letters are staff and the opening's manager. Management, anonymous and other managers see nothing. Tested in `tests/db/rls.test.mjs` (31 access tests).
+- ☑ **Upload and text extraction (decision: in the browser, not an Edge Function):** PDF text is read with pdf.js 3.11.174 (loaded only when a PDF is chosen: `src/app/lazy.js`, `data-lazy` tags in `index.html`, inlined as inert text in the single-file build, 2.0 MB); Word `.docx` is read with a 60-line zip reader and no library (`src/domain/resume-text.js`); `.txt` and `.md` directly. Refusals in plain words: type, 10 MB, empty, old `.doc`, broken file, a scan with no text. The original file is stored (`src/data/files.js`, `uploadFile`, `fileLink`: a signed link valid for 2 minutes, never public) and recorded on the candidate (`resume_path`, `resume_name`). A Resume tab bar opens, replaces or uploads the original (the replaced file is removed). Why not an Edge Function: nothing to deploy or pay for, the file never has to be re-downloaded, and it works the same in the single-file build.
+- ☑ **Duplicate detection:** email (any case) or the last 10 digits of the phone; the add-candidate flow shows "Already in your pool" with Open profile or Apply to this opening instead of making a second profile (the database also refuses a repeated email). `findDuplicateCandidate`, `applyCandidate`.
+- ☑ **Document checklist with real files:** each item can hold a file (`candidate_documents.storage_path`, `file_name`); uploading marks a Pending item Received; staff can Open and Replace; the status selector (Pending, Received, Verified) stays the verification step.
+- ☐ Email through a provider (Resend or Postmark): templates for invite, rejection, offer; every send recorded in `messages` with delivery status (needs a provider account and API key: Decision D5)
+- ☐ Google Calendar invites for interviews (organiser = recruiter), reschedule and cancel (needs Google credentials)
+- ☐ Offer letter saved as PDF; offer approval step (approval is done, see P2.3)
 - ☐ WhatsApp only if Decision D5 asks for it
 
 *Exit criteria:* a resume uploaded in the browser is stored, parsed and visible to the right people; an interview invite reaches the candidate's calendar; every outgoing message is traceable.

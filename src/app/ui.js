@@ -16,6 +16,9 @@ function closeModal(){const el=modalStack.pop();el&&el.remove()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalStack.length)closeModal()});
 function toast(msg,color='var(--green)'){const t=document.createElement('div');t.className='toast';t.innerHTML=`<i style="background:${color}"></i>${esc(msg)}`;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3200)}
 function confirmBox(title,text,okLabel,fn,danger){modal({title,body:`<p style="margin:0">${text}</p>`,foot:`<button class="btn" data-close>Cancel</button><button class="btn ${danger?'bad':'pri'}" id="cOK">${okLabel}</button>`,onMount:el=>{$('#cOK',el).onclick=()=>{closeModal();fn()}}})}
+// opens the browser's file chooser; fn gets the chosen file
+function pickFile(accept,fn){const i=document.createElement('input');i.type='file';i.accept=accept;i.onchange=()=>{if(i.files[0])fn(i.files[0])};i.click()}
+
 // Long lists show a page at a time: the first rows, then a button for more. Everything is already in memory, so this only keeps the screen light.
 const PAGE_ROWS=100;
 const pageLimit=key=>(R.pg&&R.pg[key])||PAGE_ROWS;

@@ -51,7 +51,7 @@ test('a new candidate writes the profile with its creator, then salary, then doc
   assert.equal(client.calls[0].rows.created_by, 'u-me');
   assert.equal(client.calls[0].rows.id, 'C-1');
   assert.deepEqual(plain(client.calls[1].opt), { onConflict: 'candidate_id' });
-  assert.deepEqual(plain(client.calls[2].rows), [{ candidate_id: 'C-1', name: 'Resume.pdf', status: 'Received' }]);
+  assert.deepEqual(plain(client.calls[2].rows), [{ candidate_id: 'C-1', name: 'Resume.pdf', status: 'Received', storage_path: null, file_name: null }]);
 });
 
 test('an update changes the row by id without sending the id, and rewrites documents only when they changed', async () => {
