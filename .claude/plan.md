@@ -20,7 +20,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 133/133 pass |
+| `npm test` (node:test, no deps) | 132/132 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
 | Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 41 data (admin, recruiter, management, interviewer with scorecard, hiring manager with offer approval, refresh) and 29 write checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
@@ -446,9 +446,10 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☐ Pagination on applications and candidates
 
 **P2.4 Data migration and cutover** (S)
-- ☐ One-time import of existing real data through the workbook importer
-- ☐ First-run setup screen (company, signatory) replaces demo defaults
-- ☐ Remove `localStorage` as the source of truth
+- ◐ One-time import of existing real data through the workbook importer: the importer already writes through the database (`syncCollection`); waits for the real workbook (Settings → Import)
+- ☑ First-run setup screen: the first admin of a company with no name is asked for company, address, signatory and title (`src/features/auth/setup.js`, 2026-10-17); connected mode starts with empty company details, no "Northwind"
+- ☑ Remove `localStorage` as the source of truth (connected mode keeps only the theme)
+- ☑ Dev seed: `ALLOW_DB_SEED=1 npm run db:seed` loads the sample data into an empty development project (refuses when openings or candidates exist; never for production)
 
 *Exit criteria:* two recruiters on two computers see the same data; a user with the wrong role is blocked at the database; tests cover RLS; no business data left in `localStorage`.
 

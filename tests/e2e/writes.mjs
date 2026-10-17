@@ -84,6 +84,7 @@ try {
   await createTestAdmin(db, tag, PW, 'Test Admin');
   await db.query("select app.create_login($1, $2, 'Test Recruiter', 'recruiter'::public.app_role)", [REC, PW]);
 
+  await db.query('update public.company_settings set company = $1', [`Test Co ${tag}`]);   // already set up, so the first-run window stays closed
   /* ---- an admin does a day's work ---- */
   page = await freshPage();
   await signIn(page, ADMIN);

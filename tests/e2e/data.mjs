@@ -46,12 +46,15 @@ async function signIn(page, user) {
 }
 
 // removes this run's records (the audit trail is append-only, so its rows for them need the guard lifted briefly, as removeTestAccounts does)
+const startedAt = new Date();
 async function removeTestRecords() {
+  if (typeof original !== 'undefined') await db.query('update public.company_settings set company = $1, address = $2, signatory = $3, sign_title = $4', [original.company, original.address, original.signatory, original.sign_title]);
   await db.query('delete from public.tasks where id = $1', [T1]);
   await db.query('delete from public.candidates where id = any($1)', [[C1, C2]]);
   await db.query('delete from public.openings where id = $1', [OP]);
   await db.query('alter table public.audit_log disable trigger no_delete');
   try {
+    await db.query("delete from public.audit_log where table_name = 'company_settings' and at >= $1", [startedAt]);
     await db.query("delete from public.audit_log where row_id like $1 or row_id like $2 or (new_data ->> 'application_id') like $2 or (new_data ->> 'candidate_id') like $3", [`%${tag}%`, `%${tag}%`, `%${tag}%`]);
   } finally {
     await db.query('alter table public.audit_log enable trigger no_delete');
@@ -69,6 +72,7 @@ async function openEach(page, views) {
   return broken;
 }
 
+const original = (await db.query('select company, address, signatory, sign_title from public.company_settings')).rows[0];
 let page;
 try {
   await removeTestRecords();
@@ -92,9 +96,18 @@ try {
   await db.query("insert into public.tasks (id, title, owner_id, due_on) values ($1, 'Call Zed', $2, current_date)", [T1, recId]);
   await db.query("insert into public.notifications (user_id, text) values ($1, 'For the admin only'), ($2, 'For the recruiter only')", [adminId, recId]);
 
-  /* ---- the admin ---- */
+  /* ---- the admin: the first sign-in of a company that is not set up asks for its details ---- */
+  await db.query("update public.company_settings set company = '', signatory = '', address = '', sign_title = ''");
   page = await freshPage();
   await signIn(page, ADMIN);
+  check('the first admin is asked to set up the company', await page.evaluate(() => !!document.querySelector('#suC')));
+  await page.fill('#suC', `Test Co ${tag}`);
+  await page.fill('#suS', 'Sam Signer');
+  await page.fill('#suT', 'Head of HR');
+  await page.click('#suGo');
+  await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  const co = (await db.query('select company, signatory, sign_title from public.company_settings')).rows[0];
+  check('the company details are saved and the window closes', co.company === `Test Co ${tag}` && co.signatory === 'Sam Signer' && co.sign_title === 'Head of HR' && !(await page.evaluate(() => document.querySelector('#suC'))));
   const s = await page.evaluate((ids) => ({
     op: S.openings.find((o) => o.id === ids.op),
     cands: S.candidates.filter((c) => [ids.c1, ids.c2].includes(c.id)).map((c) => ({ id: c.id, name: c.name, cur: c.curSal, exp: c.expSal, docs: c.documents.map((d) => d.name) })),

@@ -16,7 +16,7 @@ pg.types.setTypeParser(1082, (v) => v);
 pg.types.setTypeParser(1700, (v) => parseFloat(v));
 pg.types.setTypeParser(20, (v) => parseInt(v, 10));
 
-const app = loadApp({ until: 'services', expose: ['S', 'STAGES', 'stateFromRows', 'rowsFromState', 'makePeople', 'READ_TABLES'] });
+const app = loadApp({ until: 'services', expose: ['S', 'STAGES', 'stateFromRows', 'rowsFromState', 'makePeople', 'READ_TABLES', 'LOG_TABLES'] });
 let c;
 const q = (sql, params) => c.query(sql, params);
 
@@ -126,7 +126,7 @@ before(async () => {
 
   // read everything back the way the loader does, then rebuild the app's state
   const back = {};
-  for (const [t] of app.READ_TABLES) back[t] = (await q(`select * from public.${t}`)).rows;
+  for (const [t] of [...app.READ_TABLES, ...app.LOG_TABLES]) back[t] = (await q(`select * from public.${t}`)).rows;
   const profiles = (await q('select id, username, full_name, role, active from public.profiles')).rows;
   rebuilt = tidy(app.stateFromRows(back, app.makePeople(profiles)));
 });

@@ -66,6 +66,7 @@ async function enterApp(me){
  hideAuth();
  R.view=firstPage();R.param=null;
  render();
+ if(needsSetup())companySetup();
 }
 
 // Other people's changes arrive by a quiet check every minute and whenever this tab is opened again. It waits for a quiet moment:

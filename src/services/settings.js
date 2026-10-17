@@ -1,6 +1,8 @@
 /* Settings, match weights, SLA rules, demo data reset. DOM-free. */
 "use strict";
 function updateSetting(key,value){repo.root('settings',s=>{s[key]=value})}
+// the company name, address and signatory in one change (the first-run setup)
+function saveCompanyDetails(d){repo.root('settings',s=>{Object.assign(s,d)})}
 function updateMatchWeight(key,value){repo.root('settings',s=>{s.weights[key]=value})}
 function setMatchThreshold(value){repo.root('settings',s=>{s.threshold=value})}
 function resetMatchWeights(){repo.root('settings',s=>{s.weights={...DEFAULT_SETTINGS.weights};s.threshold=65})}
