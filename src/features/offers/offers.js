@@ -5,7 +5,18 @@ function offerTable(l){
  if(!l.length)return '<div class="empty"><b>No offers yet</b>Offers appear here once a selected candidate gets one.</div>';
  return `<div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Designation</th><th>CTC</th><th>Joining</th><th>Manager</th><th>Created</th><th>Status</th><th>Approval</th><th></th></tr></thead><tbody>${l.map(f=>{const a=getA(f.appId),c=getC(a.cid);
   return `<tr class="click" data-offer="${f.id}"><td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${f.id}</small></div></div></td><td>${esc(f.designation)}<div class="muted small">${esc(f.dept)} · ${esc(f.location)}</div></td><td><b>${inr(f.ctc)}</b></td><td>${fmtD(f.joining)}</td><td>${esc(f.manager)}</td><td>${fmtDs(f.created)}</td><td><span class="pill ${OFFER_COLOR[f.status]}">${f.status}</span></td><td>${approvalPill(f)}</td>
-  <td>${offerApproval(f)==='Pending'&&canApprove(f)?`<button class="btn sm ok" data-appr="${f.id}">Approve</button> <button class="btn sm bad" data-rej="${f.id}">Reject</button>`:''}${!canEdit()?'':f.status==='Sent'||f.status==='Negotiation'?`<button class="btn sm" data-resp="${f.id}">Record response</button>`:f.status==='Accepted'&&a.stage==='Offer Accepted'?`<button class="btn sm" data-join="${a.id}">Schedule joining</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
+  <td>${f.letterPath?`<button class="btn sm" data-letter="${f.id}" title="The letter as it was sent">Sent letter</button> `:''}${offerApproval(f)==='Pending'&&canApprove(f)?`<button class="btn sm ok" data-appr="${f.id}">Approve</button> <button class="btn sm bad" data-rej="${f.id}">Reject</button>`:''}${!canEdit()?'':f.status==='Sent'||f.status==='Negotiation'?`<button class="btn sm" data-resp="${f.id}">Record response</button>`:f.status==='Accepted'&&a.stage==='Offer Accepted'?`<button class="btn sm" data-join="${a.id}">Schedule joining</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
+}
+// a copy of the letter as it was sent, so what the candidate received can always be shown again (connected mode)
+async function saveSentLetter(fid){
+ if(!CONNECTED)return;
+ const f=S.offers.find(x=>x.id===fid),a=getA(f.appId);
+ const html=`<!doctype html><html><head><meta charset="utf-8"><title>Offer letter</title><style>body{font:14px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px}</style></head><body>${letterHTML(f)}</body></html>`;
+ try{
+  const old=f.letterPath,path=await uploadFile(sb,FILE_BUCKETS.letter,a.id,new File([html],`offer-${f.id}.html`,{type:'text/html'}));
+  attachOfferLetter(f.id,path);
+  if(old)removeFile(sb,FILE_BUCKETS.letter,old).catch(()=>{});
+ }catch(e){toast(e.message+' The offer was sent, but its copy was not saved.','var(--red)')}
 }
 const APPROVAL_COLOR={Pending:'orange',Approved:'green',Rejected:'red'};
 const approvalPill=f=>offerApproval(f)==='Not required'?'<span class="muted small">—</span>':`<span class="pill ${APPROVAL_COLOR[offerApproval(f)]}">${offerApproval(f)}</span>`;
@@ -17,6 +28,7 @@ function offerView(fid){
  onMount:el=>{const d=ok=>()=>{decideOffer(f.id,ok);closeModal();toast(ok?'Offer approved':'Offer rejected',ok?'var(--green)':'var(--red)');refresh()};const b=(s,fn)=>{const x=$(s,el);if(x)x.onclick=fn};b('#vApp',d(true));b('#vRej',d(false))}});
 }
 function bindOfferTable(root){$$('[data-offer]',root).forEach(el=>el.onclick=e=>{if(e.target.closest('button'))return;canEdit()?offerEditor(el.dataset.offer):offerView(el.dataset.offer)});
+ $$('[data-letter]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();openStoredHtml(FILE_BUCKETS.letter,S.offers.find(x=>x.id===b.dataset.letter).letterPath).catch(err=>toast(err.message,'var(--red)'))});
  $$('[data-appr]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();decideOffer(b.dataset.appr,true);toast('Offer approved','var(--green)');refresh()});
  $$('[data-rej]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();decideOffer(b.dataset.rej,false);toast('Offer rejected','var(--red)');refresh()});$$('[data-resp]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();offerResponse(b.dataset.resp)});$$('[data-join]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();scheduleJoining(b.dataset.join)})}
 function vOffers(){
@@ -86,7 +98,7 @@ function offerEditor(fid,aid){
   $('#ofDraft',el).onclick=()=>{if(commit('Draft')){closeModal();toast('Offer saved as draft');refresh()}};
   $('#ofGen',el).onclick=()=>{if(commit('Generated')){toast('Offer letter generated','var(--ai)');refresh()}};
   const ap=$('#ofAppr',el);if(ap)ap.onclick=()=>{if(!commit(w.status==='Draft'||w.status==='Generated'?w.status:'Draft'))return;requestOfferApproval(f.id);closeModal();toast(`Sent to ${o.manager} for approval`);refresh()};
-  $('#ofSend',el).onclick=()=>{if(['Pending','Rejected'].includes(offerApproval(w))){toast(offerApproval(w)==='Pending'?'Waiting for approval from '+o.manager:'The offer was rejected. Revise it and send it for approval again.','var(--red)');return}if(!commit('Sent'))return;markOfferSent(f.id);closeModal();toast(`Offer sent to ${c.email}`);refresh()};
+  $('#ofSend',el).onclick=()=>{if(['Pending','Rejected'].includes(offerApproval(w))){toast(offerApproval(w)==='Pending'?'Waiting for approval from '+o.manager:'The offer was rejected. Revise it and send it for approval again.','var(--red)');return}if(!commit('Sent'))return;markOfferSent(f.id);saveSentLetter(f.id);closeModal();toast(`Offer sent to ${c.email}`);refresh()};
   $('#ofPrev',el).onclick=()=>{if(editing)w.custom=L.innerHTML;modal({title:'Offer letter preview',size:'w',body:`<div class="letter">${letterHTML(w)}</div>`,foot:`<button class="btn" data-close>Close</button>`})};
   $('#ofPdf',el).onclick=()=>{if(editing)w.custom=L.innerHTML;$('#printArea').innerHTML=`<div class="letter">${letterHTML(w)}</div>`;
    try{window.print();toast('Choose “Save as PDF” in the print dialog')}catch(e){toast('Printing is blocked here. Open the preview and use your browser\'s print.','var(--orange)')}};

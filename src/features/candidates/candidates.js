@@ -16,7 +16,7 @@ function vCandidate(){
  const c=getC(R.param);if(!c)return '<div class="empty">Candidate not found.</div>';
  const apps=appsOfC(c.id);let a=apps.find(x=>x.id===R.appSel)||primaryApp(c.id);R.appSel=a.id;
  const m=matchA(a),o=getOp(a.opId);
- const tabs=['overview','resume','experience','education','skills','applications','interviews','offers','documents','notes','activity'];
+ const tabs=['overview','resume','experience','education','skills','applications','interviews','offers','documents',...(canEdit()?['messages']:[]),'notes','activity'];
  let body='';
  switch(R.tab){
   case 'overview':body=`<section class="panel" style="margin-bottom:16px"><header><div><h3>Journey for ${esc(o.title)}</h3><p>Stage since ${fmtD(a.stageSince)}</p></div>${nextBtn(a,'pri')}</header><div class="pbody">${journey(a)}</div></section>
@@ -30,6 +30,8 @@ function vCandidate(){
   case 'interviews':body=`<section class="panel">${intTable(S.interviews.filter(i=>apps.some(x=>x.id===i.appId)))}</section>`;break;
   case 'offers':body=`<section class="panel">${offerTable(S.offers.filter(f=>apps.some(x=>x.id===f.appId)))}</section>`;break;
   case 'documents':body=`<section class="panel">${c.documents.map((d,k)=>`<div class="list-it">${ic('file','style="width:18px;color:var(--tx3)"')}<b class="grow">${esc(d.name)}</b>${d.path?`<button class="btn sm" data-dfo="${k}" title="${esc(d.file||'')}">Open file</button>`:''}${CONNECTED&&canEdit()?`<button class="btn sm" data-dfu="${k}">${d.path?'Replace':'Upload'}</button>`:''}<span class="pill ${d.status==='Received'?'green':d.status==='Verified'?'blue':'orange'}">${d.status}</span><select class="inp" data-doc="${k}" style="width:auto;padding:4px 8px;font-size:12px">${['Pending','Received','Verified'].map(s=>`<option ${s===d.status?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')}<div class="pbody"><button class="btn sm" id="addDoc">${ic('plus')}Request document</button></div></section>`;break;
+  case 'messages':{const ms=(S.messages||[]).filter(m=>m.cid===c.id);
+   body=`<section class="panel">${ms.length?ms.map(m=>`<div class="list-it" style="align-items:flex-start"><div class="grow"><b>${esc(m.channel)}</b> · ${esc(m.template||'Message')} <span class="pill ${m.status==='Sent'?'green':''}">${esc(m.status)}</span> <span class="muted small">${timeAgo(m.ts)}${m.by?' · '+esc(m.by):''}</span>${m.subject?`<div class="small"><b>${esc(m.subject)}</b></div>`:''}<p class="small" style="margin:2px 0 0;white-space:pre-line">${esc(m.body)}</p></div></div>`).join(''):'<div class="empty"><b>No messages yet</b>Messages sent from this profile are kept here.</div>'}</section>`;break}
   case 'notes':body=`<section class="panel"><div class="pbody"><textarea class="inp" id="noteIn" rows="3" placeholder="Add a note for the hiring team"></textarea><div style="margin-top:8px"><button class="btn pri sm" id="noteAdd">Save note</button></div></div>${c.notes.map(n=>`<div class="list-it" style="align-items:flex-start">${av(n.by)}<div class="grow"><b>${esc(n.by)}</b> <span class="muted small">${timeAgo(n.ts)}</span><p style="margin:2px 0 0;white-space:pre-line">${esc(n.text)}</p></div></div>`).join('')}</section>`;break;
   default:body=`<section class="panel">${activityList(S.activity.filter(x=>x.text.includes(c.name)))}</section>`;
  }
@@ -64,7 +66,15 @@ function composeMsg(cid,aid,ch){
  const c=getC(cid),a=getA(aid),o=getOp(a.opId);
  const tpl={'Interview invite':`Hi ${c.name.split(' ')[0]}, thanks for your interest in the ${o.title} role at ${S.settings.company}. We'd like to invite you to the next round. Please share a convenient time this week.`,'Shortlist update':`Hi ${c.name.split(' ')[0]}, good news — your profile has been shortlisted for ${o.title}. Our recruiter will call you shortly for a quick screening.`,'Document request':`Hi ${c.name.split(' ')[0]}, please share your ID proof, education certificates and last 3 payslips so we can proceed.`,'Regret':`Hi ${c.name.split(' ')[0]}, thank you for your time. We won't be moving forward for ${o.title} right now, but we'll keep your profile for future roles.`};
  modal({title:`${ch} ${esc(c.name)}`,body:`<div class="fgrid"><label class="f">To<input class="inp" value="${esc(ch==='Email'?c.email:c.phone)}" readonly></label><label class="f">Template<select class="inp" id="tp">${Object.keys(tpl).map(k=>`<option>${k}</option>`).join('')}</select></label>${ch==='Email'?`<label class="f full">Subject<input class="inp" id="sub" value="${esc(o.title)} at ${esc(S.settings.company)}"></label>`:''}<label class="f full">Message<textarea class="inp" id="bd" rows="6">${esc(tpl['Interview invite'])}</textarea></label></div>`,
- foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="snd">${ic('send')}Send ${ch}</button>`,onMount:el=>{$('#tp',el).onchange=e=>$('#bd',el).value=tpl[e.target.value];$('#snd',el).onclick=()=>{recordMessage({cid,aid,channel:ch,template:$('#tp',el).value});closeModal();toast(`${ch} sent to ${c.name}`)}}});
+ foot:`<span class="muted small grow">${ch==='Email'?'Opens your email app with this message ready.':ch==='WhatsApp'?'Opens WhatsApp with this message ready.':'Kept in the message record.'} It is recorded here as sent.</span><button class="btn" data-close>Cancel</button><button class="btn" id="cp">Copy text</button><button class="btn pri" id="snd">${ic('send')}${ch==='Email'?'Open in email app':ch==='WhatsApp'?'Open in WhatsApp':'Record as sent'}</button>`,
+ onMount:el=>{$('#tp',el).onchange=e=>$('#bd',el).value=tpl[e.target.value];
+  $('#cp',el).onclick=()=>{navigator.clipboard.writeText($('#bd',el).value).then(()=>toast('Copied'),()=>toast('Copy is blocked here. Select the text and copy it.','var(--orange)'))};
+  $('#snd',el).onclick=()=>{const body=$('#bd',el).value,subject=ch==='Email'?val(el,'#sub'):'';let link='';
+   if(ch==='Email'){if(!c.email){toast('This candidate has no email address','var(--red)');return}link=mailtoLink({to:c.email,subject,body})}
+   else if(ch==='WhatsApp'){link=whatsappLink({phone:c.phone,text:body});if(!link){toast('This candidate has no usable phone number','var(--red)');return}}
+   recordMessage({cid,aid,channel:ch,template:$('#tp',el).value,subject,body});
+   if(link){const a=document.createElement('a');a.href=link;a.target='_blank';a.rel='noopener';a.click()}
+   closeModal();toast(`${ch} ${link?'opened':'recorded'} for ${c.name}`);if(R.view==='candidate')render()}}});
 }
 
 // a file for one item of the document checklist: ID proofs, payslips, certificates (staff only, private)

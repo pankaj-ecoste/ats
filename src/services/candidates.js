@@ -33,7 +33,9 @@ function attachDocumentFile(cid,index,{path,file}){
  log(`${c.documents[index].name} uploaded for ${c.name}`,'note');
  return c;
 }
-// today this only records that a message was composed; real delivery arrives in Phase 3
-function recordMessage({cid,aid,channel,template}){
- log(`${channel} sent to ${getC(cid).name}: ${template}`,'message',aid);
+// Every message is kept: who, which channel, what was said. status: 'Sent' once the person has handed it to their own email or WhatsApp, 'Composed' if only drafted.
+function recordMessage({cid,aid,channel,template,subject='',body='',status='Sent'}){
+ const m=repo.insert('messages',{id:crypto.randomUUID(),cid,aid:aid||null,channel,template:template||'',subject,body,status,by:S.settings.user,ts:Date.now()});
+ log(`${channel} ${status==='Sent'?'sent':'drafted'} to ${getC(cid).name}: ${template}`,'message',aid);
+ return m;
 }

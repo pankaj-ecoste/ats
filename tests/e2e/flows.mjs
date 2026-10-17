@@ -308,6 +308,15 @@ await page.fill('#teamInt', '');
 await page.click('#teamSave');
 check('team: clearing both lists restores the built-in names', await ev(() => recruiters().length === DEFAULT_RECRUITERS.length));
 
+// ---- a calendar invite for an interview
+await ev(() => { go('interviews'); interviewDetail(S.interviews.find((i) => i.status === 'Scheduled').id); });
+const download = page.waitForEvent('download');
+await page.click('#iIcs');
+const dl = await download;
+const icsText = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+check('interview: Calendar (.ics) saves a valid invite file', dl.suggestedFilename().endsWith('.ics') && icsText.startsWith('BEGIN:VCALENDAR') && icsText.includes('BEGIN:VEVENT') && icsText.includes('SUMMARY:'));
+await closeAllModals();
+
 // ---- long lists show a page at a time
 await ev(() => { const base = S.candidates[0]; for (let i = 0; i < 230; i++) { const c = { ...JSON.parse(JSON.stringify(base)), id: 'C-PG' + i, name: 'Paged Person ' + i }; S.candidates.push(c); } });
 await page.evaluate(() => go('candidates'));

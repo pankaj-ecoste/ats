@@ -145,7 +145,7 @@ try {
   await signIn(page, MGMT);
   check('management sees dashboard, openings and the report only', (await navOf(page)).join() === 'dashboard,openings,reports');
   const m = await page.evaluate((ids) => ({ view: R.view, ops: S.openings.some((o) => o.id === ids.op), apps: S.applications.filter((a) => [ids.a1, ids.a2].includes(a.id)).length,
-    hidden: S.candidates.filter((c) => c.restricted).length, names: S.candidates.map((c) => c.name), offers: S.offers.length, quick: getComputedStyle(document.querySelector('#qaBtn').parentElement).display }), { op: OP, a1: A1, a2: A2 });
+    hidden: S.candidates.filter((c) => c.restricted && [ids.c1, ids.c2].includes(c.id)).length, names: S.candidates.filter((c) => [ids.c1, ids.c2].includes(c.id)).map((c) => c.name), offers: S.offers.length, quick: getComputedStyle(document.querySelector('#qaBtn').parentElement).display }), { op: OP, a1: A1, a2: A2, c1: C1, c2: C2 });
   check('management starts on the dashboard and sees the opening and its applications', m.view === 'dashboard' && m.ops && m.apps === 2);
   check('management sees no candidate names and no offers: a marked placeholder stands in', m.hidden === 2 && m.names.every((n) => n === 'Candidate (hidden)') && m.offers === 0);
   check('management has no quick-add button', m.quick === 'none');

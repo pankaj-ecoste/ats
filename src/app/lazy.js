@@ -16,6 +16,11 @@ async function openStoredFile(bucket,path){
  const url=await fileLink(sb,bucket,path);
  window.open(url,'_blank','noopener');
 }
+// a stored HTML file opened as a page: the storage service shows HTML as plain text, so it is fetched and shown from the browser's own copy
+async function openStoredHtml(bucket,path){
+ const text=await (await fetch(await fileLink(sb,bucket,path))).text();
+ window.open(URL.createObjectURL(new Blob([text],{type:'text/html'})),'_blank','noopener');
+}
 // the PDF reader: the library, then its worker (run on the main thread: a résumé is a few pages)
 async function loadPdfReader(){
  if(!window.pdfjsLib){await loadLazy('src/vendor/pdf.min.js');await loadLazy('src/vendor/pdf.worker.min.js')}

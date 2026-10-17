@@ -7,7 +7,7 @@ const READ_TABLES=[
  ['company_settings','singleton'],['openings','id'],['candidates','id'],['candidate_compensation','candidate_id'],['candidate_documents','id'],
  ['applications','id'],['screenings','application_id'],['interview_groups','id'],['interviews','id'],['offers','id'],
  ['onboarding_checklists','application_id'],['onboarding_items','id'],['tasks','id'],['notifications','id'],
- ['job_boards','id'],['postings','id'],['report_events','id'],['call_log','id'],['monthly_targets','month'],
+ ['job_boards','id'],['postings','id'],['report_events','id'],['call_log','id'],['monthly_targets','month'],['messages','id'],
 ];
 // the two logs only ever grow, and only the latest entries are shown, so only those are read (the app itself keeps 300)
 const LOG_TABLES=[['activity','at'],['sheet_log','at']],LOG_KEEP=300;
@@ -83,6 +83,7 @@ const WRITE_MAP={
  events:{to:'event',table:'report_events'},
  callLog:{to:'call',table:'call_log',key:'id'},
  sheetLog:{to:'sheetLog',table:'sheet_log'},
+ messages:{to:'message',table:'messages',creator:'sent_by'},   // insert only: a recorded message is never edited
 };
 // rows that belong to a parent and are always rewritten as a set; and rows kept one per parent
 const CHILD_SETS={candidate_documents:'candidate_id',onboarding_items:'application_id'};
@@ -108,7 +109,7 @@ function writeError(error,what){
 }
 const WHAT={openings:'the opening',candidates:'the candidate',applications:'the application',groups:'the group interview',interviews:'the interview',offers:'the offer',
  onboarding:'the onboarding checklist',tasks:'the task',notifications:'the notification',activity:'the activity entry',postings:'the posting',events:'the report entry',
- callLog:'the call log',sheetLog:'the sheet log',settings:'the settings',postCfg:'the posting settings',autoSync:'the Google Sheet connection',monthly:'the monthly targets',boards:'the job sites'};
+ callLog:'the call log',sheetLog:'the sheet log',messages:'the message record',settings:'the settings',postCfg:'the posting settings',autoSync:'the Google Sheet connection',monthly:'the monthly targets',boards:'the job sites'};
 
 async function dbRun(promise,what){const r=await promise;if(r&&r.error)throw writeError(r.error,what);return r}
 // An update or delete that row-level security hides does not fail: it quietly changes zero rows. So the rows touched are asked for and counted.

@@ -18,6 +18,13 @@ function saveOffer(w,status){
  if(STAGES.indexOf(a.stage)<6||a.stage==='On Hold')moveStage(a.id,'Offer');
  return f;
 }
+// the letter exactly as it was sent, kept in storage (path: where)
+function attachOfferLetter(fid,path){
+ const f=repo.update('offers',fid,{letterPath:path}),a=getA(f.appId);
+ log(`Offer letter saved for ${getC(a.cid).name}`,'offer',a.id);
+ return f;
+}
+
 /* ---------- approval by the hiring manager ---------- */
 const offerApproval=f=>f.approval||'Not required';
 // who may decide: an admin, or the hiring manager of that opening (the database holds to the same rule). Without accounts, anyone.

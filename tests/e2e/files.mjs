@@ -60,12 +60,13 @@ const original = (await all('select company, address, signatory, sign_title from
 async function removeTestFiles() {
   const cands = (await all('select id from public.candidates where name like $1', [`%${tag}%`])).map((r) => r.id);
   if (!cands.length) return;
-  const objs = await all("select bucket_id, name from storage.objects where bucket_id in ('resumes', 'documents') and split_part(name, '/', 1) = any($1)", [cands]);
+  const apps = (await all('select id from public.applications where candidate_id = any($1)', [cands])).map((r) => r.id);
+  const objs = await all("select bucket_id, name from storage.objects where bucket_id in ('resumes', 'documents', 'offer-letters') and split_part(name, '/', 1) = any($1)", [[...cands, ...apps]]);
   if (!objs.length) return;
   const client = createClient(url, process.env.SUPABASE_ANON_KEY);
   const { error } = await client.auth.signInWithPassword({ email: `${ADMIN}@ats.ecoste.in`, password: PW });
   if (error) throw new Error(`could not remove the test files: ${error.message}`);
-  for (const b of ['resumes', 'documents']) {
+  for (const b of ['resumes', 'documents', 'offer-letters']) {
     const names = objs.filter((o) => o.bucket_id === b).map((o) => o.name);
     if (names.length) await client.storage.from(b).remove(names);
   }
@@ -174,6 +175,35 @@ try {
   check('no second profile was created', (await all('select id from public.candidates where lower(email) = $1', [EMAIL])).length === 1);
   await page.click('#dpOpen');
   check('Open profile goes to the existing candidate', (await page.evaluate(() => R.view === 'candidate' && R.param)) === cid);
+  /* ---- messages: handed to the person's own email app and WhatsApp, and recorded ---- */
+  const aid = await page.evaluate(() => S.applications.find((a) => a.cid === R.param).id);
+  await page.evaluate(({ c, a }) => composeMsg(c, a, 'Email'), { c: cid, a: aid });
+  await page.fill('#sub', `Hello ${tag}`);
+  await page.click('#snd');
+  await saved(page);
+  await page.evaluate(({ c, a }) => composeMsg(c, a, 'WhatsApp'), { c: cid, a: aid });
+  await page.click('#snd');
+  await saved(page);
+  const msgs = await all('select channel, template, subject, status, sent_by is not null as by, left(body, 10) as body from public.messages where candidate_id = $1 order by created_at', [cid]);
+  check('both messages are recorded as sent, with who sent them', msgs.length === 2 && msgs.every((m) => m.status === 'Sent' && m.by) && msgs[0].channel === 'Email' && msgs[0].subject === `Hello ${tag}` && msgs[1].channel === 'WhatsApp');
+  check('the message body is the template text', msgs[0].body.startsWith('Hi Zed'));
+  await page.evaluate(() => { R.tab = 'messages'; render(); });
+  check('the Messages tab lists them', (await page.locator('#content .list-it').count()) >= 2 && (await page.locator('#content').innerText()).includes(`Hello ${tag}`));
+
+  /* ---- the offer letter as sent is kept ---- */
+  const ofr = await page.evaluate((a) => {
+    const op = getOp(getA(a).opId);
+    const w = { id: uid('OFR'), appId: a, designation: op.title, dept: 'Engineering', location: 'Pune', joining: addDays(30), manager: 'Test Admin', empType: 'Full-time', ctc: 800000, breakup: autoSplit(800000),
+      status: 'Draft', created: today(), sent: null, custom: null, probation: 6, validity: 7, _new: true };
+    saveOffer(w, 'Sent'); markOfferSent(w.id);
+    return w.id;
+  }, aid);
+  await page.evaluate((id) => saveSentLetter(id), ofr);
+  await saved(page);
+  const lp = (await all('select letter_path from public.offers where id = $1', [ofr]))[0].letter_path;
+  check('the letter is stored under its application and recorded on the offer', lp && lp.startsWith(`${aid}/F-`) && (await all("select 1 from storage.objects where bucket_id = 'offer-letters' and name = $1", [lp])).length === 1);
+  const letter = await page.evaluate(async (id) => { const f = S.offers.find((x) => x.id === id); return (await (await fetch(await fileLink(sb, FILE_BUCKETS.letter, f.letterPath))).text()); }, ofr);
+  check('the stored letter is the letter that was sent', letter.includes('<!doctype html>') && letter.includes(`Zed Candidate ${tag}`) && letter.includes(`Test Co ${tag}`));
   check('no page error happened during the whole run', page.errors.length === 0 || (console.error(page.errors), false));
 } catch (e) {
   check(`unexpected failure: ${String(e.message).split('\n')[0]}`, false);

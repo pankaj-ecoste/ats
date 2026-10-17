@@ -67,6 +67,7 @@ const FROM_ROW={
  event:r=>withValues({d:r.on_date,t:r.type,aid:r.application_id,op:r.opening_id},{days:r.days,src:r.source,...(r.demo?{demo:1}:{})}),
  call:r=>({id:r.id,d:r.on_date,op:r.opening_id,made:r.made,conn:r.connected,...(r.demo?{demo:1}:{})}),
  sheetLog:r=>({ts:dbMs(r.at),text:r.text}),
+ message:(r,P)=>withValues({id:r.id,cid:r.candidate_id,channel:r.channel,template:r.template,subject:r.subject,body:r.body,status:r.status,by:P.name(r.sent_by),ts:dbMs(r.created_at)},{aid:r.application_id}),
 };
 
 const hiddenCandidate=id=>({id,name:'Candidate (hidden)',designation:'',company:'',exp:0,location:'',education:'',eduField:'',university:'',gradYear:null,skills:[],curSal:null,expSal:null,
@@ -105,6 +106,7 @@ function stateFromRows(rows,people){
   onboarding:oldest(rows.onboarding_checklists||[],row('onboarding')),
   tasks:newest(rows.tasks||[],row('task')),
   notifications:newest(rows.notifications||[],row('notification')),
+  messages:newest(rows.messages||[],row('message')),
   activity:(rows.activity||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at))).map(FROM_ROW.activity),
   postings:oldest(rows.postings||[],row('posting')),
   events:oldest(rows.report_events||[],row('event')),
@@ -126,7 +128,7 @@ function stateFromRows(rows,people){
 // and what stays in this browser (name shown, theme) is left out.
 function dataFingerprint(state){
  const parts={settings:settingsRow(state)};
- ['openings','candidates','applications','groups','interviews','offers','onboarding','tasks','notifications','activity','postings','events','callLog','sheetLog','boards'].forEach(k=>{
+ ['openings','candidates','applications','groups','interviews','offers','onboarding','tasks','notifications','messages','activity','postings','events','callLog','sheetLog','boards'].forEach(k=>{
   parts[k]=(state[k]||[]).map(r=>JSON.stringify(r)).sort();
  });
  parts.monthly=state.monthly||{};
@@ -172,6 +174,7 @@ const TO_ROW={
  event:(e)=>({report_events:{on_date:e.d,type:e.t,application_id:e.aid||null,opening_id:e.op||null,days:e.days??null,source:e.src||null,demo:!!e.demo}}),
  call:(c)=>({call_log:{id:c.id,on_date:c.d,opening_id:c.op||null,made:c.made,connected:c.conn,demo:!!c.demo}}),
  sheetLog:(l)=>({sheet_log:{at:iso8601(l.ts),text:l.text}}),
+ message:(m)=>({messages:{id:m.id,candidate_id:m.cid||null,application_id:m.aid||null,channel:m.channel,template:m.template||'',subject:m.subject||'',body:m.body||'',status:m.status||'Sent',created_at:iso8601(m.ts)}}),
 };
 // the one settings row, from the app's settings and the other whole-object settings
 function settingsRow(state){
@@ -192,7 +195,7 @@ function rowsFromState(state,people,userId){
  const each=(list,name,...extra)=>(list||[]).forEach(x=>add(TO_ROW[name](x,people,...extra)));
  each(state.openings,'opening');each(state.candidates,'candidate');each(state.applications,'application');
  each(state.groups,'group');each(state.interviews,'interview');each(state.offers,'offer');each(state.onboarding,'onboarding');
- each(state.tasks,'task');each(state.notifications,'notification',userId);each(state.activity,'activity');each(state.postings,'posting');
+ each(state.tasks,'task');each(state.notifications,'notification',userId);each(state.messages,'message');each(state.activity,'activity');each(state.postings,'posting');
  each(state.events,'event');each(state.callLog,'call');each(state.sheetLog,'sheetLog');
  out.job_boards=(state.boards||[]).map(boardRow);
  out.monthly_targets=Object.entries(state.monthly||{}).map(targetRow);
