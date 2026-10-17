@@ -18,7 +18,7 @@ const target = process.argv[2] === 'dist' ? 'dist/Ecoste_Recruit_Tracker.html' :
 const cfg = { supabaseUrl: process.env.SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''), anonKey: process.env.SUPABASE_ANON_KEY };
 const tag = newTag();
 const ADMIN = `${tag}_admin`, REC = `${tag}_rec`, MGMT = `${tag}_mgmt`, IVW = `${tag}_ivw`, HM = `${tag}_hm`, PW = 'admin-pass-1';
-const OP = `OP-${tag}`, C1 = `C-${tag}a`, C2 = `C-${tag}b`, A1 = `APP-${tag}a`, A2 = `APP-${tag}b`, GI = `GI-${tag}`, I1 = `INT-${tag}`, OF = `OFR-${tag}`, T1 = `T-${tag}`;
+const OP = `OP-${tag}`, C1 = `C-${tag}a`, C2 = `C-${tag}b`, A1 = `APP-${tag}a`, A2 = `APP-${tag}b`, GI = `GI-${tag}`, I1 = `INT-${tag}`, I2 = `INT-${tag}p`, OF = `OFR-${tag}`, T1 = `T-${tag}`;
 
 const db = connect();
 await db.connect();
@@ -87,6 +87,7 @@ try {
   await db.query("insert into public.applications (id, candidate_id, opening_id, stage, recruiter_id) values ($1, $3, $5, 'Offer', $6), ($2, $4, $5, 'New', $6)", [A1, A2, C1, C2, OP, recId]);
   await db.query("insert into public.interview_groups (id, opening_id, on_date, at_time, interviewer_ids) values ($1, $2, current_date, '11:30', $3)", [GI, OP, [recId]]);
   await db.query("insert into public.interviews (id, application_id, kind, round, group_id, on_date, at_time, interviewer_ids) values ($1, $2, 'Group', 'Group Interview', $3, current_date, '15:00:00', $4)", [I1, A1, GI, [recId, ivwId]]);
+  await db.query("insert into public.interviews (id, application_id, kind, round, on_date, at_time, interviewer_ids) values ($1, $2, 'Personal', 'Technical', current_date, '10:00:00', $3)", [I2, A1, [ivwId]]);
   await db.query("insert into public.offers (id, application_id, ctc, status) values ($1, $2, 1500000, 'Draft')", [OF, A1]);
   await db.query("insert into public.tasks (id, title, owner_id, due_on) values ($1, 'Call Zed', $2, current_date)", [T1, recId]);
   await db.query("insert into public.notifications (user_id, text) values ($1, 'For the admin only'), ($2, 'For the recruiter only')", [adminId, recId]);
@@ -147,10 +148,30 @@ try {
   await signIn(page, IVW);
   check('the interviewer sees interviews, candidates and tasks only', (await navOf(page)).join() === 'candidates,interviews,tasks');
   const iv = await page.evaluate(() => ({ view: R.view, ints: S.interviews.map((i) => i.id), cands: S.candidates.map((c) => c.id), ops: S.openings.map((o) => o.id), sal: S.candidates.map((c) => c.expSal) }));
-  check('the interviewer starts on Interviews and sees only their interview, its candidate and opening', iv.view === 'interviews' && iv.ints.join() === I1 && iv.cands.join() === C1 && iv.ops.join() === OP);
+  check('the interviewer starts on Interviews and sees only their interviews, its candidate and opening', iv.view === 'interviews' && iv.ints.slice().sort().join() === [I1, I2].sort().join() && iv.cands.join() === C1 && iv.ops.join() === OP);
   check('the interviewer does not see salary', iv.sal.every((x) => x === null));
   const brokenI = await openEach(page, await navOf(page));
   check('the interviewer pages open without an error', brokenI.length === 0 || (console.error(brokenI), false));
+
+  // the interviewer scores their own personal interview: it is saved as their own scorecard and rolled up onto the interview
+  const ui = await page.evaluate((i2) => ({ quick: getComputedStyle(document.querySelector('#qaBtn').parentElement).display, canScore: canScore(S.interviews.find((i) => i.id === i2)), canScoreGroup: canScore(S.interviews.find((i) => i.kind === 'Group')),
+    sched: !!document.querySelector('[data-act=schedulePI]') }), I2);
+  check('the interviewer may score a personal interview they are on, not a group evaluation', ui.canScore === true && ui.canScoreGroup === false && ui.quick === 'none');
+  await page.evaluate(() => { window.__dataErrors = []; onEvent('data:error', (e) => window.__dataErrors.push(e.message)); });
+  await page.evaluate((i2) => { recordScorecard(i2, { scores: [4, 5, 4, 3, 5], rec: 'Good', decision: 'Next Round', feedback: 'Strong on basics' }); }, I2);
+  await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  const errs = await page.evaluate(() => window.__dataErrors || []);
+  const sc = (await db.query('select scores, decision, feedback from public.interview_scores where interview_id = $1', [I2])).rows[0];
+  const roll = (await db.query('select scores, status, decision from public.interviews where id = $1', [I2])).rows[0];
+  check('the scorecard is saved under the interviewer own name', sc && sc.scores.join() === '4,5,4,3,5' && sc.decision === 'Next Round' && errs.length === 0);
+  check('the interview carries the rolled-up result and is Completed', roll.scores.join() === '4,5,4,3,5' && roll.status === 'Completed' && roll.decision === 'Next Round');
+  await page.evaluate((i2) => { piScorecard(i2); }, I2);
+  await page.click('#pSub');
+  await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  check('submitting through the scorecard screen tells the recruiter instead of moving the candidate', await page.evaluate(() => getA(S.interviews.find((i) => i.kind === 'Personal').appId).stage !== 'Selected'));
+  const told = (await db.query("select text from public.notifications where text like '%scored Zed Candidate%'")).rows;
+  check('the recruiter is notified of the scorecard', told.length >= 1);
+  await db.query("delete from public.notifications where text like '%scored Zed Candidate%'");
 
   /* ---- a hiring manager: their opening, no salary ---- */
   await db.query('update public.openings set manager_id = $1 where id = $2', [hmId, OP]);

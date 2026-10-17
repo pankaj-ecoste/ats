@@ -103,12 +103,21 @@ function rowsOf(coll,record,ctx,isNew){
 }
 const sameAsLast=(ctx,key,rows)=>{const j=JSON.stringify(rows);if(ctx.last.get(key)===j)return true;ctx.last.set(key,j);return false};
 
+// an interviewer's own scorecard: one row per person and interview. The database rolls it up onto the interview (migration 0010).
+async function writeScorecard(client,ctx,record){
+ const row=scoreRow(record,ctx.meId);
+ if(row)await dbRun(client.from('interview_scores').upsert(row,{onConflict:'interview_id,interviewer_id'}),'your scorecard');
+}
+
 async function writeRecord(client,ctx,coll,id,record,isNew){
- const m=WRITE_MAP[coll],what=WHAT[coll],res=rowsOf(coll,record,ctx,isNew);
+ const m=WRITE_MAP[coll],what=WHAT[coll];
+ if(coll==='interviews'&&!ctx.staff){if(!isNew)await writeScorecard(client,ctx,record);return}   // interviewers cannot change the interview itself
+ const res=rowsOf(coll,record,ctx,isNew);
  for(const [table,rows] of Object.entries(res)){
   if(table===m.table){
    if(isNew||!m.key)await dbRun(client.from(table).insert(rows),what);
    else{const {[m.key]:_,...rest}=rows;await dbRunOne(client.from(table).update(rest).eq(m.key,id).select(m.key),what)}
+   if(coll==='interviews'&&!isNew&&record.scores&&(record.interviewers||[]).includes(ctx.people.name(ctx.meId)))await writeScorecard(client,ctx,record);
   }else if(CHILD_SETS[table]){
    if(!isNew){if(sameAsLast(ctx,table+id,rows))continue;await dbRun(client.from(table).delete().eq(CHILD_SETS[table],id),what)}
    else ctx.last.set(table+id,JSON.stringify(rows));
@@ -209,7 +218,7 @@ function createWriter(client,ctx){
 let WRITER=null,WRITING_LISTENING=false;
 // begin saving this person's changes. Called once after the data is loaded.
 function startWriting(client,me){
- const ctx={meId:me.id,get people(){return PEOPLE}};
+ const ctx={meId:me.id,staff:me.role==='admin'||me.role==='recruiter',get people(){return PEOPLE}};
  ctx.last=new Map([['settings',JSON.stringify(settingsRow(S))]]);
  WRITER=createWriter(client,ctx);
  if(!WRITING_LISTENING){WRITING_LISTENING=true;repoOnChange(ch=>{if(WRITER)WRITER.enqueue(ch)})}

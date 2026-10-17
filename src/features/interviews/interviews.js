@@ -5,7 +5,7 @@ function intTable(l){
  if(!l.length)return '<div class="empty"><b>No interviews yet</b>Schedule one to see it here.</div>';
  return `<div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Opening</th><th>Round</th><th>Date</th><th>Interviewer</th><th>Mode</th><th>Status</th><th>Result</th><th></th></tr></thead><tbody>${l.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).map(i=>{const a=getA(i.appId),c=getC(a.cid),st=intStatus(i);
   return `<tr class="click" data-int="${i.id}"><td><div class="who">${av(c.name)}<b>${esc(c.name)}</b></div></td><td>${esc(getOp(a.opId).title)}</td><td>${i.kind==='Group'?'<span class="pill cyan">Group</span>':esc(i.round)}</td><td>${fmtDs(i.date)}, ${fmtT(i.time)}</td><td>${esc(i.interviewers.join(', '))}</td><td>${esc(i.mode)}</td><td><span class="pill ${INT_COLOR[st]}">${st}</span></td><td class="small">${esc(i.decision||i.rec||'—')}</td>
-  <td>${st==='Pending Feedback'||(st==='Scheduled'&&i.date<=today())?`<button class="btn sm" data-eval="${i.id}">Evaluate</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
+  <td>${canScore(i)&&(st==='Pending Feedback'||(st==='Scheduled'&&i.date<=today()))?`<button class="btn sm" data-eval="${i.id}">Evaluate</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 function bindIntTable(root){$$('[data-int]',root).forEach(el=>el.onclick=e=>{if(e.target.closest('button'))return;interviewDetail(el.dataset.int)});$$('[data-eval]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();const i=S.interviews.find(x=>x.id===b.dataset.eval);i.kind==='Group'?groupEval(i.groupId):piScorecard(i.id)})}
 function interviewDetail(iid){
@@ -13,7 +13,7 @@ function interviewDetail(iid){
  modal({title:`${i.kind==='Group'?'Group interview':esc(i.round)+' interview'}`,body:`<div class="row" style="margin-bottom:14px">${av(c.name)}<div class="grow"><b>${esc(c.name)}</b><div class="muted small">${esc(o.title)}</div></div><span class="pill ${INT_COLOR[st]}">${st}</span></div>
  <dl class="kv">${[['When',fmtD(i.date)+', '+fmtT(i.time)+' · '+i.duration+' min'],['Mode',i.mode],['Link / location',i.link||i.location||'—'],['Interviewers',i.interviewers.join(', ')],['Invitation',i.invite]].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}
  ${i.scores?`<dt>Scores</dt><dd>${(i.kind==='Group'?GI_CRIT:PI_CRIT).map((cr,k)=>`${cr}: <b>${i.scores[k]||'–'}</b>`).join(' · ')}</dd><dt>Result</dt><dd>${esc(i.decision||i.rec)}</dd><dt>Feedback</dt><dd>${esc(i.feedback||'—')}</dd>`:''}</dl>`,
- foot:`${st!=='Cancelled'&&st!=='Completed'&&st!=='No-show'?'<button class="btn bad" id="iCan">Cancel</button><button class="btn" id="iNs">No-show</button>':''}<span class="grow"></span><button class="btn" id="iProf">Open profile</button>${i.kind==='Group'?'<button class="btn" id="iGrp">Group details</button>':''}${st!=='Cancelled'?`<button class="btn pri" id="iEv">${st==='Completed'?'Edit evaluation':'Evaluate'}</button>`:''}`,
+ foot:`${canEdit()&&st!=='Cancelled'&&st!=='Completed'&&st!=='No-show'?'<button class="btn bad" id="iCan">Cancel</button><button class="btn" id="iNs">No-show</button>':''}<span class="grow"></span><button class="btn" id="iProf">Open profile</button>${i.kind==='Group'&&canEdit()?'<button class="btn" id="iGrp">Group details</button>':''}${st!=='Cancelled'&&canScore(i)?`<button class="btn pri" id="iEv">${st==='Completed'?'Edit evaluation':'Evaluate'}</button>`:''}`,
  onMount:el=>{const b=(s,f)=>{const x=$(s,el);if(x)x.onclick=f};
   b('#iNs',()=>{markNoShow(i.id);closeModal();toast('Marked as no-show','var(--red)');refresh()});
   b('#iCan',()=>{cancelInterview(i.id);closeModal();toast('Interview cancelled','var(--red)');refresh()});
@@ -32,7 +32,7 @@ function vInterviews(){
   <div>${ints.map(i=>{const c=getC(getA(i.appId).cid);return `<span title="${esc(c.name)}" style="margin-right:-6px;display:inline-block;border:2px solid var(--surface);border-radius:50%">${av(c.name)}</span>`}).join('')}</div>
   <div class="row" style="margin-top:12px"><button class="btn sm" data-gd="${g.id}">Invitations</button>${cancelled?'':`<button class="btn sm pri" data-ge="${g.id}">${g.evaluated?'Review evaluation':'Evaluate'}</button>`}<span class="muted small">${conf}/${ints.length} confirmed · ${esc(g.interviewers.join(', '))}</span></div></div></section>`}).join('')||'<div class="empty"><b>No group interviews yet</b>Select several shortlisted candidates and schedule one.</div>'}</div>`;
  return `<div class="page-h"><div><h1>Interviews</h1><p>${S.interviews.filter(i=>i.status==='Scheduled'&&i.date>=today()).length} upcoming · ${S.interviews.filter(i=>intStatus(i)==='Pending Feedback').length} awaiting feedback</p></div>
- <div class="row"><button class="btn" data-act="scheduleGI">${ic('users')}Group interview</button><button class="btn pri" data-act="schedulePI">${ic('plus')}Personal interview</button></div></div>
+ ${canEdit()?`<div class="row"><button class="btn" data-act="scheduleGI">${ic('users')}Group interview</button><button class="btn pri" data-act="schedulePI">${ic('plus')}Personal interview</button></div>`:''}</div>
  <div class="tabs">${tabs.map(t=>`<button class="${R.intTab===t[0]?'on':''}" data-it="${t[0]}">${t[1]}</button>`).join('')}</div>${body}`;
 }
 function calendarHTML(){

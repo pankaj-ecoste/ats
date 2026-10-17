@@ -20,8 +20,10 @@ const ROLE_PAGES={
 const PAGE_OF={opening:'openings',candidate:'candidates'};
 const roleCanSee=(role,view)=>{const pages=ROLE_PAGES[role];return !pages||pages.includes(PAGE_OF[view]||view)};
 const canSee=view=>!CONNECTED||!ME||roleCanSee(ME.role,view);
-// only admins and recruiters create and change records; everyone else reads (interviewer scorecards are a later step)
+// only admins and recruiters create and change records; everyone else reads, except that an interviewer scores their own interviews
 const canEdit=()=>!CONNECTED||!ME||ME.role==='admin'||ME.role==='recruiter';
+// who may submit a scorecard: staff for any, anyone else only for a personal interview they are on (group evaluation is staff work)
+const canScore=i=>canEdit()||(i.kind==='Personal'&&(i.interviewers||[]).includes(S.settings.user));
 const firstPage=()=>{const p=CONNECTED&&ME?ROLE_PAGES[ME.role]:null;return p?p[0]:'dashboard'};
 
 // turns what Supabase says into a sentence a person can act on

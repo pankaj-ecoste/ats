@@ -51,7 +51,10 @@ function schedulePersonalInterview(f){
  return it;
 }
 function recordScorecard(iid,{scores,rec,decision,feedback}){
- const i=repo.update('interviews',iid,{scores,rec,decision,feedback,status:'Completed'});
+ const cur=repo.find('interviews',iid);
+ // a panel member who is not staff only adds their own scorecard; the database marks the interview Completed when the whole panel has scored
+ const done=canEdit()||cur.interviewers.length<=1;
+ const i=repo.update('interviews',iid,{scores,rec,decision,feedback,...(done?{status:'Completed'}:{})});
  const a=getA(i.appId);
  log(`${i.round} interview completed for ${getC(a.cid).name}: ${decision}`,'interview',a.id);
  return i;

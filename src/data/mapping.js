@@ -168,6 +168,8 @@ function settingsRow(state){
  return {company:s.company||'',address:s.companyAddr||'',signatory:s.signatory||'',sign_title:s.signTitle||'',match_threshold:s.threshold??65,match_weights:s.weights,
   config:{...(s.sla?{sla:s.sla}:{}),...(s.report?{report:s.report}:{}),...(s.team?{team:s.team}:{}),...(state.postCfg?{postCfg:state.postCfg}:{}),...(state.autoSync?{autoSync:state.autoSync}:{})}};
 }
+// one interviewer's own scorecard (null until every criterion has a score)
+const scoreRow=(i,interviewerId)=>i.scores&&interviewerId?{interview_id:i.id,interviewer_id:interviewerId,scores:i.scores,recommendation:i.rec||null,decision:i.decision||null,feedback:i.feedback||''}:null;
 function boardRow(b,position){return {id:b.id,name:b.name,type:b.type||'board',format:b.fmt||'full',color:b.color||'',source_name:b.src||'',url:b.url||'',custom:!!b.custom,position}}
 function targetRow([month,v]){return {month,target:v.target||0,budget:v.budget||0,other:v.other||0}}
 

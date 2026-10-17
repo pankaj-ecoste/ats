@@ -317,6 +317,23 @@ test('an interviewer writes their own scorecard, only for their own interview', 
   await as(U.hm2, async () => assert.equal((await attempt("select * from public.interview_scores where interview_id = 'I-T1'")).rows.length, 0));
 });
 
+test('a scorecard is rolled up onto the interview, and an interviewer may log activity and notify the recruiter', { skip }, async () => {
+  await q("delete from public.interview_scores where interview_id = 'I-T1'");
+  await as(U.interviewer, async () => {
+    const ins = await attempt("insert into public.interview_scores (interview_id, interviewer_id, scores, recommendation, decision, feedback) values ('I-T1', $1, '{4,5,3,4,4}', 'Good', 'Next Round', 'Solid')", [U.interviewer]);
+    assert.equal(ins.rowCount, 1, String(ins.error));
+    assert.equal((await attempt("insert into public.activity (text, type, actor_id) values ('zz-score', 'interview', $1)", [U.interviewer])).rowCount, 1, 'own activity entry');
+    assert.match((await attempt("insert into public.activity (text, type, actor_id) values ('zz-score', 'interview', $1)", [U.hm1])).error, /row-level security/, 'not as someone else');
+    assert.equal((await attempt("insert into public.notifications (id, user_id, text) values (gen_random_uuid(), $1, 'zz-score')", [U.hm1])).rowCount, 1, 'a notification for another account');
+    assert.equal((await attempt("select * from public.activity")).rows.length, 0, 'but the feed is not readable');
+  }, { keep: true });
+  const row = (await q("select scores, recommendation, decision, feedback, status from public.interviews where id = 'I-T1'")).rows[0];
+  assert.deepEqual(row.scores, [4, 5, 3, 4, 4]);
+  assert.deepEqual([row.recommendation, row.decision, row.feedback, row.status], ['Good', 'Next Round', 'Solid', 'Completed']);
+  await q("delete from public.activity where text = 'zz-score'");
+  await q("delete from public.notifications where text = 'zz-score'");
+});
+
 /* ---------- tasks, notifications, profiles, settings ---------- */
 test('a task owner sees their own tasks and can tick them but not rewrite them', { skip }, async () => {
   await as(U.interviewer, async () => {

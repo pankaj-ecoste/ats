@@ -80,5 +80,5 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- Not yet done on the app side: interviewers writing their own scorecard (`interview_scores`), a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
+- Not yet done on the app side: a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
 - **An update or delete that access rules hide is not an error**: the database changes zero rows and says nothing. Code that writes must ask for the changed rows back and count them (the writer does).
