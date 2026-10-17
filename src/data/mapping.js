@@ -122,6 +122,17 @@ function stateFromRows(rows,people){
  return state;
 }
 
+// what the database holds of a state, as one string, so two states can be compared. The order of records does not matter,
+// and what stays in this browser (name shown, theme) is left out.
+function dataFingerprint(state){
+ const parts={settings:settingsRow(state)};
+ ['openings','candidates','applications','groups','interviews','offers','onboarding','tasks','notifications','activity','postings','events','callLog','sheetLog','boards'].forEach(k=>{
+  parts[k]=(state[k]||[]).map(r=>JSON.stringify(r)).sort();
+ });
+ parts.monthly=state.monthly||{};
+ return JSON.stringify(parts);
+}
+
 /* ---------- the other way: one app record -> rows ---------- */
 // Each returns {table: row or [rows]} so a record that spans tables (a candidate and its salary and documents) is written as one unit.
 const iso8601=ms=>new Date(ms).toISOString();

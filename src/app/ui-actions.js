@@ -14,6 +14,7 @@ registerAction('openingApplicationsBoard',opId=>{R.af.op=opId;R.appView='board';
 
 registerAction('changePassword',()=>{closeDD();changePasswordModal()});
 registerAction('signOut',()=>{closeDD();doSignOut()});
+registerAction('reloadApp',()=>location.reload());
 registerAction('userNew',()=>newUserModal());
 registerAction('userReset',id=>resetPasswordModal(id));
 registerAction('userToggle',id=>toggleUser(id));

@@ -308,6 +308,16 @@ await page.fill('#teamInt', '');
 await page.click('#teamSave');
 check('team: clearing both lists restores the built-in names', await ev(() => recruiters().length === DEFAULT_RECRUITERS.length));
 
+// ---- long lists show a page at a time
+await ev(() => { const base = S.candidates[0]; for (let i = 0; i < 230; i++) { const c = { ...JSON.parse(JSON.stringify(base)), id: 'C-PG' + i, name: 'Paged Person ' + i }; S.candidates.push(c); } });
+await page.evaluate(() => go('candidates'));
+check('paging: the candidates list shows 100 rows and a Show more button', await ev(() => document.querySelectorAll('#content tbody tr').length === 100 && !!document.querySelector('[data-more="cands"]')));
+await page.click('[data-more="cands"]');
+check('paging: Show more adds the next 100', await ev(() => document.querySelectorAll('#content tbody tr').length === 200));
+await page.click('[data-more="cands"]');
+check('paging: the last page shows the rest and the button goes', await ev(() => document.querySelectorAll('#content tbody tr').length === S.candidates.length && !document.querySelector('[data-more="cands"]')));
+await ev(() => { S.candidates = S.candidates.filter((c) => !c.id.startsWith('C-PG')); R.pg = {}; });
+
 await browser.close();
 for (const [n, ok] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}`);
 if (errors.length || results.some(([, ok]) => !ok)) { console.error('FAIL', target, errors); process.exit(1); }

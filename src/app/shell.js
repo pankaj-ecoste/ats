@@ -12,10 +12,12 @@ function renderTop(){
  $('#top').innerHTML=`<button class="tbtn menu-btn" id="menuBtn" aria-label="Open menu">${ic('menu')}</button>
  <div class="search">${ic('search')}<input id="gsearch" placeholder="Search candidates, applications, openings, interviews, offers" autocomplete="off" aria-label="Global search"><div class="dd hide" id="gres" style="left:0;right:0"></div></div>
  <div class="grow"></div>
+ ${CONNECTED?`<span id="saveState" class="save-state" role="status"></span>`:''}
  <div style="position:relative"${canEdit()?'':' hidden'}><button class="tbtn" id="qaBtn" aria-label="Quick add" title="Quick add">${ic('plus')}</button><div class="dd hide" id="qaDD" style="right:0;min-width:220px"></div></div>
  <div style="position:relative"><button class="tbtn" id="nBtn" aria-label="Notifications">${ic('bell')}${un?`<span class="dot">${un}</span>`:''}</button><div class="dd hide" id="nDD" style="right:0;width:340px"></div></div>
  <button class="tbtn" id="helpBtn" aria-label="Help">${ic('help')}</button>
  ${CONNECTED&&ME?`<div style="position:relative"><button class="me-btn" id="meBtn" aria-label="Account menu" aria-haspopup="true">${av(ME.fullName)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(ME.fullName)}</b><small class="muted">${esc(ROLE_LABEL[ME.role]||ME.role)}</small></div></button><div class="dd hide" id="meDD" style="right:0;min-width:200px"><div class="it" data-act="changePassword">Change password</div><div class="it" data-act="signOut">Sign out</div></div></div>`:`<div class="me">${av(S.settings.user)}<div class="nm"><b style="font-size:13px;display:block;line-height:1.2">${esc(S.settings.user)}</b><small class="muted">Recruiter</small></div></div>`}`;
+ showSaveState();
  $('#menuBtn').onclick=()=>$('#side').classList.toggle('open');
  const gs=$('#gsearch'),gr=$('#gres');
  gs.oninput=()=>{const q=gs.value.trim().toLowerCase();if(!q){gr.classList.add('hide');return}

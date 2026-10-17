@@ -355,6 +355,8 @@ test('a user cannot make themselves admin; they can rename themselves; an admin 
     assert.match((await attempt("update public.profiles set role = 'admin' where id = $1", [U.recruiter])).error, /Only an admin/);
     assert.equal((await attempt("update public.profiles set full_name = 'New Name' where id = $1", [U.recruiter])).rowCount, 1);
     assert.equal((await attempt("update public.profiles set full_name = 'x' where id = $1", [U.hm1])).rowCount, 0, 'not someone else');
+    assert.match((await attempt("update public.profiles set full_name = 'admin' where id = $1", [U.recruiter])).error ?? '', /profiles_name_unique/, 'two people cannot share a name, in any letter case');
+    assert.match((await attempt("update public.profiles set full_name = 'ADMIN' where id = $1", [U.recruiter])).error ?? '', /profiles_name_unique/);
   });
   await as(U.admin, async () => assert.equal((await attempt("update public.profiles set role = 'recruiter' where id = $1", [U.pending])).rowCount, 1));
 });

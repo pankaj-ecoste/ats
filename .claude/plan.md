@@ -20,12 +20,12 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 126/126 pass |
+| `npm test` (node:test, no deps) | 133/133 pass |
 | `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 29 data (admin, recruiter, management, interviewer, hiring manager) and 29 write checks (run with installed Chrome via `CHROME_PATH`) |
+| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 41 data (admin, recruiter, management, interviewer with scorecard, hiring manager with offer approval, refresh) and 29 write checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project has the full schema, rules, access policies and username login (9 migrations; 56 database tests pass: 29 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
+| Database / backend | Supabase project has the full schema, rules, access policies and username login (11 migrations; 57 database tests pass: 30 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -69,7 +69,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
-| `supabase/migrations/0001..0010_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
+| `supabase/migrations/0001..0011_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
 | `scripts/gen-config.mjs`, `scripts/vendor.mjs` | Write `src/generated/config.js` (public URL and anon key from `.env`; empty means demo mode); copy the Supabase library into `src/vendor/` |
 | `src/generated/config.js` (not committed), `src/vendor/supabase.js` | The two values the browser needs to reach Supabase; the vendored Supabase library (no public CDN) |
 | `src/data/mapping.js` | Pure translation between database rows and the app's records, both directions: `makePeople` (names to profile ids and back), `stateFromRows`, `TO_ROW`, `rowsFromState` |
@@ -436,7 +436,12 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☑ **Each role sees only its pages (2026-10-16):** `ROLE_PAGES` / `roleCanSee` / `canSee` / `canEdit` in `services/auth.js`. Management: dashboard, openings, report. Interviewer: interviews, candidates, tasks. Hiring manager: dashboard, openings, applications, candidates, interviews, offers, tasks. Admin and recruiter: everything. The sidebar, global search and quick-add follow it, a page the role may not open sends the person to their first page, and the start page is that first page. Management gets a marked "Candidate (hidden)" placeholder where an application's candidate cannot be read, so no screen meets a missing record. Salary that is not visible is `null` and shows as a dash (`lpa()`).
 - ☑ **Migration 0009:** staff (admin and recruiter) may change the working configuration in `company_settings.config` (SLA days, report alert levels, posting setup, Google Sheet connection); company name, address, signatory and match scoring stay admin-only, enforced by a trigger. Found when a recruiter's SLA change was silently refused.
 - ☑ **Interviewer scorecards (2026-10-17):** a panel member who is not staff saves their own row in `interview_scores` (the writer redirects an `interviews` update to it); migration 0010's trigger `roll_up` copies the result onto the interview (average score per criterion, latest recommendation, decision and feedback, status Completed when the whole panel has scored). Staff listed on a panel also save their own row. Scheduling, cancel, no-show and group evaluation are hidden from non-staff (`canScore`); after scoring, the recruiter is told instead of the stage moving. Migration 0010 also lets any active member write activity (own `actor_id`) and notifications for others.
-- ☐ **Still open in P2.3:** loading and error states on screens, pagination for applications and candidates (the loader reads everything, newest activity included), refusing duplicate full names on the Users page, realtime refresh of other people's changes (last write wins today), hiring-manager offer approval screen
+- ☑ **Offer approval (2026-10-17):** `requestOfferApproval`, `decideOffer`, `canApprove`, `offerApproval` in `services/offers.js`. The recruiter sends an offer for approval from the editor (the opening's manager is told); the hiring manager or an admin approves or rejects from the Offers table or a read-only offer view (the recruiter is told); a Pending or Rejected offer cannot be sent (service and database both refuse); changing the CTC of an approved offer asks again. For a hiring manager the writer saves only `approval_status`, because the database lets them change nothing else.
+- ☑ **Unique names (migration 0011, 2026-10-17):** a unique index on the lower-cased full name (or username when none), with a plain sentence when an admin picks a taken name.
+- ☑ **Loading, saving and error states (2026-10-17):** a "Try again" button when the first load fails; a small word in the top bar (Saving…, All saved, Not saved) driven by a `data:pending` event from the writer; the existing error toasts stay.
+- ☑ **Other people's changes (2026-10-17):** `refreshFromServer` reads everything quietly every minute and when the tab is opened again; it only replaces the screen's data when nothing is waiting to be saved, no window is open, nobody is typing, and the content really differs (`dataFingerprint`, order-insensitive). Concurrent edits of the same record are still last write wins (realtime push is a later choice).
+- ☑ **Lighter loading and lists (2026-10-17):** the loader reads only the newest 300 activity and sheet-log rows; the Applications table and the Candidates list show 100 rows with "Show more" (`pageRows`, `moreRows`, `bindMoreRows`). The data is in memory, so this is about screen weight; server paging would only be needed at tens of thousands of rows.
+- ☑ **P2.3 is complete.** What is left of Phase 2 is P2.4 (first-run setup, import of real data, dev seed).
 - ☐ Loading and error states in the UI; replace whole-state `save()` with per-record writes
 - ☐ Pagination on applications and candidates
 

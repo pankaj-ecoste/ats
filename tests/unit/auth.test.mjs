@@ -78,6 +78,7 @@ test('sign-in problems become plain sentences', async () => {
     ['User is banned', 'This account is switched off. Ask an admin.'],
     ['Failed to fetch', 'Cannot reach the server. Check your internet connection and try again.'],
     ['Email rate limit exceeded', 'Too many attempts. Wait a minute and try again.'],
+    ['duplicate key value violates unique constraint "profiles_name_unique"', 'Another person already has that name. Every person needs a different name, so the app can tell them apart.'],
   ];
   for (const [raw, shown] of cases) {
     const { app } = withClient({ signIn: { data: {}, error: { message: raw } } });

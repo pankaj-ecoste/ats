@@ -37,12 +37,21 @@ function showLogin(message=''){
 function showHold(message){
  document.body.classList.add('signed-out');
  authRoot().innerHTML=`<div class="auth-card"><div class="auth-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div>
-  <h1>${esc(ME?ME.fullName:'')}</h1><p>${esc(message)}</p><button class="btn" data-act="signOut">Sign out</button></div>`;
+  <h1>${esc(ME?ME.fullName:'')}</h1><p>${esc(message)}</p><div class="row" style="justify-content:center"><button class="btn pri" data-act="reloadApp">Try again</button><button class="btn" data-act="signOut">Sign out</button></div></div>`;
 }
 
 // saving runs in the background; tell the person when it fails, and when it works again
-onEvent('data:error',({message})=>toast(message+' Your screen may now differ from what is saved: reload to see the saved version.','var(--red)'));
-onEvent('data:ok',()=>toast('Saving works again','var(--green)'));
+let saveFailing=false;
+// the small word in the top bar: Saving…, All saved, or Not saved
+function showSaveState(){
+ const el=document.getElementById('saveState');if(!el)return;
+ const n=writesPending();
+ el.textContent=saveFailing?'Not saved':n>0?'Saving…':'All saved';
+ el.className='save-state'+(saveFailing?' bad':n>0?' busy':'');
+}
+onEvent('data:pending',showSaveState);
+onEvent('data:error',({message})=>{saveFailing=true;showSaveState();toast(message+' Your screen may now differ from what is saved: reload to see the saved version.','var(--red)')});
+onEvent('data:ok',()=>{saveFailing=false;showSaveState();toast('Saving works again','var(--green)')});
 window.addEventListener('beforeunload',e=>{if(CONNECTED&&writesPending()>0){e.preventDefault();e.returnValue=''}});
 
 async function enterApp(me){
@@ -53,10 +62,38 @@ async function enterApp(me){
  try{await loadFromServer(sb,me)}
  catch(e){return showHold('The data could not be loaded. Reload the page to try again. ('+e.message+')')}
  startWriting(sb,me);
+ startAutoRefresh(me);
  hideAuth();
  R.view=firstPage();R.param=null;
  render();
 }
+
+// Other people's changes arrive by a quiet check every minute and whenever this tab is opened again. It waits for a quiet moment:
+// nothing waiting to be saved, no window open and nobody typing, so it can never take work away.
+const REFRESH_MS=60000;
+let refreshTimer=null,refreshing=false;
+function quietNow(){
+ const a=document.activeElement;
+ return !document.hidden&&!document.body.classList.contains('signed-out')&&writesPending()===0&&modalStack.length===0&&!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.closest('#content'));
+}
+async function refreshNow(me){
+ if(refreshing||!quietNow())return;
+ refreshing=true;
+ try{
+  if(await refreshFromServer(sb,me)&&quietNow()){
+   const sc=window.scrollY,box=document.getElementById('content'),bt=box?box.scrollTop:0;
+   try{render()}catch(e){R.view=firstPage();R.param=null;render()}   // the open record may have been removed by someone else
+   window.scrollTo(0,sc);if(box)box.scrollTop=bt;
+  }
+ }catch(e){/* offline or a short outage: try again at the next check */}
+ refreshing=false;
+}
+function startAutoRefresh(me){
+ clearInterval(refreshTimer);
+ refreshTimer=setInterval(()=>refreshNow(me),REFRESH_MS);
+ document.onvisibilitychange=()=>{if(!document.hidden)refreshNow(me)};
+}
+function stopAutoRefresh(){clearInterval(refreshTimer);refreshTimer=null;document.onvisibilitychange=null}
 
 async function bootAuth(){
  // when the sign-in ends somewhere else (expired, revoked), go back to the sign-in screen
@@ -69,6 +106,7 @@ async function bootAuth(){
 
 async function doSignOut(){
  signingOut=true;
+ stopAutoRefresh();
  try{await stopWriting();await signOut()}catch(e){/* the screen changes either way */}
  signingOut=false;
  showLogin();

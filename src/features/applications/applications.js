@@ -15,13 +15,13 @@ function appTable(list,compact){
  const th=(k,l)=>`<th class="sort" data-sort="${k}">${l}${R.af.sort===k?(R.af.dir>0?' ▲':' ▼'):''}</th>`;
  if(!list.length)return '<div class="empty"><b>No applications here</b>Adjust filters or add a candidate.</div>';
  return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','AI match')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
- ${list.map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
+ ${(compact?list:pageRows(list,'apps')).map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
   return `<tr class="click ${R.sel.has(a.id)?'sel':''}" data-cand="${c.id}">${compact?'':`<td><input type="checkbox" class="chk" data-sel="${a.id}" ${R.sel.has(a.id)?'checked':''} aria-label="Select ${esc(c.name)}"></td>`}
   <td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td>${compact?'':`<td>${esc(o.title)}</td>`}
   <td>${fmtDs(a.date)}</td><td><button class="btn sm ghost" data-resume="${c.id}" data-op="${o.id}" aria-label="View resume">${ic('file')}</button></td>
   <td><button class="score" data-match="${a.id}" title="See why">${ring(m.score)}</button></td><td>${c.exp}y</td><td>${pc(m.skills)}</td><td>${pc(m.location)}</td><td>${pc(m.education)}</td>
   <td>${c.notice}d</td><td>${lpa(c.curSal)}</td><td>${lpa(c.expSal)}</td><td>${stagePill(a.stage)}</td><td class="small">${esc(a.recruiter)}</td><td>${nextBtn(a)}</td></tr>`}).join('')}
- </tbody></table></div>`;
+ </tbody></table></div>${compact?'':moreRows(list,'apps')}`;
 }
 function bindAppTable(root){
  $$('[data-cand]',root).forEach(tr=>tr.onclick=e=>{if(e.target.closest('button,input'))return;go('candidate',tr.dataset.cand)});
@@ -29,8 +29,8 @@ function bindAppTable(root){
  $$('[data-resume]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();resumeModal(b.dataset.resume,b.dataset.op)});
  $$('[data-sort]',root).forEach(t=>t.onclick=()=>{const k=t.dataset.sort;if(R.af.sort===k)R.af.dir*=-1;else{R.af.sort=k;R.af.dir=k==='name'?1:-1}render()});
  $$('[data-sel]',root).forEach(cb=>cb.onchange=()=>{cb.checked?R.sel.add(cb.dataset.sel):R.sel.delete(cb.dataset.sel);render()});
- const sa=$('#selAll',root);if(sa){const l=filteredApps();sa.checked=l.length&&l.every(a=>R.sel.has(a.id));sa.onchange=()=>{l.forEach(a=>sa.checked?R.sel.add(a.id):R.sel.delete(a.id));render()}}
- bindNext(root);
+ const sa=$('#selAll',root);if(sa){const l=pageRows(filteredApps(),'apps');sa.checked=l.length&&l.every(a=>R.sel.has(a.id));sa.onchange=()=>{l.forEach(a=>sa.checked?R.sel.add(a.id):R.sel.delete(a.id));render()}}
+ bindNext(root);bindMoreRows(root);
 }
 function vApplications(){
  const f=R.af;const list=filteredApps();const opt=(arr,v,all)=>`<option value="">${all}</option>`+arr.map(x=>`<option value="${esc(x[0])}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('');

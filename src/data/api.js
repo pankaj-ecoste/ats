@@ -6,9 +6,11 @@ const PAGE=1000;   // the server returns at most 1000 rows per request, so table
 const READ_TABLES=[
  ['company_settings','singleton'],['openings','id'],['candidates','id'],['candidate_compensation','candidate_id'],['candidate_documents','id'],
  ['applications','id'],['screenings','application_id'],['interview_groups','id'],['interviews','id'],['offers','id'],
- ['onboarding_checklists','application_id'],['onboarding_items','id'],['tasks','id'],['notifications','id'],['activity','id'],
- ['job_boards','id'],['postings','id'],['report_events','id'],['call_log','id'],['monthly_targets','month'],['sheet_log','id'],
+ ['onboarding_checklists','application_id'],['onboarding_items','id'],['tasks','id'],['notifications','id'],
+ ['job_boards','id'],['postings','id'],['report_events','id'],['call_log','id'],['monthly_targets','month'],
 ];
+// the two logs only ever grow, and only the latest entries are shown, so only those are read (the app itself keeps 300)
+const LOG_TABLES=[['activity','at'],['sheet_log','at']],LOG_KEEP=300;
 
 async function fetchTable(client,table,orderBy){
  const out=[];
@@ -20,10 +22,16 @@ async function fetchTable(client,table,orderBy){
  }
 }
 
+async function fetchNewest(client,table,orderBy,n){
+ const {data,error}=await client.from(table).select('*').order(orderBy,{ascending:false}).limit(n);
+ if(error)throw new Error(`Could not read ${table}: ${error.message}`);
+ return data;
+}
+
 // all tables in parallel, plus the people list. Returns {rows, people}
 async function fetchAll(client){
- const [profiles,...tables]=await Promise.all([fetchTable(client,'profiles','id'),...READ_TABLES.map(([t,k])=>fetchTable(client,t,k))]);
- const rows={};READ_TABLES.forEach(([t],i)=>{rows[t]=tables[i]});
+ const [profiles,...tables]=await Promise.all([fetchTable(client,'profiles','id'),...READ_TABLES.map(([t,k])=>fetchTable(client,t,k)),...LOG_TABLES.map(([t,k])=>fetchNewest(client,t,k,LOG_KEEP))]);
+ const rows={};[...READ_TABLES,...LOG_TABLES].forEach(([t],i)=>{rows[t]=tables[i]});
  return {rows,people:makePeople(profiles)};
 }
 
@@ -31,12 +39,27 @@ let PEOPLE=makePeople([]);   // who is who, refreshed on every load
 
 // Replaces S with what the database holds. `me` is the signed-in person ({fullName}); their name goes into settings.user.
 async function loadFromServer(client,me){
- const {rows,people}=await fetchAll(client);
+ const {state,people}=await readState(client,me);
  PEOPLE=people;
- const state=stateFromRows(rows,people);
- state.settings={...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),...state.settings,user:me.fullName,theme:savedTheme()};
  S=state;
  return state;
+}
+async function readState(client,me){
+ const {rows,people}=await fetchAll(client);
+ const state=stateFromRows(rows,people);
+ state.settings={...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),...state.settings,user:me.fullName,theme:savedTheme()};
+ return {state,people};
+}
+// Picks up what other people changed. Does nothing while this browser still has changes to save (they would be lost) or when nothing differs.
+// Returns true when the screen's data was replaced.
+async function refreshFromServer(client,me){
+ if(writesPending()>0)return false;
+ const {state,people}=await readState(client,me);
+ if(writesPending()>0)return false;       // a change was made while reading
+ if(dataFingerprint(state)===dataFingerprint(S))return false;
+ PEOPLE=people;
+ S=state;
+ return true;
 }
 
 /* ===================== writing =====================
@@ -206,12 +229,12 @@ function createWriter(client,ctx){
  }
  return {
   enqueue(ch){
-   pending++;
+   pending++;emitEvent('data:pending',{n:pending});
    // the record is copied now: written later, it would show the latest state for every queued change, and the stage history would lose steps
    if(ch.record!==undefined&&ch.record!==null)ch={...ch,record:JSON.parse(JSON.stringify(ch.record))};
    chain=chain.then(()=>attempt(ch)).then(
-    ()=>{pending--;if(failing){failing=false;emitEvent('data:ok',{})}},
-    e=>{pending--;if(!failing){failing=true;emitEvent('data:error',{message:e.message})}});
+    ()=>{pending--;emitEvent('data:pending',{n:pending});if(failing){failing=false;emitEvent('data:ok',{})}},
+    e=>{pending--;emitEvent('data:pending',{n:pending});if(!failing){failing=true;emitEvent('data:error',{message:e.message})}});
    return chain;
   },
   pending:()=>pending,

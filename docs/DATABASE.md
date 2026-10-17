@@ -71,6 +71,8 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Rules the database enforces (so no client can skip them)
 
 - **Stage bookkeeping.** Changing an application's stage updates the furthest stage reached and the date it entered the stage, and writes a row to `stage_events`.
+- **Names are unique** (migration 0011): the app finds people by name.
+- **Scorecards roll up** (migration 0010): trigger `roll_up` on `interview_scores` updates the interview.
 - **Settings split.** A recruiter may change `company_settings.config` only; the other columns need an admin (migration 0009, trigger `guard`).
 - **Opening status.** An opening's status follows its furthest candidate: Screening from Shortlisted, Interviewing from Group Interview, Offer from Offer, Filled when enough people reach Joining. Draft, On Hold, Closed and Filled openings are left alone.
 - **Offer approval.** Only the opening's hiring manager or an admin can approve or reject. The approver is recorded. An offer waiting for approval, or rejected, cannot be marked Sent.
@@ -80,5 +82,5 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 ## Known gaps (tracked in `.claude/plan.md`)
 
 - `audit_log.old_data` keeps copies of changed personal data. A real deletion request must also remove those rows; that needs a dedicated, logged function (Phase 7, DPDP review).
-- Not yet done on the app side: a screen state for "loading", and refreshing other people's changes while you work (the app loads once at sign-in; the last write wins). `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
+- Other people's changes are picked up by a quiet check every minute; two people editing the same record at once is still last write wins. `tests/db/roundtrip.test.mjs` proves records survive a trip through the tables; `tests/e2e/writes.mjs` proves the app saves real work.
 - **An update or delete that access rules hide is not an error**: the database changes zero rows and says nothing. Code that writes must ask for the changed rows back and count them (the writer does).

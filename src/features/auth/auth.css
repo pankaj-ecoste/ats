@@ -8,3 +8,10 @@
 .auth-logo img{height:34px;display:block}
 .auth-err{min-height:18px;color:var(--red);font-size:13px;font-weight:600}
 .me-btn{display:flex;align-items:center;gap:8px;background:none;border:0;padding:0 0 0 8px;border-left:1px solid var(--line);margin-left:4px;cursor:pointer;font:inherit;color:inherit;text-align:left}
+
+/* the small word in the top bar that says whether changes are saved */
+.save-state{font-size:12px;color:var(--muted);padding:0 8px;white-space:nowrap}
+.save-state.busy{color:var(--orange)}
+.save-state.bad{color:var(--red);font-weight:700}
+
+.more-rows{padding:12px 16px;text-align:center}

@@ -205,6 +205,17 @@ try {
   check('the recruiter sees only their own notification', r.notes.length === 1 && r.notes[0] === 'For the recruiter only' && r.user === 'Test Recruiter' && r.ops >= 1);
   for (const v of await page.locator('#side [data-go]').evaluateAll((els) => els.map((e) => e.dataset.go))) await page.click(`#side [data-go="${v}"]`);
   check('the recruiter\'s pages open without an error', page.errors.length === 0 || (console.error(page.errors), false));
+  // someone else adds a task for the recruiter: it arrives by the quiet check, and the top bar says everything is saved
+  check('the top bar says All saved', (await page.locator('#saveState').innerText()) === 'All saved');
+  const recId2 = (await db.query('select id from public.profiles where username = $1', [REC])).rows[0].id;
+  await db.query('insert into public.tasks (id, title, owner_id) values ($1, $2, $3)', [`T-${tag}x`, `Added elsewhere ${tag}`, recId2]);
+  await page.evaluate(() => refreshNow(ME));
+  check('another person change arrives without reloading', await page.evaluate((t) => S.tasks.some((x) => x.title === `Added elsewhere ${t}`), tag));
+  await page.evaluate(() => { addTask({ title: 'Local only', due: today(), priority: 'Low', related: 'x', owner: S.settings.user }); });
+  check('the top bar says Saving while a change is on its way', (await page.locator('#saveState').innerText()) === 'Saving…');
+  await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  check('and All saved again afterwards', (await page.locator('#saveState').innerText()) === 'All saved');
+  await db.query("delete from public.tasks where id = $1 or title = 'Local only'", [`T-${tag}x`]);
 } catch (e) {
   check(`unexpected failure: ${String(e.message).split('\n')[0]}`, false);
   if (page) await page.screenshot({ path: resolve(root, 'dist/data-failure.png') }).catch(() => {});

@@ -33,6 +33,7 @@ function authError(e){
  if(/banned|user is banned/i.test(m))return new Error('This account is switched off. Ask an admin.');
  if(/failed to fetch|network|load failed/i.test(m))return new Error('Cannot reach the server. Check your internet connection and try again.');
  if(/same password|different from the old/i.test(m))return new Error('Choose a password that is different from the old one.');
+ if(/profiles_name_unique/i.test(m))return new Error('Another person already has that name. Every person needs a different name, so the app can tell them apart.');
  if(/rate limit|too many/i.test(m))return new Error('Too many attempts. Wait a minute and try again.');
  return new Error(m||'Something went wrong. Please try again.');
 }
