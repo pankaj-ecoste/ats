@@ -26,6 +26,7 @@
     "test:db": "node --test --test-concurrency=1 tests/db/*.test.mjs",
     "db:create-admin": "node scripts/db.mjs create-admin",
     "db:seed": "node scripts/seed.mjs",
+    "db:unseed": "node scripts/unseed.mjs",
     "vendor": "node scripts/vendor.mjs",
     "test:e2e:auth": "node tests/e2e/auth.mjs",
     "test:e2e:data": "node tests/e2e/data.mjs",
