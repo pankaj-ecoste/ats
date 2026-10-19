@@ -8,8 +8,9 @@ function metrics(a,b){
  const m={calls:calls.reduce((s,c)=>s+c.made,0)+scr.length,conn:calls.reduce((s,c)=>s+c.conn,0)+scr.filter(x=>['Connected','Interested','Call Back'].includes(x.screening.outcome)).length,
   short:ev('shortlist'),gi:ev('gi')+realInt('Group'),int:ev('interview')+realInt('Personal'),noshow:ev('noshow')+S.interviews.filter(i=>i.status==='No-show'&&inR(i.date,a,b)).length,
   sel:ev('selected'),offer:ev('offer')+S.offers.filter(o=>o.sent&&inR(o.sent,a,b)).length,acc:ev('accepted'),join:ev('joined'),backup:ev('backup')};
+ const srv=reportCountsFor(a,b);if(srv)Object.assign(m,srv);   // connected: the database's totals (it can read what this role cannot)
  m.r_conn=m.calls?m.conn/m.calls:0;m.r_sel=m.int?m.sel/m.int:0;m.r_acc=m.offer?m.acc/m.offer:0;m.r_join=m.acc?Math.min(1,m.join/m.acc):0;m.r_ns=(m.int+m.noshow)?m.noshow/(m.int+m.noshow):0;
- const j=S.events.filter(e=>e.t==='joined'&&inR(e.d,a,b)&&e.days!=null);m.tth=j.length?Math.round(j.reduce((s,e)=>s+e.days,0)/j.length):0;
+ if(!srv){const j=S.events.filter(e=>e.t==='joined'&&inR(e.d,a,b)&&e.days!=null);m.tth=j.length?Math.round(j.reduce((s,e)=>s+e.days,0)/j.length):0;}
  return m;
 }
 const ROWS=[['calls','Position calls made'],['conn','Calls connected / interested'],['short','CVs shortlisted'],['gi','Group interviews done'],['int','Interviews done'],['noshow','No-shows'],['sel','Selected'],['offer','Offer letters released'],['acc','Offers accepted'],['join','Joined'],['backup','Backup candidates lined up']];

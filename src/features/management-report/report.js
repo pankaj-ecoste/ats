@@ -118,3 +118,6 @@ decorateView('dashboard',{view:v=>{const tabs=`<div class="row no-print" style="
  if(R.dashTab==='report')return `<div class="page-h"><div><h1>Hiring dashboard · management report</h1><p>${esc(S.settings.company)} · as of ${fmtD(R.rep.date)}</p></div></div>`+tabs+vReport();return tabs+v()},
  bind:(r,b)=>{$$('[data-dt]',r).forEach(x=>x.onclick=()=>{R.dashTab=x.dataset.dt;render()});const p=$('#rpPrint',r);if(p)p.onclick=()=>{$('#printArea').innerHTML=`<h1 style="font-family:Figtree,sans-serif">Hiring dashboard · management report</h1><p>${esc(S.settings.company)} · as of ${fmtD(R.rep.date)}</p>`+vReport();try{window.print()}catch(e){toast('Printing is blocked here. Use the browser menu to print.','var(--orange)')}};
   if(R.dashTab==='report')bindReport(r);else b(r)}});
+
+// the database's totals arrived: redraw the report tab if it is showing
+onEvent('report:counts',()=>{if(R.view==='dashboard'&&R.dashTab==='report')render()});

@@ -153,6 +153,9 @@ try {
   check('management opening the candidates page is taken to its first page instead', await page.evaluate(() => R.view === 'dashboard'));
   const brokenM = await openEach(page, await navOf(page));
   check('management pages open without an error', brokenM.length === 0 || (console.error(brokenM), false));
+  const srv = await page.evaluate(async () => { reportCountsFor('2000-01-01', '2100-01-01'); for (let i = 0; i < 50 && !reportCountsFor('2000-01-01', '2100-01-01'); i++) await new Promise((r) => setTimeout(r, 200)); return reportCountsFor('2000-01-01', '2100-01-01'); });
+  const want = (await db.query("select (coalesce((select sum(made) from public.call_log), 0) + (select count(*) from public.screenings))::int calls, (select count(*) from public.offers where sent_on is not null)::int offers")).rows[0];
+  check('management report totals come from the database and include what management cannot read', srv && srv.calls === want.calls && srv.offer >= want.offers);
   await page.fill('#gsearch', 'Zed');
   check('management search never shows a candidate or an offer', !(await page.locator('#gres').innerText()).match(/Zed Candidate|Candidates|Offers/));
 
