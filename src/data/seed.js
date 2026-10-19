@@ -116,7 +116,7 @@ function seed(){
   {id:1,text:'Group interview for CRM Executive starts at 11:00 AM today',ts:t(8),read:false,go:['interviews']},
   {id:2,text:'Feedback pending: Gaurav Mishra — Technical round',ts:t(9),read:false,go:['interviews']},
   {id:3,text:'Sana Qureshi opened the offer letter',ts:t(10),read:false,go:['offers']},
-  {id:4,text:'3 new applications scored above 70% AI match',ts:t(9),read:true,go:['applications']},
+  {id:4,text:'3 new applications scored above 70% Match score',ts:t(9),read:true,go:['applications']},
  ];
  return {v:3,postings:[],settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),openings:ops,candidates:cands,applications:apps,interviews,groups,offers,onboarding,tasks,activity,notifications};
 }

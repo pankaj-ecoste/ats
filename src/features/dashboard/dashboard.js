@@ -4,7 +4,7 @@
 function funnelData(apps){
  const reached=i=>apps.filter(a=>a.maxStage>=i).length;
  const T=S.settings.threshold;
- return [['Applications',apps.length],['AI matched',apps.filter(a=>matchA(a).score>=T).length],['Shortlisted',reached(1)],['Screened',reached(3)],['Group interview',reached(3)&&apps.filter(a=>a.maxStage>=3&&(S.interviews.some(i=>i.appId===a.id&&i.kind==='Group')||a.maxStage>=4)).length],['Personal interview',reached(4)],['Selected',reached(5)],['Offer',reached(6)],['Joined',reached(8)]];
+ return [['Applications',apps.length],['Matched',apps.filter(a=>matchA(a).score>=T).length],['Shortlisted',reached(1)],['Screened',reached(3)],['Group interview',reached(3)&&apps.filter(a=>a.maxStage>=3&&(S.interviews.some(i=>i.appId===a.id&&i.kind==='Group')||a.maxStage>=4)).length],['Personal interview',reached(4)],['Selected',reached(5)],['Offer',reached(6)],['Joined',reached(8)]];
 }
 function funnelHTML(apps){
  const d=funnelData(apps);const max=d[0][1]||1;

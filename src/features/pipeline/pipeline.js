@@ -3,7 +3,7 @@
 const DEFAULT_SLA={app:2,ai:2,short:2,screen:3,gi:5,pi:7,sel:2,offer:5,onb:10};
 const PC_COLS=[
  {k:'app',label:'Application',c:'var(--tx3)',drop:'New',test:a=>a.stage==='New'&&matchA(a).score<S.settings.threshold},
- {k:'ai',label:'AI Matched',c:'var(--ai)',drop:'New',test:a=>a.stage==='New'&&matchA(a).score>=S.settings.threshold},
+ {k:'ai',label:'Matched',c:'var(--ai)',drop:'New',test:a=>a.stage==='New'&&matchA(a).score>=S.settings.threshold},
  {k:'short',label:'Shortlisted',c:'var(--blue)',drop:'Shortlisted',st:['Shortlisted']},
  {k:'screen',label:'Screening Call',c:'var(--blue)',drop:'Screening',st:['Screening']},
  {k:'gi',label:'Group Interview',c:'var(--cyan)',drop:'Group Interview',st:['Group Interview']},
@@ -31,7 +31,7 @@ function pcInfo(a,lam){
  const of=offerOfA(a.id);
  let pending=true,owner=a.recruiter,reason='',waiting='',due=sla!=null?addDays(sla,parseD(a.stageSince||a.date)):null;
  switch(a.stage){
-  case 'New':reason='Review AI match and shortlist';break;
+  case 'New':reason='Review Match score and shortlist';break;
   case 'Shortlisted':reason='Run screening call';break;
   case 'Screening':reason=a.screening&&a.screening.outcome==='Call Back'?'Call back candidate':'Complete screening call';break;
   case 'Group Interview':case 'Personal Interview':
@@ -90,7 +90,7 @@ function vPipeline(){
  const cnt=k=>active.filter(x=>x.col.k===k).length;
  const kpis=[['openings','Total openings',S.openings.filter(o=>!['Closed','Filled','Draft'].includes(o.status)).length,`${S.openings.reduce((s,o)=>s+(['Closed','Filled','Draft'].includes(o.status)?0:o.positions),0)} positions`],
   ['','Total applications',all.length,`${all.filter(x=>x.col.k==='parked').length} parked`],
-  ['ai','AI matched',cnt('ai'),`≥ ${T}% match`],['short','Shortlisted',cnt('short')],['screen','Screening',cnt('screen')],['gi','Group interview',cnt('gi')],['pi','Personal interview',cnt('pi')],
+  ['ai','Matched',cnt('ai'),`≥ ${T}% match`],['short','Shortlisted',cnt('short')],['screen','Screening',cnt('screen')],['gi','Group interview',cnt('gi')],['pi','Personal interview',cnt('pi')],
   ['sel','Selected',cnt('sel')],['offer','Offer',cnt('offer')],['onb','Onboarding',cnt('onb')],['joined','Joined',cnt('joined')]];
  const hot=k=>{const n=active.filter(x=>x.col.k===k&&x.overdue).length;return n?`<em class="hot">${n} overdue</em>`:''};
  const cols=[...PC_COLS,...(f.parked||f.focus==='parked'?[PARKED]:[])];
@@ -110,7 +110,7 @@ function vPipeline(){
  const th=(k,l)=>`<th class="sort" data-psort="${k}">${l}${f.sort===k?(f.dir>0?' ▲':' ▼'):''}</th>`;
  const key={days:x=>x.days,match:x=>x.m.score,name:x=>x.c.name,stage:x=>PC_COLS.findIndex(c=>c.k===x.col.k),owner:x=>x.owner,last:x=>x.last.ts}[f.sort];
  const sorted=[...list].sort((p,q)=>{const a=key(p),b=key(q);return (a>b?1:a<b?-1:0)*f.dir});
- const table=`<section class="panel"><div class="tbl-wrap"><table><thead><tr>${th('name','Candidate')}<th>Opening</th>${th('stage','Stage')}${th('match','AI match')}${th('days','Days in stage')}${th('last','Last activity')}<th>Next action</th>${th('owner','Owner')}<th>Interview</th><th>Status</th><th></th></tr></thead><tbody>
+ const table=`<section class="panel"><div class="tbl-wrap"><table><thead><tr>${th('name','Candidate')}<th>Opening</th>${th('stage','Stage')}${th('match','Match score')}${th('days','Days in stage')}${th('last','Last activity')}<th>Next action</th>${th('owner','Owner')}<th>Interview</th><th>Status</th><th></th></tr></thead><tbody>
   ${sorted.map(x=>`<tr class="click" data-pcand="${x.c.id}"><td><div class="who">${av(x.c.name)}<div><b>${esc(x.c.name)}</b><small>${x.c.exp} yrs · ${esc(x.a.recruiter)}</small></div></div></td><td>${esc(x.o.title)}</td><td>${stagePill(x.a.stage)}</td><td>${ring(x.m.score)}</td>
   <td><span class="days ${daysCls(x)}">${x.days}d</span>${x.sla!=null?`<span class="muted small"> / ${x.sla}d</span>`:''}</td><td class="small" title="${esc(x.last.text)}">${timeAgo(x.last.ts)}</td>
   <td class="wrap small" style="min-width:170px">${esc(x.pending?x.reason:x.waiting)}</td><td class="small">${esc(x.owner)}</td><td class="small">${x.up?fmtDs(x.up.date)+', '+fmtT(x.up.time):'—'}</td>

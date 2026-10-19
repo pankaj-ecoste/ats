@@ -89,3 +89,12 @@ test('recordMessage writes a message entry against the application', () => {
   assert.equal(app.S.activity[0].type, 'message');
   assert.equal(app.S.activity[0].appId, a.id);
 });
+
+test('a new application keeps the score and the reasons it was given when the person applied', () => {
+  const app = fresh();
+  const op = app.S.openings[0];
+  const r = app.createCandidateApplication(candidateFields(), op.id);
+  const a = app.getA(r.aid);
+  assert.equal(a.matchScore, r.score);
+  assert.deepEqual(Object.keys(plain(a.matchReasons)).sort(), ['education', 'experience', 'location', 'missing', 'notice', 'risks', 'salary', 'skills', 'verdict']);
+});

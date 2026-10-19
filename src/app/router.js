@@ -2,7 +2,7 @@
 /* ---------- router & shell ---------- */
 "use strict";
 const R={view:'dashboard',param:null,tab:'overview',appView:'table',calView:'week',calDate:today(),intTab:'calendar',offerFilter:'All',taskFilter:'Open',sel:new Set(),af:{q:'',op:'',status:'',rec:'',min:0,exp:'',loc:'',skill:'',from:'',sort:'date',dir:-1},chat:null};
-const NAV=[['dashboard','Dashboard','dash'],['openings','Openings','open'],['applications','Applications','apps'],['candidates','Candidates','cand'],['interviews','Interviews','int'],['offers','Offers','offer'],['onboarding','Onboarding','onb'],['tasks','Tasks','task'],['reports','Reports','rep'],['sep'],['ai','AI Assistant','ai'],['sheets','Google Sheets','sheet'],['settings','Settings','set']];
+const NAV=[['dashboard','Dashboard','dash'],['openings','Openings','open'],['applications','Applications','apps'],['candidates','Candidates','cand'],['interviews','Interviews','int'],['offers','Offers','offer'],['onboarding','Onboarding','onb'],['tasks','Tasks','task'],['reports','Reports','rep'],['sep'],['ai','Quick answers','ai'],['sheets','Google Sheets','sheet'],['settings','Settings','set']];
 function go(view,param=null,tab=null){if(param&&!['candidate','opening'].includes(R.view))R.back=R.view;
  if(view==='candidate'&&param){if(R.keepNav){R.keepNav=false}else if(R.view!=='candidate'){R.navList=navListFromDOM();if(!R.navList.includes(param))R.navList=[param]}}
  if(view==='opening'&&param&&R.view!=='opening'){R.opNavList=[...new Set($$('[data-op]',$('#content')).map(e=>e.dataset.op))];if(!R.opNavList.includes(param))R.opNavList=[param]}

@@ -64,7 +64,7 @@ function importPreview(fname,parsed){
   return `<tr><td><b>${label}</b></td><td>${next.length}</td><td style="color:var(--green)">${add?'+'+add:'—'}</td><td>${upd||'—'}</td><td style="color:var(--red)">${rem?'−'+rem:'—'}</td></tr>`}).join('');
  modal({title:'Load from Google Sheets',size:'w',body:`<p style="margin-top:0">Read <b>${esc(fname)}</b>. Here's what will change in the app:</p>
  <div class="panel" style="box-shadow:none"><div class="tbl-wrap"><table><thead><tr><th>Tab</th><th>Rows in sheet</th><th>New</th><th>Matched by ID</th><th>Not in sheet</th></tr></thead><tbody>${rows}</tbody></table></div></div>
- ${parsed.settings?`<p class="small muted">Settings tab found: company details and AI match weights will be updated too.</p>`:''}
+ ${parsed.settings?`<p class="small muted">Settings tab found: company details and Match score weights will be updated too.</p>`:''}
  ${warn.length?`<div style="margin-top:12px;padding:10px 12px;background:var(--orange2);border-radius:8px;font-size:13px;max-height:160px;overflow:auto"><b>${warn.length} note${warn.length>1?'s':''}</b><br>${warn.slice(0,30).map(esc).join('<br>')}${warn.length>30?'<br>…':''}</div>`:''}
  <div class="fgrid" style="margin-top:14px"><label class="checkl" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;align-items:flex-start"><input type="radio" name="gm" value="replace" checked class="chk"><span><b>Replace</b><br><span class="small muted">The sheet becomes the source of truth. Rows missing from the sheet are removed from the app.</span></span></label>
  <label class="checkl" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;align-items:flex-start"><input type="radio" name="gm" value="merge" class="chk"><span><b>Merge</b><br><span class="small muted">Add new rows and update matching IDs. Nothing is removed from the app.</span></span></label></div>`,
@@ -81,7 +81,7 @@ function vSheets(){
   <div class="pbody"><button class="btn pri" id="gsExport">${ic('upload','style="transform:rotate(180deg)"')}Download workbook with app data</button> <button class="btn" id="gsBlank">Download blank template</button></div>
   ${step(1,'Download the workbook','An .xlsx file with 11 tabs: How to use, Dashboard, Openings, Candidates, Applications, Group Interviews, Interviews, Offers, Onboarding, Tasks and Settings.')}
   ${step(2,'Open it in Google Sheets','In Google Sheets choose File → Import → Upload, pick the file and choose “Replace spreadsheet”. Or upload it to Drive and pick Open with → Google Sheets.')}
-  ${step(3,'Fill it in like the app','Dropdowns for stages and statuses, ID pickers that link rows, AI match % that recalculates from skills, experience, education, location, salary and notice, and a live Dashboard.')}
+  ${step(3,'Fill it in like the app','Dropdowns for stages and statuses, ID pickers that link rows, Match score % that recalculates from skills, experience, education, location, salary and notice, and a live Dashboard.')}
  </section>
  <section class="panel"><header><div><h3>Bring Sheet changes back</h3><p>Load a Google Sheet into the app</p></div></header>
   <div class="pbody"><label class="btn pri" style="cursor:pointer">${ic('upload')}Choose .xlsx file<input type="file" id="gsFile" accept=".xlsx" class="hide"></label>
@@ -91,8 +91,8 @@ function vSheets(){
  </section></div>
  <div class="grid g2" style="margin-top:16px">
  <section class="panel"><header><h3>What maps where</h3></header><div class="tbl-wrap"><table><thead><tr><th>Sheet tab</th><th>App area</th><th>Linked by</th></tr></thead><tbody>
-  ${[['Openings','Openings','Opening ID'],['Candidates','Candidates','Candidate ID'],['Applications','Applications, AI match, journey stage','Candidate ID + Opening ID'],['Group Interviews','Group interview batches','Group ID'],['Interviews','Interviews, scorecards, calendar','Application ID'],['Offers','Offer letters and salary breakup','Application ID'],['Onboarding','Onboarding checklists','Application ID'],['Tasks','Tasks','Task ID'],['Settings','Company details, AI weights','—']].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="small">${r[2]}</td></tr>`).join('')}
- </tbody></table></div><div class="pbody small muted" style="padding-top:0">Purple columns in the Sheet (names, titles, AI match %) are calculated, so the app ignores them when loading and recalculates its own.</div></section>
+  ${[['Openings','Openings','Opening ID'],['Candidates','Candidates','Candidate ID'],['Applications','Applications, Match score, journey stage','Candidate ID + Opening ID'],['Group Interviews','Group interview batches','Group ID'],['Interviews','Interviews, scorecards, calendar','Application ID'],['Offers','Offer letters and salary breakup','Application ID'],['Onboarding','Onboarding checklists','Application ID'],['Tasks','Tasks','Task ID'],['Settings','Company details, match weights','—']].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="small">${r[2]}</td></tr>`).join('')}
+ </tbody></table></div><div class="pbody small muted" style="padding-top:0">Purple columns in the Sheet (names, titles, Match score %) are calculated, so the app ignores them when loading and recalculates its own.</div></section>
  <section class="panel"><header><h3>History</h3></header>${log.length?log.map(x=>`<div class="list-it"><span class="grow">${esc(x.text)}</span><span class="muted small">${timeAgo(x.ts)}</span></div>`).join(''):'<div class="empty"><b>Nothing moved yet</b>Download the workbook to get started.</div>'}</section></div>`;
 }
 function bindSheets(root){

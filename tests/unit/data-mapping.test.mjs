@@ -79,3 +79,12 @@ test('match score is a whole number even when salary or other details are not kn
   assert.ok(Number.isInteger(r.score) && r.score >= 0 && r.score <= 100, `score was ${r.score}`);
   assert.ok(!/NaN|undefined/.test(r.summary), r.summary);
 });
+
+test('an application\'s stored score and reasons go to the database and come back', () => {
+  const P = app.makePeople([]);
+  const a = { id: 'APP-1', cid: 'C-1', opId: 'OP-1', date: '2026-01-01', stage: 'New', maxStage: 0, stageSince: '2026-01-01', matchScore: 72, matchReasons: { verdict: 'Good match', skills: 80 } };
+  const row = plain(app.TO_ROW.application(a, P).applications);
+  assert.equal(row.match_score, 72);
+  assert.deepEqual(row.match_reasons, { verdict: 'Good match', skills: 80 });
+  assert.equal(plain(app.TO_ROW.application({ ...a, matchScore: undefined, matchReasons: undefined }, P).applications).match_score, null);
+});

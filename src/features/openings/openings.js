@@ -32,7 +32,7 @@ function openingForm(id){
  <label class="f">Experience (min–max yrs)<div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" step="0.5" name="expMin" value="${o.expMin}"><input class="inp" type="number" step="0.5" name="expMax" value="${o.expMax}"></div></label>
  <label class="f">Salary range (LPA)<div class="row" style="flex-wrap:nowrap"><input class="inp" type="number" step="0.5" name="salMin" value="${o.salMin}"><input class="inp" type="number" step="0.5" name="salMax" value="${o.salMax}"></div></label>
  <label class="f">Priority${sel('priority',['Low','Medium','High','Urgent'],o.priority)}</label>
- <label class="f" style="grid-column:span 3">Mandatory skills <span class="muted">(comma separated — used by AI match)</span><input class="inp" name="mandatory" value="${esc(o.mandatory.join(', '))}"></label>
+ <label class="f" style="grid-column:span 3">Mandatory skills <span class="muted">(comma separated — used by the match score)</span><input class="inp" name="mandatory" value="${esc(o.mandatory.join(', '))}"></label>
  <label class="f" style="grid-column:span 3">Preferred skills<input class="inp" name="preferred" value="${esc(o.preferred.join(', '))}"></label>
  <label class="f" style="grid-column:span 3">Job description<textarea class="inp" name="desc">${esc(o.desc)}</textarea></label>
  <label class="f" style="grid-column:span 3">Responsibilities<textarea class="inp" name="resp">${esc(o.resp)}</textarea></label>
@@ -68,7 +68,7 @@ function vOpening(){
  else if(R.tab==='offers'){const l=S.offers.filter(f=>ap.some(a=>a.id===f.appId));body=`<section class="panel">${offerTable(l)}</section>`}
  else if(R.tab==='analytics'){const sc=ap.map(a=>matchA(a).score);const b=[[0,50],[50,65],[65,80],[80,101]];const src={};ap.forEach(a=>{const s=getC(a.cid).source;src[s]=(src[s]||0)+1});
   body=`<div class="grid g2"><section class="panel"><header><h3>Funnel for this opening</h3></header><div class="pbody">${funnelHTML(ap)}</div></section>
-  <section class="panel"><header><h3>AI match distribution</h3></header><div class="pbody hbars">${b.map(r=>{const n=sc.filter(s=>s>=r[0]&&s<r[1]).length;return `<div class="hb"><span>${r[0]}–${Math.min(100,r[1]-1)}%</span><div class="bar"><i style="width:${ap.length?n/ap.length*100:0}%;background:${scoreColor(r[0]+1)}"></i></div><b>${n}</b></div>`}).join('')}
+  <section class="panel"><header><h3>Match score distribution</h3></header><div class="pbody hbars">${b.map(r=>{const n=sc.filter(s=>s>=r[0]&&s<r[1]).length;return `<div class="hb"><span>${r[0]}–${Math.min(100,r[1]-1)}%</span><div class="bar"><i style="width:${ap.length?n/ap.length*100:0}%;background:${scoreColor(r[0]+1)}"></i></div><b>${n}</b></div>`}).join('')}
   <h4 style="margin:18px 0 6px">Sources</h4>${Object.entries(src).map(([k,v])=>`<div class="hb"><span>${k}</span><div class="bar"><i style="width:${v/ap.length*100}%"></i></div><b>${v}</b></div>`).join('')}
   <p class="muted small" style="margin-top:14px">Average match ${sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0}% · Opening age ${daysBetween(o.opened,today())} days · ${Math.max(0,daysBetween(today(),o.target))} days to target joining</p></div></section></div>`}
  else if(R.tab==='posting')body=postingTabHTML(o);

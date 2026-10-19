@@ -44,6 +44,8 @@ function match(c,op){
  if(experience<80)risks.push('Experience below requirement');
  return {score,verdict,skills,experience,education,location,salary,notice,mm,miss,pm,pmiss,summary,risks,certs,industry};
 }
+// the part of a match worth keeping with the application: the score and why (a snapshot when they applied)
+const matchSnapshot=m=>({score:m.score,reasons:{verdict:m.verdict,skills:m.skills,experience:m.experience,education:m.education,location:m.location,salary:m.salary,notice:m.notice,missing:m.miss,risks:m.risks}});
 const matchA=a=>match(getC(a.cid),getOp(a.opId));
 const scoreColor=s=>s>=80?'var(--green)':s>=60?'var(--ai)':s>=45?'var(--orange)':'var(--red)';
 const ring=(s,cls='')=>`<span class="ring ${cls}" style="--p:${s};--c:${scoreColor(s)}"><span>${s}${cls?'%':''}</span></span>`;

@@ -76,7 +76,7 @@ function updateSyncChip(){$$('[data-syncslot]').forEach(s=>{s.innerHTML=syncChip
 function bindSyncNow(root){$$('[data-syncnow]',root).forEach(b=>b.onclick=()=>runSync(true))}
 async function connectSheet(){
  const cfg=asCfg();
- modal({title:'Auto-import applications from Google Sheet',size:'w',body:`<p style="margin-top:0">Paste the link of the Google Sheet your job site or tool fills. The app reads it through your Google Drive connection, adds every new row as an application with an AI match score, and checks again every few minutes while the app is open.</p>
+ modal({title:'Auto-import applications from Google Sheet',size:'w',body:`<p style="margin-top:0">Paste the link of the Google Sheet your job site or tool fills. The app reads it through your Google Drive connection, adds every new row as an application with a match score, and checks again every few minutes while the app is open.</p>
  <label class="f">Google Sheet link<input class="inp" id="asurl" value="${esc(cfg.url)}" placeholder="https://docs.google.com/spreadsheets/d/…/edit"></label><div id="asbody" style="margin-top:14px"></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="asread">Read sheet</button>`,
  onMount:el=>{const readBtn=$('#asread',el);

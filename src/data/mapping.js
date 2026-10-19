@@ -47,7 +47,7 @@ const FROM_ROW={
   return withValues({id:r.id,cid:r.candidate_id,opId:r.opening_id,date:r.applied_on,stage:r.stage,maxStage:r.max_stage,
    recruiter:P.name(r.recruiter_id),screening:s?{outcome:s.outcome,answers:s.answers,notes:s.notes,date:s.screened_on,...(s.duration_seconds?{duration:s.duration_seconds}:{})}:null,stageSince:r.stage_since},
    {joining:r.joining_on,joinedOn:r.joined_on,dropped:r.dropped_on,dropRisk:r.drop_risk,
-    backup:r.backup_application_id?{aid:r.backup_application_id,status:r.backup_status}:null});
+    backup:r.backup_application_id?{aid:r.backup_application_id,status:r.backup_status}:null,matchScore:r.match_score,matchReasons:r.match_reasons});
  },
  group:(r,P,ctx)=>({id:r.id,opId:r.opening_id,date:r.on_date,time:dbTime(r.at_time),duration:r.duration_min,mode:r.mode,location:r.location,link:r.link,
   panel:r.panel,interviewers:(r.interviewer_ids||[]).map(P.name),appIds:(ctx.groupApps.get(r.id)||[]),evaluated:r.evaluated}),
@@ -155,7 +155,7 @@ const TO_ROW={
  application:(a,P)=>({
   applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),
    joining_on:a.joining||null,joined_on:a.joinedOn||null,dropped_on:a.dropped||null,drop_risk:a.dropRisk||null,
-   backup_application_id:a.backup?a.backup.aid:null,backup_status:a.backup?a.backup.status:null},
+   backup_application_id:a.backup?a.backup.aid:null,backup_status:a.backup?a.backup.status:null,match_score:a.matchScore??null,match_reasons:a.matchReasons||null},
   screenings:a.screening?{application_id:a.id,outcome:a.screening.outcome,answers:a.screening.answers||[],notes:a.screening.notes||'',screened_on:a.screening.date,duration_seconds:a.screening.duration||0}:null}),
  group:(g,P)=>({interview_groups:{id:g.id,opening_id:g.opId,on_date:g.date,at_time:g.time,duration_min:g.duration||60,mode:g.mode||'Office',location:g.location||'',link:g.link||'',
   panel:g.panel||'',interviewer_ids:(g.interviewers||[]).map(P.id).filter(Boolean),evaluated:!!g.evaluated}}),
