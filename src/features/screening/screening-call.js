@@ -30,13 +30,13 @@ function screeningCall(aid){
    if(andNext){
     if(n==='Move to Group Interview')setStage(aid,'Group Interview',true);
     else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);addTask({title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',owner:a.recruiter})}
-    else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true);
+    else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true,'Failed the screening');
     const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
     const na=appsOfC(nextCid).find(x=>['Shortlisted','Screening','New'].includes(x.stage))||primaryApp(nextCid);R.appSel=na.id;go('candidate',nextCid);return}
    if(n==='Move to Group Interview'){setStage(aid,'Group Interview',true);toast(`${c.name} moved to Group Interview`);confirmBox('Schedule group interview?',`${esc(c.name)} is ready for the group round. Schedule it now?`,'Schedule now',()=>scheduleGI(o.id,[aid]))}
    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);taskForm({title:`Follow-up call with ${c.name}`,related:o.title,due:addDays(1),priority:'Medium'})}
    else if(n==='Keep on Hold')setStage(aid,'On Hold',true),toast(c.name+' kept on hold','var(--orange)');
-   else setStage(aid,'Rejected',true),toast(c.name+' rejected','var(--red)');
+   else setStage(aid,'Rejected',true,'Failed the screening'),toast(c.name+' rejected','var(--red)');
    refresh()};
   $('#callSave',el).onclick=()=>doSave(false);$('#callNext',el).onclick=()=>doSave(true);
  }});

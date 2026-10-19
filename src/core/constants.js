@@ -2,6 +2,8 @@
 "use strict";
 /* ---------- domain constants ---------- */
 const STAGES=['New','Shortlisted','Screening','Group Interview','Personal Interview','Selected','Offer','Offer Accepted','Joining','Onboarding','Employee Ready'];
+// shown when a recruiter rejects a candidate; the chosen phrase (and any note) is kept on the application
+const REJECT_REASONS=['Skills do not match','Not enough experience','Salary expectation too high','Location or relocation','Notice period too long','Not interested any more','Failed the interview','Failed the screening','Position filled','Other'];
 const JOURNEY=['Applied','AI Matched','Shortlisted','Screening Call','Group Interview','Personal Interview','Selected','Offer Letter','Offer Accepted','Joining','Onboarding','Employee Ready'];
 // map stage index -> journey index
 const stageToJourney=i=>i===0?1:i+1;

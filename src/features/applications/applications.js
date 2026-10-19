@@ -62,7 +62,7 @@ function bindApplications(root){
  $$('[data-bulk]',root).forEach(b=>b.onclick=()=>{const ids=[...R.sel];const k=b.dataset.bulk;
   if(k==='clear'){R.sel.clear();render();return}
   if(k==='short'){ids.forEach(id=>{if(getA(id).stage==='New')setStage(id,'Shortlisted',true)});toast(ids.length+' candidates shortlisted');R.sel.clear();render()}
-  if(k==='rej')confirmBox('Reject candidates',`Reject ${ids.length} selected applications?`,'Reject all',()=>{ids.forEach(id=>setStage(id,'Rejected',true));R.sel.clear();toast(ids.length+' applications rejected','var(--red)');render()},true);
+  if(k==='rej')askRejectReason(`Reject ${ids.length} selected applications?`,'Reject all',r=>{ids.forEach(id=>setStage(id,'Rejected',true,r));R.sel.clear();toast(ids.length+' applications rejected','var(--red)');render()});
   if(k==='gi'){const ops=[...new Set(ids.map(id=>getA(id).opId))];if(ops.length>1){toast('Pick candidates from one opening for a group interview','var(--orange)');return}scheduleGI(ops[0],ids)}});
  const bs=$('#bulkStage',root);if(bs)bs.onchange=()=>{if(!bs.value)return;const n=R.sel.size;[...R.sel].forEach(id=>setStage(id,bs.value,true));R.sel.clear();toast(`${n} moved to ${bs.value}`);render()};
  const br=$('#bulkRec',root);if(br)br.onchange=()=>{if(!br.value)return;assignRecruiter([...R.sel],br.value);toast('Assigned to '+br.value);R.sel.clear();render()};

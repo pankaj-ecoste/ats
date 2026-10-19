@@ -39,8 +39,8 @@ function vCandidate(){
  <section class="panel" style="margin-bottom:16px"><div class="pbody" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
   ${av(c.name,'lg')}<div class="grow" style="min-width:220px"><h1 style="margin:0;font-size:22px">${esc(c.name)}</h1><div class="muted">${esc(c.designation)} at ${esc(c.company)} · ${c.exp} yrs · ${esc(c.location)}</div>
   <div class="row" style="margin-top:6px">${stagePill(a.stage)}${apps.length>1?`<select class="inp" id="appSel" style="width:auto;padding:3px 8px;font-size:12px">${apps.map(x=>`<option value="${x.id}" ${x.id===a.id?'selected':''}>${esc(getOp(x.opId).title)}</option>`).join('')}</select>`:`<span class="muted small">for ${esc(o.title)}</span>`}</div></div>
-  <button class="score" id="hdrMatch" title="See AI match">${ring(m.score,'xl')}</button>
- </div><div class="row" style="padding:0 18px 14px">
+  <button class="score" id="hdrMatch" title="See match score">${ring(m.score,'xl')}</button>
+ </div>${a.stage==='Rejected'?`<div class="small" style="padding:0 18px 10px;color:var(--red)"><b>Rejected:</b> ${esc(a.rejectReason||'No reason recorded')}</div>`:''}<div class="row" style="padding:0 18px 14px">
   <button class="btn" id="cCall">${ic('phone')}Call</button><button class="btn" id="cMail">${ic('mail')}Email</button><button class="btn" id="cWa">${ic('chat')}WhatsApp</button>
   <span class="grow"></span><button class="btn ok" id="cShort" ${a.stage!=='New'?'disabled':''}>Shortlist</button><button class="btn bad" id="cRej" ${a.stage==='Rejected'?'disabled':''}>Reject</button><button class="btn" id="cSch">${ic('int')}Schedule interview</button><button class="btn pri" id="cOffer">${ic('offer')}Create offer</button>
  </div></section>

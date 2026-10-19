@@ -98,3 +98,14 @@ test('a new application keeps the score and the reasons it was given when the pe
   assert.equal(a.matchScore, r.score);
   assert.deepEqual(Object.keys(plain(a.matchReasons)).sort(), ['education', 'experience', 'location', 'missing', 'notice', 'risks', 'salary', 'skills', 'verdict']);
 });
+
+test('a rejection keeps its reason, and reopening the application clears it', () => {
+  const app = loadApp({ until: 'services', expose: ['S', 'moveStage', 'getA'] });
+  const a = app.S.applications.find((x) => !['Rejected', 'Employee Ready'].includes(x.stage));
+  app.moveStage(a.id, 'Rejected', 'Salary expectation too high: asked 30 LPA');
+  assert.equal(app.getA(a.id).rejectReason, 'Salary expectation too high: asked 30 LPA');
+  app.moveStage(a.id, 'Shortlisted');
+  assert.equal(app.getA(a.id).rejectReason, undefined);
+  app.moveStage(a.id, 'Rejected');
+  assert.equal(app.getA(a.id).rejectReason, 'Not specified');
+});

@@ -33,7 +33,7 @@ function evaluateGroup(gid,results){
   const i=repo.update('interviews',intId,{scores,rec,feedback,status:'Completed'});
   const st=rec==='Select for Personal Interview'?'Personal Interview':rec==='Hold'?'On Hold':'Rejected';
   moved[st==='Personal Interview'?'sel':st==='On Hold'?'hold':'rej']++;
-  moveStage(i.appId,st);
+  moveStage(i.appId,st,'Failed the interview');
  });
  repo.update('groups',gid,{evaluated:true});
  log(`Group interview evaluated for ${o.title}: ${moved.sel} advanced`,'interview');

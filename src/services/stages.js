@@ -1,12 +1,13 @@
 /* Moving an application through the pipeline. DOM-free: returns what happened, the caller shows it.
    Fires 'stage:changing' {aid,stage,prev} before the stage is written (see core/hooks.js). */
 "use strict";
-function moveStage(aid,stage){
+function moveStage(aid,stage,reason){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const prev=a.stage;
  if(prev===stage)return null;
  emitEvent('stage:changing',{aid,stage,prev});
  repo.update('applications',aid,a=>{
   a.stage=stage;a.stageSince=today();
+  if(stage==='Rejected')a.rejectReason=reason||'Not specified';else delete a.rejectReason;
   const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
  });
  const type={Shortlisted:'shortlist',Rejected:'reject','Employee Ready':'joined',Onboarding:'joined',Selected:'interview'}[stage]||'stage';

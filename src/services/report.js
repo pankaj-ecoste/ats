@@ -44,7 +44,7 @@ function setBackup(aid,backupAid,status){
 function recordDropout(aid,{reason,promoteBackup}){
  const a=getA(aid),b=a.backup&&getA(a.backup.aid);
  if(a.stage==='Offer'){repo.update('applications',aid,{dropped:today()});addEvent('dropped',aid)}
- moveStage(aid,'Rejected');
+ moveStage(aid,'Rejected',reason?'Dropped after offer: '+reason:'Dropped after offer');
  if(reason)repo.update('candidates',a.cid,c=>c.notes.unshift({text:'Dropped after offer: '+reason,by:S.settings.user,ts:Date.now()}));
  let promoted=null;
  if(b&&promoteBackup){moveStage(b.id,'Selected');promoted=b}

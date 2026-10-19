@@ -32,7 +32,7 @@ function piScorecard(iid){
    recordScorecard(i.id,{scores:sc,rec:val(el,'#pOv'),decision:val(el,'#pDec'),feedback:val(el,'#pFb')});closeModal();
    if(!canEdit()){refresh();toast('Scorecard submitted. The recruiter has been told.');notify(`${S.settings.user} scored ${c.name}, ${i.round} round: ${i.decision}`,['candidate',c.id],[a.recruiter]);return}   // moving the candidate on is the recruiter's job
    if(i.decision==='Selected'){setStage(a.id,'Selected',true);notify(`${c.name} selected for ${o.title}`,['candidate',c.id],[a.recruiter]);refresh();selectedModal(a.id)}
-   else if(i.decision==='Rejected'){setStage(a.id,'Rejected')}
+   else if(i.decision==='Rejected'){setStage(a.id,'Rejected',false,'Failed the interview')}
    else if(i.decision==='Hold'){setStage(a.id,'On Hold')}
    else {refresh();toast('Scorecard saved. Schedule the next round.');schedulePI(a.id)}}}});
 }

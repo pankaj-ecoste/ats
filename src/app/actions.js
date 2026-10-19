@@ -2,13 +2,19 @@
 /* ---------- actions ---------- */
 // UI wrapper over the moveStage() service: adds the toast and the re-render
 "use strict";
-function setStage(aid,stage,quiet){
- const r=moveStage(aid,stage);if(!r)return;
+function setStage(aid,stage,quiet,reason){
+ const r=moveStage(aid,stage,reason);if(!r)return;
  if(!quiet){toast(`${r.candidate.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}
 }
 function refresh(){render()}
 function shortlist(aid){setStage(aid,'Shortlisted')}
-function rejectApp(aid){const c=getC(getA(aid).cid);confirmBox('Reject candidate',`Reject <b>${esc(c.name)}</b> for ${esc(getOp(getA(aid).opId).title)}? You can reopen the application later.`,'Reject',()=>setStage(aid,'Rejected'),true)}
+// asks why, then calls fn(reason). The reason is the picked phrase, with the note after it when one is typed
+function askRejectReason(intro,okLabel,fn){
+ modal({title:'Reject',body:`<p style="margin-top:0">${intro} You can reopen the application later.</p><label class="f">Reason<select class="inp" id="rjR">${REJECT_REASONS.map(r=>`<option>${esc(r)}</option>`).join('')}</select></label><label class="f" style="margin-top:8px">Note (optional)<input class="inp" id="rjN" placeholder="Anything the team should know"></label>`,
+  foot:`<button class="btn" data-close>Cancel</button><button class="btn bad" id="rjOK">${okLabel}</button>`,
+  onMount:el=>{$('#rjOK',el).onclick=()=>{const n=$('#rjN',el).value.trim();const r=$('#rjR',el).value+(n?': '+n:'');closeModal();fn(r)}}});
+}
+function rejectApp(aid){const c=getC(getA(aid).cid);askRejectReason(`Reject <b>${esc(c.name)}</b> for ${esc(getOp(getA(aid).opId).title)}?`,'Reject',r=>setStage(aid,'Rejected',false,r))}
 function nextAction(a){
  const gi=S.interviews.find(i=>i.appId===a.id&&i.kind==='Group'&&i.status!=='Cancelled'&&!i.rec);
  const pi=S.interviews.filter(i=>i.appId===a.id&&i.kind==='Personal'&&i.status!=='Cancelled'&&!i.decision);
