@@ -502,7 +502,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☐ Dashboard and management report backed by SQL views; export to PDF and Excel
 - ☐ Match scoring moved to the shared domain package and stored with reasons; relabel "AI" honestly
 - ☐ Optional: model-assisted summaries or scoring behind a setting, human decision required, rejection reason always recorded
-- ☐ Audit log screen for admins
+- ☑ **Audit log screen for admins (2026-10-19):** Audit log page under Users (`src/features/audit/audit.js`, `src/services/audit.js`): newest first, filter by table, kind of change and record id, 100 more at a time, who changed what shown as `field: old → new`. Read-only; the database already limits the table to admins. Not shown to anyone else. 3 unit tests; 2 checks added to `test:e2e:auth`.
 
 *Exit criteria:* SLA alerts arrive without anyone opening the app; management report numbers match the database.
 

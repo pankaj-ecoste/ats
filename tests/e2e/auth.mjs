@@ -88,6 +88,12 @@ try {
   await row(page, ADMIN).waitFor();
   check('users: the admin sees themselves, cannot change their own role or switch themselves off', (await row(page, ADMIN).locator('select[data-urole]').isDisabled()) && (await row(page, ADMIN).locator('[data-act="userToggle"]').count()) === 0);
 
+  await page.click('#side [data-go="audit"]');
+  await page.locator('#content table tbody tr').first().waitFor();
+  check('audit log: the admin sees the log, with who and what changed', (await page.locator('#content').innerText()).includes('Audit log') && (await page.locator('#content table tbody tr').count()) > 0);
+  await page.click('#side [data-go="users"]');
+  await row(page, ADMIN).waitFor();
+
   /* ---- create a user from the screen ---- */
   await page.click('[data-act="userNew"]');
   await page.fill('#nuU', REC);
@@ -122,6 +128,7 @@ try {
   check('recruiter signs in with the password the admin gave', (await topName(page)) === 'Test Recruiter' && (await topRole(page)) === 'Recruiter');
   check('recruiter does not see the Users page', !(await hasNav(page, 'users')));
   await page.evaluate(() => go('users'));
+  check('recruiter does not see the Audit log page', !(await hasNav(page, 'audit')));
   check('recruiter who opens the Users page directly gets "No access"', (await page.locator('#content').innerText()).includes('No access'));
 
   /* ---- change own password ---- */
