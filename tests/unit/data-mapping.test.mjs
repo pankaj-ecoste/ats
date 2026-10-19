@@ -88,3 +88,10 @@ test('an application\'s stored score and reasons go to the database and come bac
   assert.deepEqual(row.match_reasons, { verdict: 'Good match', skills: 80 });
   assert.equal(plain(app.TO_ROW.application({ ...a, matchScore: undefined, matchReasons: undefined }, P).applications).match_score, null);
 });
+
+test('the draft-summary switch is kept in the company settings and comes back', () => {
+  const P = app.makePeople([]);
+  const s = plain(app.stateFromRows({ company_settings: [{ company: 'X', config: { modelSummary: true } }] }, P));
+  assert.equal(s.settings.modelSummary, true);
+  assert.equal(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: {} }] }, P)).settings.modelSummary, undefined);
+});

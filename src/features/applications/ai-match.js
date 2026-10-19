@@ -17,8 +17,12 @@ function aiMatchBlock(a,full=true){
 }
 function aiMatchModal(aid){
  const a=getA(aid),c=getC(a.cid);
- modal({title:'Match score',size:'w',body:aiMatchBlock(a)+`<div style="margin-top:12px">${journey(a)}</div>`,
+ modal({title:'Match score',size:'w',body:aiMatchBlock(a)+(summaryOn()?`<div id="msBox" style="margin-top:12px"><button class="btn" id="msBtn">${ic('ai')}Draft summary with Claude</button><div id="msOut" style="margin-top:8px"></div></div>`:'')+`<div style="margin-top:12px">${journey(a)}</div>`,
  foot:`<button class="btn ghost" id="mNote">Add note</button><button class="btn bad" id="mRej">Reject</button><button class="btn" id="mCall">${ic('phone')}Call candidate</button><button class="btn" id="mSch">${ic('int')}Schedule interview</button><button class="btn ok" id="mShort" ${a.stage!=='New'?'disabled':''}>${ic('check')}Shortlist</button>`,
- onMount:el=>{$('#mShort',el).onclick=()=>{closeModal();shortlist(aid)};$('#mRej',el).onclick=()=>{closeModal();rejectApp(aid)};$('#mCall',el).onclick=()=>{closeModal();screeningCall(aid)};$('#mSch',el).onclick=()=>{closeModal();schedulePI(aid)};$('#mNote',el).onclick=()=>noteForm(c.id)}});
+ onMount:el=>{const ms=$('#msBtn',el);if(ms)ms.onclick=async()=>{ms.disabled=true;ms.textContent='Writing…';const out=$('#msOut',el);
+   try{const t=await requestSummary(aid);out.innerHTML=`<div class="aibox"><div class="small muted" style="margin-bottom:4px">Draft by Claude. Check it before you rely on it. It does not decide anything.</div><p style="margin:0;white-space:pre-wrap">${esc(t)}</p><div style="margin-top:8px"><button class="btn sm" id="msSave">Save as note</button></div></div>`;$('#msSave',el).onclick=()=>{addCandidateNote(c.id,'Draft summary (Claude): '+t);toast('Saved as a note');$('#msSave',el).disabled=true}}
+   catch(e){out.innerHTML=`<div class="auth-err" role="alert">${esc(e.message)}</div>`}
+   ms.disabled=false;ms.textContent='Draft summary with Claude'};
+  $('#mShort',el).onclick=()=>{closeModal();shortlist(aid)};$('#mRej',el).onclick=()=>{closeModal();rejectApp(aid)};$('#mCall',el).onclick=()=>{closeModal();screeningCall(aid)};$('#mSch',el).onclick=()=>{closeModal();schedulePI(aid)};$('#mNote',el).onclick=()=>noteForm(c.id)}});
 }
 function noteForm(cid){modal({title:'Add note',body:`<textarea class="inp" id="nt" rows="4" placeholder="What should the team know?"></textarea>`,foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="ntS">Save note</button>`,onMount:el=>{$('#ntS',el).onclick=()=>{const v=$('#nt',el).value.trim();if(!v)return;addCandidateNote(cid,v);closeModal();toast('Note saved');refresh()}}})}

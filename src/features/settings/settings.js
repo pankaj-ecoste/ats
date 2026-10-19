@@ -25,10 +25,17 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
- ${CONNECTED?intakePanel():''}
+ ${CONNECTED?intakePanel():''}${summaryPanel()}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
+// admin switch for the Claude draft summaries; off until an admin turns it on
+function summaryPanel(){
+ if(!CONNECTED||!isAdmin())return '';
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Draft summaries (Claude)</h3><p>When on, recruiters see a button that asks Claude for a short draft summary of an application. The resume text goes to Anthropic without the candidate's name, email or phone. The summary only informs: it never moves a candidate or decides anything. Needs the Anthropic key in the hosting settings. Candidates should be told in your privacy notice.</p></div></header>
+  <label class="row" style="padding:0 18px 16px;gap:8px"><input type="checkbox" id="msOn" ${S.settings.modelSummary?'checked':''}> Allow draft summaries</label></section>`;
+}
 function bindSettings(root){
+ const mo=$('#msOn',root);if(mo)mo.onchange=()=>{updateSetting('modelSummary',mo.checked);toast(mo.checked?'Draft summaries are on':'Draft summaries are off');render()};
  $$('[data-s]',root).forEach(i=>i.onchange=()=>{updateSetting(i.dataset.s,i.value);applyTheme();render();toast('Settings saved')});
  $$('[data-w]',root).forEach(i=>{i.oninput=()=>{i.nextElementSibling.textContent=i.value};i.onchange=()=>{updateMatchWeight(i.dataset.w,+i.value);toast('Match weights updated','var(--ai)');render()}});
  const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{setMatchThreshold(+th.value);render()};
