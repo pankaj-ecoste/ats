@@ -365,6 +365,97 @@ test('files: private buckets, résumés follow the candidate, documents are staf
   await as(null, async () => assert.deepEqual(await seen('resumes'), [], 'anonymous sees nothing'));
 });
 
+/* ---------- public intake ---------- */
+test('intake: the public sees open roles only, applies through one door, and nothing else is open to them', { skip }, async () => {
+  await isolated(async () => {
+  await q("update public.openings set status = 'Open' where id = 'OP-T1'");
+  await q("update public.openings set status = 'Draft' where id = 'OP-T2'");
+  const apply = (over = {}) => {
+    const a = { opening: 'OP-T1', name: 'Asha Rao', email: 'asha@example.com', phone: '+91 98450 11223', location: 'Pune', exp: 3.5, notice: 30, cur: 6, exp_sal: 9, skills: ['Java', ' SQL ', ''], edu: 'B.Tech', path: null, file: null, consent: true, site: '', ...over };
+    return attempt('select public.submit_application($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) as r', [a.opening, a.name, a.email, a.phone, a.location, a.exp, a.notice, a.cur, a.exp_sal, a.skills, a.edu, a.path, a.file, a.consent, a.site]);
+  };
+  const asAnon = async (over) => { let r; await as(null, async () => { const x = await apply(over); r = x.rows[0] ? x.rows[0].r : { ok: false, message: x.error }; }, { keep: true }); return r; };
+  await as(null, async () => {
+    const view = await attempt("select id, title from public.careers_openings where id like 'OP-T%' order by id");
+    assert.deepEqual(view.rows.map((r) => r.id), ['OP-T1'], 'a draft is not listed');
+    assert.ok(!Object.keys((await attempt('select * from public.careers_openings limit 1')).rows[0] || {}).some((k) => /sal|budget|manager|recruiter/.test(k)), 'no salary, budget or people');
+    for (const t of ['candidates', 'applications', 'openings', 'candidate_compensation', 'notifications', 'intake_batches', 'messages', 'profiles', 'company_settings'])
+      assert.match((await attempt(`select * from public.${t}`)).error ?? '', /permission denied/, `anonymous cannot read ${t}`);
+    assert.match((await attempt("insert into public.candidates (id, name) values ('C-HACK', 'x')")).error ?? '', /permission denied/, 'no direct insert');
+  });
+  const ok = await asAnon();
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  const cand = (await q("select id, name, source, skills, exp_years, notice_days, consent_at is not null as consent, consent_text from public.candidates where lower(email) = 'asha@example.com'")).rows;
+  assert.equal(cand.length, 1);
+  assert.deepEqual([cand[0].name, cand[0].source, cand[0].skills, Number(cand[0].exp_years), cand[0].notice_days, cand[0].consent], ['Asha Rao', 'Careers Page', ['Java', 'SQL'], 3.5, 30, true]);
+  assert.match(cand[0].consent_text, /Agreed/);
+  assert.match(cand[0].id, /^C-[2-9A-HJ-NP-Z]{8}$/);
+  const comp = (await q('select current_lpa, expected_lpa from public.candidate_compensation where candidate_id = $1', [cand[0].id])).rows[0];
+  assert.deepEqual([Number(comp.current_lpa), Number(comp.expected_lpa)], [6, 9]);
+  const appl = (await q('select id, stage, recruiter_id from public.applications where candidate_id = $1', [cand[0].id])).rows;
+  assert.deepEqual([appl.length, appl[0].stage, appl[0].recruiter_id], [1, 'New', U.recruiter], 'a New application for the opening, with its recruiter');
+  assert.equal((await q("select count(*)::int n from public.notifications where user_id = $1 and text like 'New application from the careers page: Asha Rao%'", [U.recruiter])).rows[0].n, 1, 'the recruiter is told');
+  assert.equal((await q('select count(*)::int n from public.activity where application_id = $1', [appl[0].id])).rows[0].n, 1);
+  assert.deepEqual((await q("select rows_added, rows_skipped, error from public.intake_batches where source = 'careers_page' and detail ->> 'email' = 'asha@example.com'")).rows, [{ rows_added: 1, rows_skipped: 0, error: null }]);
+
+  // refusals, each in plain words and each logged
+  const refused = async (over, text) => {
+    const r = await asAnon(over);
+    assert.equal(r.ok, false, JSON.stringify(over) + ' ' + JSON.stringify(r));
+    assert.match(r.message, text);
+  };
+  await refused({ opening: 'OP-T2', email: 'r0@example.com' }, /no longer accepting/);
+  await refused({ opening: 'OP-NONE', email: 'r1@example.com' }, /no longer accepting/);
+  await refused({ name: 'A', email: 'r2@example.com' }, /full name/);
+  await refused({ email: 'not-an-email' }, /valid email/);
+  await refused({ email: 'r3@example.com', phone: '123' }, /valid phone/);
+  await refused({ email: 'r4@example.com', consent: false }, /agree/);
+  await refused({ email: 'r5@example.com', consent: null }, /agree/);
+  assert.equal((await q("select count(*)::int n from public.candidates where lower(email) like 'r_@example.com'")).rows[0].n, 0, 'a refused try creates nothing');
+  assert.ok((await q("select count(*)::int n from public.intake_batches where error like 'Refused:%'")).rows[0].n >= 7, 'every refusal is logged');
+
+  // the same person again: no second profile, no second application
+  assert.match((await asAnon()).message, /already applied/);
+  assert.equal((await q("select count(*)::int n from public.candidates where lower(email) = 'asha@example.com'")).rows[0].n, 1);
+  assert.equal((await q('select count(*)::int n from public.applications where candidate_id = $1', [cand[0].id])).rows[0].n, 1);
+  // an address already in the pool applying to another role: the same profile, a new application, their data untouched
+  await q("update public.openings set status = 'Open' where id = 'OP-T2'");
+  assert.equal((await asAnon({ opening: 'OP-T2', name: 'Someone Else', location: 'Delhi' })).ok, true);
+  const again = (await q("select name, location from public.candidates where lower(email) = 'asha@example.com'")).rows;
+  assert.deepEqual(again, [{ name: 'Asha Rao', location: 'Pune' }], 'an applicant cannot rewrite an existing profile');
+  assert.equal((await q('select count(*)::int n from public.applications where candidate_id = $1', [cand[0].id])).rows[0].n, 2);
+
+  // a robot's hidden field: looks like success, creates nothing
+  assert.equal((await asAnon({ email: 'bot@example.com', site: 'http://spam' })).ok, true);
+  assert.equal((await q("select count(*)::int n from public.candidates where lower(email) = 'bot@example.com'")).rows[0].n, 0);
+  assert.equal((await q("select count(*)::int n from public.intake_batches where error = 'Refused: hidden field filled in'")).rows[0].n, 1);
+
+  // five tries an hour from one address, then it stops
+  for (let i = 0; i < 5; i++) await asAnon({ email: 'many@example.com', consent: false });
+  await refused({ email: 'many@example.com' }, /Too many attempts/);
+
+  // the resume path must be one the door gave out
+  await asAnon({ email: 'cv@example.com', path: 'intake/11111111-1111-4111-8111-111111111111/cv.pdf', file: 'cv.pdf' });
+  await asAnon({ email: 'evil@example.com', path: '../C-T1/cv.pdf', file: 'x.pdf' });
+  assert.equal((await q("select resume_path from public.candidates where lower(email) = 'cv@example.com'")).rows[0].resume_path, 'intake/11111111-1111-4111-8111-111111111111/cv.pdf');
+  assert.equal((await q("select resume_path from public.candidates where lower(email) = 'evil@example.com'")).rows[0].resume_path, null);
+
+  // staff see the log; others do not
+  await as(U.recruiter, async () => assert.ok((await attempt("select * from public.intake_batches where source = 'careers_page'")).rows.length > 5));
+  await as(U.hm1, async () => assert.equal((await attempt('select * from public.intake_batches')).rows.length, 0));
+
+  // files: the public may add under intake/<id>/ only, and can read, replace or delete nothing
+  await as(null, async () => {
+    assert.equal((await attempt("insert into storage.objects (bucket_id, name) values ('resumes', 'intake/22222222-2222-4222-8222-222222222222/cv.pdf')")).rowCount, 1);
+    assert.match((await attempt("insert into storage.objects (bucket_id, name) values ('resumes', 'C-T1/cv2.pdf')")).error ?? '', /row-level security/, 'not into a candidate folder');
+    assert.match((await attempt("insert into storage.objects (bucket_id, name) values ('resumes', 'intake/x/y/cv.pdf')")).error ?? '', /row-level security/, 'not deeper');
+    assert.match((await attempt("insert into storage.objects (bucket_id, name) values ('documents', 'intake/22222222-2222-4222-8222-222222222222/id.pdf')")).error ?? '', /row-level security/, 'not into documents');
+    assert.deepEqual((await attempt("select name from storage.objects where bucket_id = 'resumes'")).rows, [], 'and cannot list what is there');
+    assert.equal((await attempt("delete from storage.objects where bucket_id = 'resumes'")).rowCount, 0);
+  });
+  });
+});
+
 /* ---------- tasks, notifications, profiles, settings ---------- */
 test('a task owner sees their own tasks and can tick them but not rewrite them', { skip }, async () => {
   await as(U.interviewer, async () => {

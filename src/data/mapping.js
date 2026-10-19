@@ -40,7 +40,7 @@ const FROM_ROW={
    curSal:comp?comp.current_lpa:null,expSal:comp?comp.expected_lpa:null,
    notice:r.notice_days,reloc:r.relocate,email:r.email,phone:r.phone,certifications:r.certifications,achievements:r.achievements,
    documents:(ctx.documents.get(r.id)||[]).map(d=>({name:d.name,status:d.status,...(d.storage_path?{path:d.storage_path,file:d.file_name||''}:{})})),notes:r.notes,source:r.source,created:r.created_on,
-   history:r.history,resumeText:r.resume_text,...(r.resume_path?{resumePath:r.resume_path,resumeName:r.resume_name||''}:{})};
+   history:r.history,resumeText:r.resume_text,...(r.resume_path?{resumePath:r.resume_path,resumeName:r.resume_name||''}:{}),...(r.consent_at?{consentAt:r.consent_at,consentText:r.consent_text||''}:{})};
  },
  application:(r,P,ctx)=>{
   const s=ctx.screenings.get(r.id);
@@ -67,6 +67,7 @@ const FROM_ROW={
  event:r=>withValues({d:r.on_date,t:r.type,aid:r.application_id,op:r.opening_id},{days:r.days,src:r.source,...(r.demo?{demo:1}:{})}),
  call:r=>({id:r.id,d:r.on_date,op:r.opening_id,made:r.made,conn:r.connected,...(r.demo?{demo:1}:{})}),
  sheetLog:r=>({ts:dbMs(r.at),text:r.text}),
+ intake:r=>({ts:dbMs(r.received_at),source:r.source,added:r.rows_added,skipped:r.rows_skipped,error:r.error||'',email:(r.detail&&r.detail.email)||'',opening:(r.detail&&r.detail.opening)||'',repeat:!!(r.detail&&r.detail.repeat)}),
  message:(r,P)=>withValues({id:r.id,cid:r.candidate_id,channel:r.channel,template:r.template,subject:r.subject,body:r.body,status:r.status,by:P.name(r.sent_by),ts:dbMs(r.created_at)},{aid:r.application_id}),
 };
 
@@ -107,6 +108,7 @@ function stateFromRows(rows,people){
   tasks:newest(rows.tasks||[],row('task')),
   notifications:newest(rows.notifications||[],row('notification')),
   messages:newest(rows.messages||[],row('message')),
+  intake:(rows.intake_batches||[]).slice().sort((a,b)=>String(b.received_at).localeCompare(String(a.received_at))).map(FROM_ROW.intake),
   activity:(rows.activity||[]).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at))).map(FROM_ROW.activity),
   postings:oldest(rows.postings||[],row('posting')),
   events:oldest(rows.report_events||[],row('event')),
@@ -128,7 +130,7 @@ function stateFromRows(rows,people){
 // and what stays in this browser (name shown, theme) is left out.
 function dataFingerprint(state){
  const parts={settings:settingsRow(state)};
- ['openings','candidates','applications','groups','interviews','offers','onboarding','tasks','notifications','messages','activity','postings','events','callLog','sheetLog','boards'].forEach(k=>{
+ ['openings','candidates','applications','groups','interviews','offers','onboarding','tasks','notifications','messages','intake','activity','postings','events','callLog','sheetLog','boards'].forEach(k=>{
   parts[k]=(state[k]||[]).map(r=>JSON.stringify(r)).sort();
  });
  parts.monthly=state.monthly||{};
@@ -147,7 +149,7 @@ const TO_ROW={
   candidates:{id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',designation:c.designation||'',company:c.company||'',exp_years:c.exp||0,location:c.location||'',
    relocate:!!c.reloc,education:c.education||'',edu_field:c.eduField||'',university:c.university||'',grad_year:c.gradYear||null,skills:c.skills||[],
    notice_days:c.notice??30,certifications:c.certifications||[],achievements:c.achievements||[],source:c.source||'',history:c.history||[],notes:c.notes||[],
-   resume_text:c.resumeText||'',created_on:c.created,resume_path:c.resumePath||null,resume_name:c.resumePath?(c.resumeName||''):null},
+   resume_text:c.resumeText||'',created_on:c.created,resume_path:c.resumePath||null,resume_name:c.resumePath?(c.resumeName||''):null,...(c.consentAt?{consent_at:c.consentAt,consent_text:c.consentText||''}:{})},
   candidate_compensation:{candidate_id:c.id,current_lpa:c.curSal||0,expected_lpa:c.expSal||0},
   candidate_documents:(c.documents||[]).map(d=>({candidate_id:c.id,name:d.name,status:d.status,storage_path:d.path||null,file_name:d.path?(d.file||''):null}))}),
  application:(a,P)=>({

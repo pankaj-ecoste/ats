@@ -27,6 +27,21 @@ function attachResume(cid,{path,name}){
  log(`Resume file uploaded for ${c.name}: ${name}`,'note');
  return c;
 }
+// The text read from a stored résumé file becomes the candidate's résumé text, and fills only what is still empty (what the person typed is never overwritten).
+function applyResumeText(cid,text){
+ const p=parseResume(text);
+ const c=repo.update('candidates',cid,c=>{
+  c.resumeText=text;
+  if(!c.designation&&p.designation)c.designation=p.designation;
+  if(!c.company&&p.company)c.company=p.company;
+  if(!c.location&&p.location)c.location=p.location;
+  if(!c.exp&&p.exp)c.exp=p.exp;
+  c.skills=[...new Set([...(c.skills||[]),...p.skills])];
+  if(!(c.certifications||[]).length)c.certifications=p.certifications;
+ });
+ log(`Resume text read for ${c.name}`,'note');
+ return c;
+}
 // the real file behind a checklist item; a Pending item becomes Received
 function attachDocumentFile(cid,index,{path,file}){
  const c=repo.update('candidates',cid,c=>{const d=c.documents[index];d.path=path;d.file=file;if(d.status==='Pending')d.status='Received'});

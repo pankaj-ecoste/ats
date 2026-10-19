@@ -12,7 +12,7 @@ function resumeHTML(c,o){
 // the original file behind the résumé text (connected mode only; the text itself is always kept)
 function resumeFileBar(c){
  if(!CONNECTED)return '';
- return `<div class="row small" style="margin-bottom:8px;gap:8px">${ic('file','style="width:16px;color:var(--tx3)"')}${c.resumePath?`<b>${esc(c.resumeName||'Original file')}</b><button class="btn sm" data-rfopen>Open original</button>`:'<span class="muted">No original file is kept.</span>'}${canEdit()?`<button class="btn sm" data-rfup>${c.resumePath?'Replace file':'Upload original file'}</button>`:''}</div>`;
+ return `<div class="row small" style="margin-bottom:8px;gap:8px">${ic('file','style="width:16px;color:var(--tx3)"')}${c.resumePath?`<b>${esc(c.resumeName||'Original file')}</b><button class="btn sm" data-rfopen>Open original</button>`:'<span class="muted">No original file is kept.</span>'}${canEdit()&&c.resumePath&&!String(c.resumeText||'').trim()?'<button class="btn sm pri" data-rfread>Read the file</button>':''}${canEdit()?`<button class="btn sm" data-rfup>${c.resumePath?'Replace file':'Upload original file'}</button>`:''}</div>`;
 }
 function resumeSplit(c,o){
  const f=(k,l,v,t='text')=>`<label class="f">${l}<input class="inp" data-rf="${k}" type="${t}" value="${esc(v)}"></label>`;
@@ -28,6 +28,10 @@ function resumeSplit(c,o){
 }
 function bindResumeSplit(root,c,o){
  const open=$('[data-rfopen]',root);if(open)open.onclick=()=>openStoredFile(FILE_BUCKETS.resume,c.resumePath).catch(e=>toast(e.message,'var(--red)'));
+ const rd=$('[data-rfread]',root);if(rd)rd.onclick=async()=>{rd.disabled=true;rd.textContent='Reading…';
+  try{const blob=await (await fetch(await fileLink(sb,FILE_BUCKETS.resume,c.resumePath))).blob();
+   applyResumeText(c.id,await resumeTextFromFile(new File([blob],c.resumeName||'resume.pdf'),loadPdfReader));toast('Resume read and the profile filled in','var(--ai)');refresh()}
+  catch(e){toast(e.message,'var(--red)');rd.disabled=false;rd.textContent='Read the file'}};
  const up=$('[data-rfup]',root);if(up)up.onclick=()=>pickFile('.pdf,.docx,.txt,.md',f=>{const chk=checkResumeFile(f);if(!chk.ok){toast(chk.error,'var(--red)');return}storeResume(c.id,f)});
  const b=$('[data-rsave]',root);if(!b)return;
  b.onclick=()=>{const before=match(c,o).score;const fields={};$$('[data-rf]',root).forEach(el=>{const k=el.dataset.rf;let v=el.value;

@@ -10,7 +10,7 @@ const READ_TABLES=[
  ['job_boards','id'],['postings','id'],['report_events','id'],['call_log','id'],['monthly_targets','month'],['messages','id'],
 ];
 // the two logs only ever grow, and only the latest entries are shown, so only those are read (the app itself keeps 300)
-const LOG_TABLES=[['activity','at'],['sheet_log','at']],LOG_KEEP=300;
+const LOG_TABLES=[['activity','at'],['sheet_log','at'],['intake_batches','received_at']],LOG_KEEP=300;
 
 async function fetchTable(client,table,orderBy){
  const out=[];

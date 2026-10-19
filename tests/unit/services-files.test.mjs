@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadApp } from './load-app.mjs';
 
-const fresh = () => loadApp({ until: 'services', expose: ['S', 'findDuplicateCandidate', 'phoneKey', 'attachResume', 'attachDocumentFile', 'applyCandidate', 'createCandidateApplication', 'getC', 'getA'] });
+const fresh = () => loadApp({ until: 'services', expose: ['S', 'findDuplicateCandidate', 'phoneKey', 'attachResume', 'attachDocumentFile', 'applyCandidate', 'createCandidateApplication', 'applyResumeText', 'stateFromRows', 'makePeople', 'getC', 'getA'] });
 
 test('a duplicate is found by email in any letter case, or by the last 10 digits of the phone', () => {
   const app = fresh();
@@ -57,4 +57,31 @@ test('applying again: a new opening adds an application, the same opening adds n
   assert.equal(added.existing, false);
   assert.equal(app.S.applications.length, n + 1);
   assert.equal(app.getA(added.aid).stage, 'New');
+});
+
+test('reading a stored resume fills only what is empty, merges skills, and never overwrites what the applicant typed', () => {
+  const app = fresh();
+  const c = app.S.candidates[0];
+  Object.assign(c, { designation: '', company: 'Typed Co', location: 'Typed City', exp: 0, skills: ['Excel'], certifications: [], resumeText: '' });
+  const text = ['Asha Rao', 'Senior Java Engineer, Pune', 'Experience: 6 years with Java and SQL at Acme Labs (2020-2026)'].join('\n');
+  app.applyResumeText(c.id, text);
+  assert.equal(c.resumeText, text);
+  assert.equal(c.designation, 'Senior Java Engineer');
+  assert.equal(c.company, 'Typed Co', 'a typed value stays');
+  assert.equal(c.location, 'Typed City', 'a typed value stays');
+  assert.equal(c.exp, 6);
+  assert.ok(['Excel', 'Java', 'SQL'].every((x) => c.skills.includes(x)), 'skills are merged');
+  assert.match(app.S.activity[0].text, /Resume text read for/);
+});
+
+test('the careers page log and the consent come back from the database rows', () => {
+  const app = fresh();
+  const s = JSON.parse(JSON.stringify(app.stateFromRows({
+    intake_batches: [{ received_at: '2026-10-19T10:00:00Z', source: 'careers_page', rows_added: 1, rows_skipped: 0, error: null, detail: { email: 'a@b.c', opening: 'OP-1', repeat: false } },
+      { received_at: '2026-10-19T11:00:00Z', source: 'careers_page', rows_added: 0, rows_skipped: 1, error: 'Refused: bad', detail: { email: 'x@y.z' } }],
+    candidates: [{ id: 'C-1', name: 'A', consent_at: '2026-10-19T10:00:00Z', consent_text: 'Agreed', created_at: '2026-10-19' }, { id: 'C-2', name: 'B', created_at: '2026-10-18' }],
+  }, app.makePeople([]))));
+  assert.deepEqual(s.intake.map((x) => [x.email, x.added, x.skipped, x.error]), [['x@y.z', 0, 1, 'Refused: bad'], ['a@b.c', 1, 0, '']], 'newest first');
+  assert.equal(s.candidates.find((c) => c.id === 'C-1').consentAt, '2026-10-19T10:00:00Z');
+  assert.ok(!('consentAt' in s.candidates.find((c) => c.id === 'C-2')), 'no consent field for a candidate without one');
 });

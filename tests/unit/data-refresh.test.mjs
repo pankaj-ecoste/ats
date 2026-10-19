@@ -31,7 +31,7 @@ test('the activity and sheet logs are read newest first and limited, everything 
   const seen = [];
   await app.fetchAll(fakeClient({ profiles }, seen));
   const limited = seen.filter((s) => s[0] === 'limit');
-  assert.equal(limited.map((s) => s[1]).sort().join(), 'activity,sheet_log');
+  assert.equal(limited.map((s) => s[1]).sort().join(), 'activity,intake_batches,sheet_log');
   assert.ok(limited.every((s) => s[2] === 300 && s[3] === false), 'newest first, 300');
   assert.ok(!seen.some((s) => s[0] === 'range' && ['activity', 'sheet_log'].includes(s[1])));
 });

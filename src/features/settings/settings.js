@@ -3,6 +3,12 @@
 "use strict";
 // the demo's single-browser pieces (who you are, typed team names, reset) have no place on shared data
 const demoOnly=html=>CONNECTED?'':html;
+// who applied on the public careers page, and who was turned away and why
+function intakePanel(){
+ const rows=(S.intake||[]).filter(x=>x.source==='careers_page').slice(0,15);
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Careers page</h3><p>Publish <b>careers.html</b> from the build on any website. A link to one role ends with <code>#</code> and the opening id, for example <code>careers.html#OP-1001</code>. Only open roles are listed, without salary.</p></div></header>
+  ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Email</th><th>Opening</th><th>Result</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${timeAgo(x.ts)}</td><td>${esc(x.email||'—')}</td><td>${esc(x.opening||'—')}</td><td>${x.error?`<span class="pill red">${esc(x.error.replace(/^Refused: /,''))}</span>`:x.repeat?'<span class="pill orange">Applied before</span>':'<span class="pill green">Added</span>'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="pbody muted">Nobody has applied on the careers page yet.</div>'}</section>`;
+}
 function vSettings(){
  const s=S.settings;const W=s.weights;
  return `<div class="page-h"><div><h1>Settings</h1><p>Company details, AI scoring and workspace</p></div></div>
@@ -19,6 +25,7 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
+ ${CONNECTED?intakePanel():''}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
 function bindSettings(root){

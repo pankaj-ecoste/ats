@@ -20,6 +20,7 @@ npm run db:migrate  # apply database migrations (needs .env); also `db:status`, 
 npm run test:e2e:auth   # sign-in screen and Users page against the live project (skips without .env)
 npm run test:e2e:data   # records in the live project show up in the app (skips without .env)
 npm run test:e2e:writes # the app saves real work, and a reload brings it back (skips without .env)
+npm run test:e2e:careers # the public careers page and application, then the staff side
 npm run test:e2e:files  # résumé and document upload, text extraction, messages, offer letter copy (skips without .env)
 ALLOW_DB_SEED=1 npm run db:seed   # DEV ONLY: load the sample data into an empty development project; db:unseed removes it
 npm run lint       # ESLint; `npm run check` = lint + unit tests + build

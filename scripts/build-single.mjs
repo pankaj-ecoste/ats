@@ -16,40 +16,45 @@ const inlineAssets = (js) => js.replace(/(['"])(assets\/[\w./-]+)\1/g, (m, q, p)
   return `${q}data:${mime};base64,${readFileSync(resolve(root, p)).toString('base64')}${q}`;
 });
 
-let css = 0, js = 0;
-let html = read('index.html')
-  .replace(/<link rel="stylesheet" href="(src\/[^"]+)">/g, (m, p) => { css++; return `<style>\n${read(p).trim()}\n</style>`; })
-  .replace(/<script src="(src\/[^"]+)"><\/script>/g, (m, p) => {
-    const code = inlineAssets(read(p)).trim();
+function bundle(inFile, outFile) {
+  let css = 0, js = 0;
+  let html = read(inFile)
+    .replace(/<link rel="stylesheet" href="(src\/[^"]+)">/g, (m, p) => { css++; return `<style>\n${read(p).trim()}\n</style>`; })
+    .replace(/<script src="(src\/[^"]+)"><\/script>/g, (m, p) => {
+      const code = inlineAssets(read(p)).trim();
+      if (/<\/script/i.test(code)) throw new Error(`${p} contains "</script" and cannot be inlined safely`);
+      js++; return `<script>\n${code}\n</script>`;
+    });
+
+  // scripts that only load on demand (the PDF reader): their code travels inside the page as inert text, and loadLazy() runs it when first needed
+  html = html.replace(/<script type="text\/x-lazy" data-lazy="(src\/[^"]+)"><\/script>/g, (m, p) => {
+    const code = read(p).trim();
     if (/<\/script/i.test(code)) throw new Error(`${p} contains "</script" and cannot be inlined safely`);
-    js++; return `<script>\n${code}\n</script>`;
+    return `<script type="text/x-lazy" data-lazy="${p}">
+  ${code}
+  </script>`;
   });
 
-// scripts that only load on demand (the PDF reader): their code travels inside the page as inert text, and loadLazy() runs it when first needed
-html = html.replace(/<script type="text\/x-lazy" data-lazy="(src\/[^"]+)"><\/script>/g, (m, p) => {
-  const code = read(p).trim();
-  if (/<\/script/i.test(code)) throw new Error(`${p} contains "</script" and cannot be inlined safely`);
-  return `<script type="text/x-lazy" data-lazy="${p}">
-${code}
-</script>`;
-});
+  const left = html.match(/(?:href|src)="src\/[^"]+"/);
+  if (left) throw new Error(`Not inlined: ${left[0]}`);
 
-const left = html.match(/(?:href|src)="src\/[^"]+"/);
-if (left) throw new Error(`Not inlined: ${left[0]}`);
+  // Secret guard: the built file is sent to every browser, so it must never contain a database URL with a password
+  // or a service-role key. Public values (project URL, anon key) are fine.
+  const leaks = [];
+  if (/postgres(?:ql)?:\/\/[^\s"'<>]+:[^\s"'<>@]+@/i.test(html)) leaks.push('a database connection string with a password');
+  for (const jwt of html.match(/eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+/g) || []) {
+    try {
+      const role = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8')).role;
+      if (role && role !== 'anon') leaks.push(`a Supabase key with role "${role}"`);
+    } catch { /* not a token */ }
+  }
+  if (leaks.length) throw new Error(`Refusing to build: the output contains ${leaks.join(' and ')}. Remove it from the sources.`);
 
-// Secret guard: the built file is sent to every browser, so it must never contain a database URL with a password
-// or a service-role key. Public values (project URL, anon key) are fine.
-const leaks = [];
-if (/postgres(?:ql)?:\/\/[^\s"'<>]+:[^\s"'<>@]+@/i.test(html)) leaks.push('a database connection string with a password');
-for (const jwt of html.match(/eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+/g) || []) {
-  try {
-    const role = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8')).role;
-    if (role && role !== 'anon') leaks.push(`a Supabase key with role "${role}"`);
-  } catch { /* not a token */ }
+  const out = resolve(root, outFile);
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, html);
+  console.log(`${outFile}  (${css} stylesheets, ${js} scripts, ${(Buffer.byteLength(html) / 1024).toFixed(0)} kB)`);
 }
-if (leaks.length) throw new Error(`Refusing to build: the output contains ${leaks.join(' and ')}. Remove it from the sources.`);
 
-const out = resolve(root, 'dist/Ecoste_Recruit_Tracker.html');
-mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, html);
-console.log(`dist/Ecoste_Recruit_Tracker.html  (${css} stylesheets, ${js} scripts, ${(Buffer.byteLength(html) / 1024).toFixed(0)} kB)`);
+bundle('index.html', 'dist/Ecoste_Recruit_Tracker.html');
+bundle('careers.html', 'dist/careers.html');   // the public careers page: one file, host it anywhere
