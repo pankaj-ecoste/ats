@@ -25,7 +25,7 @@ Covers: openings, job posting, applications + AI-style match scoring, candidates
 | Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 43 data (admin setup, recruiter, management, interviewer with scorecard, hiring manager with offer approval, refresh), 29 write 24 file and 19 careers checks (run with installed Chrome via `CHROME_PATH`) |
 | Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
 | Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project has the full schema, rules, access policies and username login (14 migrations; 59 database tests pass: 32 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
+| Database / backend | Supabase project has the full schema, rules, access policies and username login (15 migrations; 63 database tests pass: 32 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
 | Deployment | **None.** Runs from `index.html` or the single-file build |
 | Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
 
@@ -69,7 +69,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 |---|---|
 | `index.html` | App shell; ordered list of 12 stylesheets and 43 scripts (the manifest the build and tests read) |
 | `package.json`, `package-lock.json` | Scripts `dev`, `gen`, `build`, `test`, `test:e2e`. Only dependency: `playwright` (dev) |
-| `supabase/migrations/0001..0014_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
+| `supabase/migrations/0001..0015_*.sql` | The database schema, rules and access policies (see `docs/DATABASE.md`) |
 | `scripts/gen-config.mjs`, `scripts/vendor.mjs` | Write `src/generated/config.js` (public URL and anon key from `.env`; empty means demo mode); copy the Supabase library into `src/vendor/` |
 | `src/generated/config.js` (not committed), `src/vendor/supabase.js` | The two values the browser needs to reach Supabase; the vendored Supabase library (no public CDN) |
 | `src/data/mapping.js` | Pure translation between database rows and the app's records, both directions: `makePeople` (names to profile ids and back), `stateFromRows`, `TO_ROW`, `rowsFromState` |
@@ -488,7 +488,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☑ **Intake log and error screen:** Settings → Careers page lists the latest tries: added, applied before, or refused with the reason. The profile shows when consent was given.
 - ☑ **Google Form and Sheets stay as they are** (the Apps Script setup and the Sheet importer still work and write through the same data layer). The careers page replaces them as the main way in; they can be retired when the company chooses.
 - ☐ Job-board links and posting status where APIs exist (needs board accounts)
-- ☐ Abandoned uploads: files uploaded but never submitted stay in `intake/`; a periodic clean-up belongs to Phase 5 (scheduled jobs)
+- ☐ Abandoned uploads: files uploaded but never submitted stay in `intake/`; Supabase forbids deleting storage rows with SQL, so the clean-up needs the Storage API from a server job (still open)
 - ☐ Where the careers page is published (company website or any static host): needs the company's choice. Until it is hosted, test it by opening `dist/careers.html`.
 
 *Exit criteria:* a candidate applies on the careers page or the form and appears in New within a minute, with consent recorded.
@@ -497,8 +497,8 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 *Goal:* the system nudges people instead of waiting to be looked at.
 
-- ☐ Scheduled job computes SLA breaches and writes notifications; daily digest email to recruiters
-- ☐ Interview reminders to candidates and panel; feedback-overdue reminders
+- ☑ **Daily nudges inside the database (2026-10-19, migration 0015):** `app.run_nudges()` runs every morning at 09:00 India time through pg_cron (if the extension is unavailable it can be called from any scheduler). It notifies the recruiter once per stay when a candidate is past the SLA (company SLA settings, same defaults as the app), reminds the panel and the recruiter the day before an interview, and flags interviews whose date passed with no outcome. `app.nudge_log` makes each nudge once-only. Only the database owner can run it. 4 tests in `tests/db/nudges.test.mjs` (63 database tests in all).
+- ☐ Daily digest email and reminders to candidates (need the email account, Decision D5)
 - ☐ Dashboard and management report backed by SQL views; export to PDF and Excel
 - ☐ Match scoring moved to the shared domain package and stored with reasons; relabel "AI" honestly
 - ☐ Optional: model-assisted summaries or scoring behind a setting, human decision required, rejection reason always recorded
