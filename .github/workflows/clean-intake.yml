@@ -1,0 +1,24 @@
+name: Clean abandoned uploads
+
+# every day: removes résumé files uploaded on the careers page but never submitted (see scripts/clean-intake.mjs)
+# needs repository secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run storage:clean -- --yes
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
