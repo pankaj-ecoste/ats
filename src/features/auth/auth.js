@@ -64,7 +64,7 @@ async function enterApp(me){
  startWriting(sb,me);
  startAutoRefresh(me);
  hideAuth();
- R.view=firstPage();R.param=null;
+ R.view=firstPage();R.param=null;applyHash();
  render();
  if(needsSetup())companySetup();
 }
