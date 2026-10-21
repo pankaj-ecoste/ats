@@ -617,4 +617,4 @@ npm run gen          # regenerate src/generated/form-script.js
 npm install && npx playwright install chromium && npm run test:e2e
 ```
 
-Requires Node 20+ (tested on 24). Related docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md`.
+Requires Node 22+ (tested on 24). Related docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md`.

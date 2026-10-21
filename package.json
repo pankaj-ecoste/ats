@@ -5,7 +5,7 @@
   "description": "Ecoste Recruit Tracker: recruitment workspace (openings, applications, interviews, offers, onboarding).",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "node scripts/gen-config.mjs && node scripts/serve.mjs",

@@ -26,7 +26,7 @@ ALLOW_DB_SEED=1 npm run db:seed   # DEV ONLY: load the sample data into an empty
 npm run lint       # ESLint; `npm run check` = lint + unit tests + build
 ```
 
-Requires Node 20+. Nothing needs installing for `dev`, `test` or `build`.
+Requires Node 22+. Nothing needs installing for `dev`, `test` or `build`.
 
 ## Layout
 
