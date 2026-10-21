@@ -1,10 +1,10 @@
 /* Workbook export/import page */
 /* ---------- Google Sheets option ---------- */
 "use strict";
-const EXCELJS_URL='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
 let excelP=null;
+// the spreadsheet library is our own copy (src/vendor), loaded the first time it is needed
 function loadExcel(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);if(excelP)return excelP;
- excelP=new Promise((res,rej)=>{const s=document.createElement('script');s.src=EXCELJS_URL;s.onload=()=>window.ExcelJS?res(window.ExcelJS):rej(new Error('Spreadsheet library did not load'));s.onerror=()=>{excelP=null;rej(new Error('Could not load the spreadsheet library. Check your connection and try again.'))};document.head.appendChild(s)});return excelP}
+ excelP=loadLazy('src/vendor/exceljs.min.js').then(()=>window.ExcelJS||Promise.reject(new Error('Spreadsheet library did not load'))).catch(e=>{excelP=null;throw new Error('Could not load the spreadsheet library. Check your connection and try again.')});return excelP}
 let dlCap;async function getDownloads(){if(dlCap!==undefined)return dlCap;try{dlCap=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){dlCap=null}return dlCap}
 async function saveFile(filename,buf){
  const d=await getDownloads();

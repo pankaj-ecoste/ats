@@ -528,7 +528,9 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☐ Rollback rehearsed (redeploy previous tag; migration rollback notes)
 - ☐ Backups with a tested restore; point-in-time recovery turned on
 - ☐ Error monitoring, uptime check, log retention
-- ☐ Self-host fonts and ExcelJS; CSP without public CDNs
+- ☑ **Self-hosted fonts and ExcelJS; strict Content-Security-Policy (2026-10-21):** Figtree (variable, latin) is a stylesheet with the font inside (`src/vendor/figtree.css`); ExcelJS 4.4.0 is our own copy loaded on first use (`src/vendor/exceljs.min.js`); both come from `npm run vendor`. `vercel.json` sets a CSP (no `eval`, scripts and styles from the app itself, connections only to this site and Supabase, no framing), HSTS, nosniff, referrer and permissions policies. `tests/e2e/csp.mjs` serves the built file with those headers, opens every page, reads a PDF, builds an Excel file and loads the careers page, and fails on any policy violation or any request to another address (8 checks).
+- ☑ **PDF reader hardened:** `npm audit` reported pdf.js 3.11 (bundled) as affected by CVE-2024-4367 (a crafted PDF font can run code), and anyone can upload a résumé on the careers page. PDFs are now opened with `isEvalSupported:false` (the official fix for that release line) and the CSP forbids `eval`; pinned by a unit test. Upgrading pdf.js to 4.2+ needs ES modules, which waits for the module conversion. The other audit findings (`tar`, `uuid`) are only in development tooling; `npm audit --omit=dev` is clean.
+- ☑ **Launch runbook** written: `docs/LAUNCH.md`.
 - ☐ Security review (RLS audit, key handling, dependency scan) and DPDP review (consent, retention, deletion, access requests)
 - ☐ Accessibility pass; load test with realistic volume
 - ☐ User acceptance test with the recruiting team; training notes; go-live and cutover checklist

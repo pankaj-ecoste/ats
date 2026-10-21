@@ -57,7 +57,8 @@ async function docxText(bytes){
 }
 // pdfjs: the pdf.js library
 async function pdfText(bytes,pdfjs){
- const doc=await pdfjs.getDocument({data:bytes}).promise,pages=[];
+ // isEvalSupported:false is the official protection against CVE-2024-4367 (a crafted PDF font running code), which affects pdf.js up to 4.1; the page policy also forbids eval
+ const doc=await pdfjs.getDocument({data:bytes,isEvalSupported:false}).promise,pages=[];
  for(let i=1;i<=doc.numPages;i++){
   const {items}=await(await doc.getPage(i)).getTextContent(),lines=[];let line='',lastY=null;
   for(const it of items){

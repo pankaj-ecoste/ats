@@ -32,9 +32,9 @@ These are the things only the account owner can do, in the dashboards. The code 
 
 ## 4. Hosting and the live site (Phase 7)
 
-- [ ] HTTPS only, with security headers (`Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security`).
+- [x] Security headers and a Content-Security-Policy are set in `vercel.json` (no `eval`, no outside script, font or style sources; connections only to this site and Supabase). `npm run test:e2e:csp` serves the built app with exactly those headers and fails on any violation. Vercel gives HTTPS; the HSTS header is on. *(done 2026-10-21)*
 - [ ] The browser app contains only the project URL and the **anon** key. Confirm the **service-role key and `DATABASE_URL` are not in any file served to the browser** (search the built `dist/` file for `service_role` and `postgresql://`).
-- [ ] Self-host the fonts and the Excel library instead of public CDNs.
+- [x] Fonts and the Excel library are served from the app itself (`npm run vendor`); the CSP test also fails if any request leaves for another address. *(done 2026-10-21)*
 
 ## 5. People and data
 

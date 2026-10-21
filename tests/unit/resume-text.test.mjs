@@ -69,3 +69,11 @@ test('resumeTextFromFile: text files, Word files, tidy output, and a scan with n
   await assert.rejects(app.resumeTextFromFile(fileOf('cv.docx', new Uint8Array(40)), null), /not a valid Word file/);
   await assert.rejects(app.resumeTextFromFile(fileOf('cv.pdf', new Uint8Array(5)), async () => ({ getDocument: () => ({ promise: Promise.reject(new Error('Invalid PDF structure')) }) })), /PDF could not be read \(Invalid PDF structure\)/);
 });
+
+test('PDFs are opened with eval turned off (protection against CVE-2024-4367 in the bundled pdf.js)', async () => {
+  const app = loadApp({ until: 'src/domain/resume-text.js', expose: ['resumeTextFromFile'] });
+  let seen;
+  const pdfjs = { getDocument: (opts) => { seen = opts; return { promise: Promise.resolve({ numPages: 1, getPage: async () => ({ getTextContent: async () => ({ items: [{ str: 'Asha Rao and a long enough line of text for the reader', transform: [1, 0, 0, 1, 0, 700] }] }) }) }) }; } };
+  await app.resumeTextFromFile(new File([new Uint8Array(5)], 'cv.pdf'), async () => pdfjs);
+  assert.equal(seen.isEvalSupported, false);
+});
