@@ -56,6 +56,16 @@ check('a broken address is ignored', (await view()).startsWith('dashboard'));
 await page.goto(base + '#/dashboard/today'); await page.reload(); await settle();
 check('the dashboard remembers which tab', (await page.evaluate(() => R.dashTab)) === 'today');
 
+await page.goto(base + '#/applications'); await page.reload(); await settle();
+await page.evaluate(() => { const c = document.getElementById('content'); c.style.maxHeight = '300px'; c.style.overflow = 'auto'; c.scrollTop = 120; });
+const before = await page.evaluate(() => document.getElementById('content').scrollTop);
+await page.fill('[data-f="skill"]', 'a'); await page.keyboard.press('Tab'); await settle();
+const stay = await page.evaluate(() => ({ top: document.getElementById('content').scrollTop, tag: document.activeElement && document.activeElement.tagName }));
+check('a redraw on the same screen keeps the scroll position', before > 0 && stay.top === before);
+await page.fill('[data-f="skill"]', 'ab');
+await page.focus('[data-f="skill"]'); await page.evaluate(() => { const i = document.querySelector('[data-f="skill"]'); i.dispatchEvent(new Event('change')); }); await settle();
+check('and keeps the cursor in the field being edited', await page.evaluate(() => document.activeElement && document.activeElement.dataset.f === 'skill'));
+
 check('no errors in the page', errors.length === 0 || (console.error(errors), false));
 await browser.close();
 let bad = 0;
