@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-16
-- **Current phase:** Phase 1 (Foundations) in progress: P1.1 (git), P1.2 and the extension-point and mutation-layer parts of P1.3 are done. Tooling (lint, CI, hook, conventions) is written. **Phase 2 has started:** the database schema, rules and access policies are built and tested; the login screen and Users page are in. **P2.3 (data layer) core is done:** ids are collision-proof, the app reads everything from Supabase after sign-in, and every change is saved back in the background. Two recruiters can now share data in connected mode. Notifications reach the right people and every role sees only the pages it may use. Left in P2.3: loading and error states, pagination, interviewer scorecards, realtime refresh (see Phase 2). Left in Phase 1: protect `main`, see CI green once, inline onclick, ES modules, strict mode, constants out of code. Then Phase 2 (backend core).
+- **Current phase:** Phases 1 to 6 are done as far as they can be without outside accounts (see the log). Next: Phase 7 (hardening and launch on Vercel). Waiting on the owner: Vercel project and environment variables, GitHub secrets for the clean-up job, branch protection, secret rotation, Brevo email later.
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -507,18 +507,18 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 *Exit criteria:* SLA alerts arrive without anyone opening the app; management report numbers match the database.
 
-### Phase 6: Frontend modernisation (decision gate after Phase 2)
+### Phase 6: Frontend modernisation (decided 2026-10-21)
 
 *Goal:* fix the structural limits of the UI (no URLs, whole-page re-render).
 
-- ☐ **Gate decision (D8):** stay on vanilla JS with modules and a small router, or move to React. Decide using real pain after Phase 2, not before.
-- ☐ Vite build replaces `build-single.mjs` and the hand-ordered manifest
-- ☐ Real router: URLs, deep links, back button, "share this candidate"
-- ☐ TypeScript types generated from the database schema
-- ☐ Targeted re-rendering or components; virtualised long lists
-- ☐ If React: migrate one feature at a time behind the same data layer, smoke test after each
+- ☑ **Gate decision D8: stay on plain JavaScript, no React.** The real pains after Phase 2 were no URLs and lost focus or scroll on a redraw, not a lack of components. Both are fixed below without a framework.
+- ☑ **Real addresses (2026-10-21):** every screen has a URL (`#/candidate/C-2001/notes`, `#/opening/OP-1001`, `#/dashboard/report`). `src/app/url.js`: `routeToHash`, `hashToRoute`, `applyHash`, `syncUrl`; `render()` puts the screen in the address bar, `hashchange` drives back, forward and pasted links, the first load opens the address given (after sign-in in connected mode). A link to a record that does not exist, or a page the role may not open, falls back to the start page. Hash addresses were chosen because they work on any static host (Vercel) and in the single-file build with no server rewrite rules. 15 browser checks (`test:e2e:routing`) and 2 unit tests.
+- ☑ **Redraws keep scroll and focus (2026-10-21):** on the same screen `render()` puts back the scroll position and the field being edited, with its cursor (`stillness`, `restoreStillness` in `app/render.js`).
+- ☑ **Types from the database (2026-10-21):** `npm run types` writes `src/types/database.d.ts` (28 tables, enums as literal types, nullable columns) from the live schema; a test fails if a table the app reads is missing or a recent column is absent.
+- ⏸ **ES modules and a Vite build: deferred, on measurement.** Measured on 2026-10-21: 76 files, 3,406 cross-file references that would each need an explicit import, 4 places where one file assigns another file's variable (`S` twice in `data/api.js` and once in `core/repo.js`, `ME` in `features/auth/auth.js`), and about 60 dependencies that point to a later file in today's load order (screens call each other, `core` reaches `app/ui`), so the layers would become import cycles. The unit tests also load the scripts into a Node `vm` for a fresh state per test; they would need a new loader. The benefits asked for (no undefined or duplicate names, layer rules) are already enforced by ESLint and `architecture.test.mjs`, and `npm run build` already gives one deployable file that Vercel serves. Revisit when a second developer joins or a feature needs a library that wants imports. If done, do it one layer at a time starting from `domain` and `core`.
+- ⏸ React and virtualised lists: not needed (lists show 100 rows at a time; no component pain found).
 
-*Exit criteria:* every page has a URL; refresh keeps you where you are; no page loses focus or scroll on edit.
+*Exit criteria (met 2026-10-21):* every page has a URL; refresh keeps you where you are; no page loses focus or scroll on edit.
 
 ### Phase 7: Hardening and launch
 
@@ -561,7 +561,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 | D5 | Which channels must really send: email, calendar, WhatsApp? | **Decided 2026-10-19: email through Brevo, later, once the app has run well. No sender domain yet (Vercel link is production). Calendar and WhatsApp: the .ics file and the open-in-WhatsApp links stay.** | P3 |
 | D6 | Real company name/address/signatory to replace "Northwind Technologies" defaults? | Ask HR | P2.4 |
 | D7 | Is the current "AI" wording acceptable internally, or relabel as "rule-based"? | Relabel until a model is connected | P5 |
-| D8 | Stay on vanilla JS with modules, or move to React? | Decide after Phase 2 | P6 gate |
+| D8 | Stay on vanilla JS with modules, or move to React? | **Decided 2026-10-21: vanilla JS, no React; ES modules and Vite deferred (measured, see Phase 6).** | P6 gate |
 | D9 | Does an offer need approval by a hiring manager before sending? | Yes | P3 |
 | D10 | Which roles may see salary and offer data? | admin, recruiter, approving hiring manager | P2.2 |
 | D11 | Email provider (Resend, Postmark, or Google Workspace SMTP)? | Resend | P3 |
