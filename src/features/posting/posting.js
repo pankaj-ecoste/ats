@@ -1,6 +1,7 @@
 /* =====================================================
    JOB POSTING ON OTHER SITES
    ===================================================== */
+"use strict";
 const DEFAULT_BOARDS=[
  {id:'linkedin_jobs',name:'LinkedIn Jobs',type:'board',fmt:'full',color:'#0A66C2',src:'LinkedIn',url:'https://www.linkedin.com/talent/post-a-job'},
  {id:'naukri',name:'Naukri',type:'board',fmt:'full',color:'#275DF5',src:'Naukri',url:'https://recruit.naukri.com/'},
@@ -45,7 +46,7 @@ function boardUrl(b,o,text){const c=postCfg();const ap=formLink(o,b)||c.applyLin
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
 const postingOf=(opId,bid)=>S.postings.filter(p=>p.opId===opId&&p.board===bid).slice(-1)[0];
 function boardApplicants(o,b){return appsOfOp(o.id).filter(a=>getC(a.cid).source===b.src).length}
-function postStatus(p){if(!p)return ['Not posted',''];if(p.status==='Closed')return ['Closed','red'];if(p.status==='Paused')return ['Paused','orange'];if(p.expires&&p.expires<TODAY)return ['Expired','red'];return [`Posted ${daysBetween(p.postedOn,TODAY)===0?'today':daysBetween(p.postedOn,TODAY)+'d ago'}`,'green']}
+function postStatus(p){if(!p)return ['Not posted',''];if(p.status==='Closed')return ['Closed','red'];if(p.status==='Paused')return ['Paused','orange'];if(p.expires&&p.expires<today())return ['Expired','red'];return [`Posted ${daysBetween(p.postedOn,today())===0?'today':daysBetween(p.postedOn,today())+'d ago'}`,'green']}
 function boardCard(o,b){
  const p=postingOf(o.id,b.id);const [st,col]=postStatus(p);const n=boardApplicants(o,b);const text=postText(o,b.fmt,b);const url=boardUrl(b,o,text);
  return `<div class="bcard ${col==='green'?'posted':''}"><div class="bh"><span class="bbadge" style="background:${b.color}">${esc(b.name.replace(/[^A-Za-z]/g,'').slice(0,2).toUpperCase())}</span><div class="grow"><b>${esc(b.name)}</b><small>${b.type==='social'?'Share post':'Job board'} · ${n} applicant${n===1?'':'s'}</small></div><span class="pill ${col}">${st}</span></div>
@@ -85,7 +86,7 @@ function bindPosting(root){
  $$('[data-pgo]',root).forEach(tr=>tr.onclick=()=>{R.post.op=tr.dataset.pgo;R.param=tr.dataset.pgo;render();$('#content').scrollTo({top:0,behavior:'smooth'})});
  const B=id=>boards().find(b=>b.id===id);
  $$('[data-copyopen]',root).forEach(a=>a.onclick=()=>{const b=B(a.dataset.copyopen);copyText(postText(op,b.fmt,b)).then(ok=>toast(ok?(b.type==='social'?`Opening ${b.name} with the post filled in`:`Post copied. Paste it into ${b.name}.`):`Opening ${b.name}. Use Preview to copy the text.`,ok?'var(--green)':'var(--orange)'));
-  if(b.type==='social'&&!postingOf(op.id,b.id)){S.postings.push({id:uid('PST'),opId:op.id,board:b.id,status:'Posted',postedOn:TODAY,url:'',expires:'',cost:0});log(`${op.title} shared on ${b.name}`,'posting');save();setTimeout(render,300)}});
+  if(b.type==='social'&&!postingOf(op.id,b.id)){recordSocialShare(op,b);setTimeout(render,300)}});
  $$('[data-copyonly]',root).forEach(bt=>bt.onclick=()=>{const b=B(bt.dataset.copyonly);copyText(postText(op,b.fmt,b)).then(ok=>toast(ok?'HTML copied for your careers page':'Copy blocked. Use Preview to select the text.',ok?'var(--green)':'var(--orange)'))});
  $$('[data-ppv]',root).forEach(bt=>bt.onclick=()=>previewPost(op,B(bt.dataset.ppv)));
  $$('[data-pm]',root).forEach(bt=>bt.onclick=()=>markPosted(op,B(bt.dataset.pm)));
@@ -105,13 +106,13 @@ function previewPost(o,b){
 function markPosted(o,b){
  const p=postingOf(o.id,b.id)||{};
  modal({title:`${esc(b.name)} · ${esc(o.title)}`,body:`<div class="fgrid"><label class="f full">Listing link <span class="muted">(optional)</span><input class="inp" id="mpu" value="${esc(p.url||'')}" placeholder="https://…"></label>
- <label class="f">Posted on<input class="inp" type="date" id="mpd" value="${p.postedOn||TODAY}"></label><label class="f">Live until<input class="inp" type="date" id="mpe" value="${p.expires||addDays(30)}"></label>
+ <label class="f">Posted on<input class="inp" type="date" id="mpd" value="${p.postedOn||today()}"></label><label class="f">Live until<input class="inp" type="date" id="mpe" value="${p.expires||addDays(30)}"></label>
  <label class="f">Status<select class="inp" id="mps">${['Posted','Paused','Closed'].map(s=>`<option ${s===(p.status||'Posted')?'selected':''}>${s}</option>`).join('')}</select></label><label class="f">Cost (₹)<input class="inp" type="number" id="mpc" value="${p.cost||0}"></label></div>
  <p class="small muted">Applicants are counted automatically from candidates whose source is “${esc(b.src)}”.</p>`,
  foot:`${p.id?'<button class="btn bad" id="mpdel">Remove record</button><span class="grow"></span>':''}<button class="btn" data-close>Cancel</button><button class="btn pri" id="mpsave">Save</button>`,
  onMount:el=>{$('#mpsave',el).onclick=()=>{const rec={id:p.id||uid('PST'),opId:o.id,board:b.id,url:val(el,'#mpu'),postedOn:val(el,'#mpd'),expires:val(el,'#mpe'),status:val(el,'#mps'),cost:+val(el,'#mpc')||0};
-   if(p.id)Object.assign(S.postings.find(x=>x.id===p.id),rec);else S.postings.push(rec);log(`${o.title} ${rec.status==='Posted'?'posted on':rec.status.toLowerCase()+' on'} ${b.name}`,'posting');save();closeModal();toast(`${b.name}: ${rec.status}`);render()};
-  const d=$('#mpdel',el);if(d)d.onclick=()=>{S.postings=S.postings.filter(x=>x.id!==p.id);save();closeModal();render()}}});
+   savePosting(rec,o,b);closeModal();toast(`${b.name}: ${rec.status}`);render()};
+  const d=$('#mpdel',el);if(d)d.onclick=()=>{deletePosting(p.id);closeModal();render()}}});
 }
 function postingSettings(){
  const c=postCfg();
@@ -123,7 +124,7 @@ function postingSettings(){
  <label class="f full">Hashtags<input class="inp" id="psh" value="${esc(c.hashtags)}"></label>
  <label class="f full"><span><input type="checkbox" class="chk" id="pss" ${c.showSalary?'checked':''} style="vertical-align:-3px"> Show salary range in posts</span></label></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="pssave">Save</button>`,
- onMount:el=>{$('#psfsetup',el).onclick=e=>{e.preventDefault();closeModal();formSetupModal()};$('#pssave',el).onclick=()=>{const f=val(el,'#psf');if(f&&!/^https:\/\//i.test(f)){toast('The form link should start with https://','var(--red)');return}c.formUrl=f;Object.assign(c,{applyLink:val(el,'#psl'),applyEmail:val(el,'#pse'),about:val(el,'#psa'),hashtags:val(el,'#psh'),showSalary:$('#pss',el).checked});save();closeModal();toast('Posting settings saved');render()}}});
+ onMount:el=>{$('#psfsetup',el).onclick=e=>{e.preventDefault();closeModal();formSetupModal()};$('#pssave',el).onclick=()=>{const f=val(el,'#psf');if(f&&!/^https:\/\//i.test(f)){toast('The form link should start with https://','var(--red)');return}savePostingSettings({formUrl:f,applyLink:val(el,'#psl'),applyEmail:val(el,'#pse'),about:val(el,'#psa'),hashtags:val(el,'#psh'),showSalary:$('#pss',el).checked});closeModal();toast('Posting settings saved');render()}}});
 }
 function formScriptText(){return FORM_SCRIPT.replace('{{COMPANY}}',String(S.settings.company).replace(/\\/g,'').replace(/'/g,"\\'")).replace('{{EDUCATION}}',JSON.stringify([...SheetsIO.LISTS.Education,'Other']))}
 function formSetupModal(){
@@ -145,16 +146,15 @@ function manageBoards(){
  <div class="tbl-wrap"><table><thead><tr><th>Site</th><th>Opens</th><th>Counts applicants with source</th><th></th></tr></thead><tbody>${bl.map((b,i)=>`<tr><td><b>${esc(b.name)}</b></td><td><input class="inp" data-bu="${i}" value="${esc(b.url)}" style="min-width:280px;font-size:12px" ${b.id==='careers'?'placeholder="Uses the apply link from Posting settings" disabled':''}></td><td><input class="inp" data-bs="${i}" value="${esc(b.src)}" style="width:130px;font-size:12px"></td><td>${b.custom?`<button class="btn sm ghost" data-bd="${i}" aria-label="Remove">${ic('x')}</button>`:''}</td></tr>`).join('')}</tbody></table></div>
  <h4 style="margin:16px 0 8px">Add a site</h4><div class="fgrid g3f"><label class="f">Name<input class="inp" id="nbn" placeholder="e.g. WorkIndia"></label><label class="f" style="grid-column:span 2">Employer page link<input class="inp" id="nbu" placeholder="https://…"></label></div>`,
  foot:`<button class="btn ghost" id="bdef">Restore defaults</button><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn pri" id="bsave">Save</button>`,
- onMount:el=>{$$('[data-bd]',el).forEach(b=>b.onclick=()=>{bl.splice(+b.dataset.bd,1);save();closeModal();manageBoards()});
-  $('#bdef',el).onclick=()=>{S.boards=JSON.parse(JSON.stringify(DEFAULT_BOARDS));save();closeModal();toast('Default sites restored');render()};
-  $('#bsave',el).onclick=()=>{$$('[data-bu]',el).forEach(i=>{if(!i.disabled)bl[+i.dataset.bu].url=i.value.trim()});$$('[data-bs]',el).forEach(i=>bl[+i.dataset.bs].src=i.value.trim()||bl[+i.dataset.bs].src);
-   const n=val(el,'#nbn'),u=val(el,'#nbu');if(n){bl.splice(bl.findIndex(b=>b.type==='social'),0,{id:uid('B'),name:n,type:'board',fmt:'full',color:avColor(n),src:n,url:u,custom:true});if(!SOURCES.includes(n))SOURCES.push(n)}
-   save();closeModal();toast('Sites saved');render()}}});
+ onMount:el=>{$$('[data-bd]',el).forEach(b=>b.onclick=()=>{removeBoard(+b.dataset.bd);closeModal();manageBoards()});
+  $('#bdef',el).onclick=()=>{resetBoards(JSON.parse(JSON.stringify(DEFAULT_BOARDS)));closeModal();toast('Default sites restored');render()};
+  $('#bsave',el).onclick=()=>{const urls=$$('[data-bu]',el).filter(i=>!i.disabled).map(i=>[+i.dataset.bu,i.value.trim()]),srcs=$$('[data-bs]',el).map(i=>[+i.dataset.bs,i.value.trim()]);
+   const n=val(el,'#nbn'),u=val(el,'#nbu');saveBoards({urls,srcs,added:n?{id:uid('B'),name:n,type:'board',fmt:'full',color:avColor(n),src:n,url:u,custom:true}:null});closeModal();toast('Sites saved');render()}}});
 }
 VIEWS.posting=[vPosting,bindPosting];
-NAV.splice(NAV.findIndex(n=>n[0]==='openings')+1,0,['posting','Job posting','send']);
+addNav(['posting','Job posting','send'],'openings');
 
 // opening detail: posting tab
 function postingTabHTML(o){R.post.op=o.id;const live=S.postings.filter(p=>p.opId===o.id&&postStatus(p)[1]==='green');
- return `${formBanner(o)}<section class="panel"><header><div><h3>Live on ${live.length} job site${live.length===1?'':'s'}</h3><p>Copy a post, open the site, then mark it posted</p></div><button class="btn pri" onclick="go('posting','${o.id}')">${ic('send')}All sites and social</button></header><div class="pbody"><div class="boards">${boards().filter(x=>x.type==='board').map(x=>boardCard(o,x)).join('')}</div></div></section>`}
-{const [v,b]=VIEWS.opening;VIEWS.opening=[v,r=>{b(r);if(R.tab==='posting')bindPosting(r)}]}
+ return `${formBanner(o)}<section class="panel"><header><div><h3>Live on ${live.length} job site${live.length===1?'':'s'}</h3><p>Copy a post, open the site, then mark it posted</p></div><button class="btn pri" data-act="go" data-a1="posting" data-a2="${o.id}">${ic('send')}All sites and social</button></header><div class="pbody"><div class="boards">${boards().filter(x=>x.type==='board').map(x=>boardCard(o,x)).join('')}</div></div></section>`}
+onBind('opening',r=>{if(R.tab==='posting')bindPosting(r)});

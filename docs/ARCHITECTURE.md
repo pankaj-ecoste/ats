@@ -4,31 +4,32 @@
 
 The app is a client-only, single-page application written in plain JavaScript with no framework and no build step.
 
-- **State.** One object, `S` (`src/core/store.js`), holds everything: `settings`, `openings`, `candidates`, `applications`, `interviews`, `groups`, `offers`, `onboarding`, `tasks`, `activity`, `notifications`, `postings`, `boards`, `postCfg`, `autoSync`, `events`, `callLog`, `monthly`, `sheetLog`. It is read from and written to `localStorage` under the key `spectra-ats-v3` as a single JSON blob.
+- **State.** One object, `S` (`src/core/store.js`), holds everything: `settings`, `openings`, `candidates`, `applications`, `interviews`, `groups`, `offers`, `onboarding`, `tasks`, `activity`, `notifications`, `postings`, `boards`, `postCfg`, `autoSync`, `events`, `callLog`, `monthly`, `sheetLog`. It is read from and written to `localStorage` under the key `ecoste-ats` (older data under `spectra-ats-v3` is read once and copied; unknown versions are backed up to `ecoste-ats-backup`) as a single JSON blob.
 - **Routing.** `R` (`src/app/router.js`) is in-memory UI state (current view, tab, filters). `go(view, param, tab)` changes it and re-renders. There are no URLs, so pages cannot be linked or refreshed into.
 - **Rendering.** Each view is a pair `[viewFn, bindFn]` in `VIEWS` (`src/app/render.js`). `viewFn()` returns an HTML string, `render()` assigns it to `#content`, then `bindFn(root)` attaches handlers. Every change re-renders the whole page.
-- **Mutations.** Code mutates `S` directly, then calls `save()` and `render()`. `setStage()` in `src/app/actions.js` is the main shared mutation.
+- **Mutations.** Every user action goes through a service in `src/services/`, which changes data only through `repo` (`src/core/repo.js`: insert, update, remove, root, trim, reset) and returns the result. The handler then shows the toast and calls `render()`. `repo` saves and notifies `repoOnChange` listeners, which is where a database adapter attaches. Known exceptions, listed in `tests/unit/architecture.test.mjs`: the sample-history generator (`management-report/report-events.js`) and four lazy defaults (`boards()`, `postCfg()`, `asCfg()`, `S.postings`). `setStage()` in `src/app/actions.js` is the main shared mutation; it emits `stage:changing` before writing.
+
+## Two modes
+
+`core/supabase.js` creates a Supabase client only when `src/generated/config.js` holds a project URL and anon key. That is **connected mode**: the app shows a sign-in screen first (`features/auth`), and admins get a Users page. Without them the app is in **demo mode**: no sign-in, data in this browser, exactly as the prototype worked. Tests and CI run in demo mode. Until the data layer is connected (plan P2.3), connected mode still keeps the records in this browser behind the sign-in.
 
 ## Layers and dependency direction
 
 ```
-core  ->  data  ->  domain  ->  app  ->  features  ->  app/main.js
+core  ->  data  ->  domain  ->  services  ->  app  ->  features  ->  app/main.js
 ```
 
-A layer may use layers to its left. `core`, `data` and `domain` never touch the DOM at load time, which is what lets `tests/unit/load-app.mjs` run them in Node.
+A layer may use layers to its left. `core`, `data`, `domain` and `services` never touch the DOM at all, which is what lets `tests/unit/load-app.mjs` run them in Node.
 
-All files are classic scripts in one global scope. Only `core/`, `data/` and `domain/` run in strict mode, because only that part of the prototype did. Turning strict mode on elsewhere is a separate, deliberate change.
+All files are classic scripts in one global scope and every file runs in strict mode. They become ES modules in Phase 6 (see the plan); until then ESLint gives each file the other files' top-level names as globals, so undefined and duplicate names fail the build.
 
 ## Things that will surprise you
 
-These are carried over unchanged from the prototype. Each has a matching item in the roadmap.
+Carried over from the prototype. Each has a matching item in `.claude/plan.md`.
 
-1. **Features extend each other by wrapping.** `features/sheets/auto-import.js` replaces `VIEWS.sheets` and `VIEWS.applications` with wrappers that call the original view and then `String.replace` a literal fragment of its HTML to inject UI. If that markup changes, the injected UI silently disappears. `features/posting/posting.js` wraps `VIEWS.opening`, `features/management-report/report.js` wraps `VIEWS.dashboard`, and `report-events.js` reassigns the global `setStage` to record events.
-2. **`NAV` is edited at load time** by `pipeline.js` and `posting.js` (`NAV.splice`), so sidebar order depends on script order.
-3. **`STAGES` is defined twice**: `core/constants.js` and inside `features/sheets/sheets-io.js`.
-4. **`TODAY` is fixed when the page loads** (`core/utils.js`). A tab left open overnight keeps yesterday's date.
-5. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
-6. **ExcelJS and the Figtree font load from public CDNs at runtime.**
+1. **Extension points live in `src/core/hooks.js`.** A host view declares a slot (`slotHTML('sheets.top')`) and a feature fills it (`fillSlot`); extra handlers go through `onBind`; a view can be changed with `decorateView`; stage changes are announced with `emitEvent('stage:changing')` and heard with `onEvent`; sidebar items are added with `addNav(item, afterKey)`. Do not patch another feature's HTML or reassign its functions. The one remaining decorator is the dashboard (`management-report/report.js`).
+2. **Two integrations only work inside claude.ai.** Google Sheet auto-import calls `window.claude.use('mcp')` and file saving tries `window.claude.use('downloads')` first. Saving falls back to a normal browser download; auto-import has no fallback.
+3. **ExcelJS and the Figtree font load from public CDNs at runtime.**
 
 ## How the split was verified
 

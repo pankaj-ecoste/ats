@@ -1,5 +1,6 @@
 /* Applications table, board, filters, bulk actions */
 /* ---------- applications ---------- */
+"use strict";
 function filteredApps(){
  const f=R.af;
  let l=S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);
@@ -13,14 +14,14 @@ function filteredApps(){
 function appTable(list,compact){
  const th=(k,l)=>`<th class="sort" data-sort="${k}">${l}${R.af.sort===k?(R.af.dir>0?' ▲':' ▼'):''}</th>`;
  if(!list.length)return '<div class="empty"><b>No applications here</b>Adjust filters or add a candidate.</div>';
- return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','AI match')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
- ${list.map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
+ return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','Match score')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
+ ${(compact?list:pageRows(list,'apps')).map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
   return `<tr class="click ${R.sel.has(a.id)?'sel':''}" data-cand="${c.id}">${compact?'':`<td><input type="checkbox" class="chk" data-sel="${a.id}" ${R.sel.has(a.id)?'checked':''} aria-label="Select ${esc(c.name)}"></td>`}
   <td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td>${compact?'':`<td>${esc(o.title)}</td>`}
   <td>${fmtDs(a.date)}</td><td><button class="btn sm ghost" data-resume="${c.id}" data-op="${o.id}" aria-label="View resume">${ic('file')}</button></td>
   <td><button class="score" data-match="${a.id}" title="See why">${ring(m.score)}</button></td><td>${c.exp}y</td><td>${pc(m.skills)}</td><td>${pc(m.location)}</td><td>${pc(m.education)}</td>
   <td>${c.notice}d</td><td>${lpa(c.curSal)}</td><td>${lpa(c.expSal)}</td><td>${stagePill(a.stage)}</td><td class="small">${esc(a.recruiter)}</td><td>${nextBtn(a)}</td></tr>`}).join('')}
- </tbody></table></div>`;
+ </tbody></table></div>${compact?'':moreRows(list,'apps')}`;
 }
 function bindAppTable(root){
  $$('[data-cand]',root).forEach(tr=>tr.onclick=e=>{if(e.target.closest('button,input'))return;go('candidate',tr.dataset.cand)});
@@ -28,23 +29,23 @@ function bindAppTable(root){
  $$('[data-resume]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();resumeModal(b.dataset.resume,b.dataset.op)});
  $$('[data-sort]',root).forEach(t=>t.onclick=()=>{const k=t.dataset.sort;if(R.af.sort===k)R.af.dir*=-1;else{R.af.sort=k;R.af.dir=k==='name'?1:-1}render()});
  $$('[data-sel]',root).forEach(cb=>cb.onchange=()=>{cb.checked?R.sel.add(cb.dataset.sel):R.sel.delete(cb.dataset.sel);render()});
- const sa=$('#selAll',root);if(sa){const l=filteredApps();sa.checked=l.length&&l.every(a=>R.sel.has(a.id));sa.onchange=()=>{l.forEach(a=>sa.checked?R.sel.add(a.id):R.sel.delete(a.id));render()}}
- bindNext(root);
+ const sa=$('#selAll',root);if(sa){const l=pageRows(filteredApps(),'apps');sa.checked=l.length&&l.every(a=>R.sel.has(a.id));sa.onchange=()=>{l.forEach(a=>sa.checked?R.sel.add(a.id):R.sel.delete(a.id));render()}}
+ bindNext(root);bindMoreRows(root);
 }
 function vApplications(){
  const f=R.af;const list=filteredApps();const opt=(arr,v,all)=>`<option value="">${all}</option>`+arr.map(x=>`<option value="${esc(x[0])}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('');
  const bulk=R.sel.size?`<div class="bulk"><b>${R.sel.size} selected</b><button class="btn sm" data-bulk="short">Shortlist</button><button class="btn sm" data-bulk="gi">Schedule group interview</button>
   <select class="inp" id="bulkStage" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Move to stage…</option>${STAGES.concat(['On Hold']).map(s=>`<option>${s}</option>`).join('')}</select>
-  <select class="inp" id="bulkRec" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Assign recruiter…</option>${RECRUITERS.map(s=>`<option>${s}</option>`).join('')}</select>
+  <select class="inp" id="bulkRec" style="width:auto;padding:5px 8px;font-size:12px"><option value="">Assign recruiter…</option>${recruiters().map(s=>`<option>${s}</option>`).join('')}</select>
   <button class="btn sm bad" data-bulk="rej">Reject</button><button class="btn sm ghost" data-bulk="clear">Clear</button></div>`:'';
  const board=()=>{const l=list;const cols=STAGES.concat(['On Hold','Rejected']);return `<div class="board">${cols.map(s=>{const it=l.filter(a=>a.stage===s);return `<div class="col" data-col="${s}"><h4>${stagePill(s)}<span class="muted">${it.length}</span></h4><div class="cards">${it.map(a=>{const c=getC(a.cid),m=matchA(a);return `<div class="kc" draggable="true" data-drag="${a.id}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${esc(c.name)}</b>${ring(m.score)}</div><div class="muted small">${esc(getOp(a.opId).title)}</div><div class="muted small">${c.exp} yrs · ${esc(c.location)} · ${c.notice}d notice</div><div style="margin-top:8px">${nextBtn(a)}</div></div>`}).join('')}</div></div>`}).join('')}</div>`};
- return `<div class="page-h"><div><h1>Applications</h1><p>${list.length} of ${S.applications.length} applications · AI match runs automatically when a resume arrives</p></div>
- <div class="row"><div class="seg"><button class="${R.appView==='table'?'on':''}" data-av="table">${ic('list','style="width:14px;vertical-align:-2px"')} Table</button><button class="${R.appView==='board'?'on':''}" data-av="board">${ic('board','style="width:14px;vertical-align:-2px"')} Board</button></div><button class="btn pri" onclick="addCandidate()">${ic('upload')}Add application</button></div></div>
+ return `<div class="page-h"><div><h1>Applications</h1><p>${list.length} of ${S.applications.length} applications · Match score runs automatically when a resume arrives</p></div>
+ <div class="row">${slotHTML('applications.toolbar')}<div class="seg"><button class="${R.appView==='table'?'on':''}" data-av="table">${ic('list','style="width:14px;vertical-align:-2px"')} Table</button><button class="${R.appView==='board'?'on':''}" data-av="board">${ic('board','style="width:14px;vertical-align:-2px"')} Board</button></div><button class="btn pri" data-act="addCandidate">${ic('upload')}Add application</button></div></div>
  <section class="panel"><div class="filters">
   <input class="inp" id="afq" placeholder="Search name, opening, ID" value="${esc(f.q)}" style="min-width:180px">
   <select class="inp" data-f="op">${opt(S.openings.map(o=>[o.id,o.title]),f.op,'All openings')}</select>
   <select class="inp" data-f="status">${opt(STAGES.concat(['On Hold','Rejected']).map(s=>[s,s]),f.status,'All statuses')}</select>
-  <select class="inp" data-f="rec">${opt(RECRUITERS.map(s=>[s,s]),f.rec,'All recruiters')}</select>
+  <select class="inp" data-f="rec">${opt(recruiters().map(s=>[s,s]),f.rec,'All recruiters')}</select>
   <input class="inp" data-f="skill" placeholder="Skill" value="${esc(f.skill)}" style="width:100px">
   <input class="inp" data-f="loc" placeholder="Location" value="${esc(f.loc)}" style="width:100px">
   <select class="inp" data-f="exp">${opt([['1','1+ yrs'],['3','3+ yrs'],['5','5+ yrs'],['7','7+ yrs']],f.exp,'Any experience')}</select>
@@ -61,10 +62,10 @@ function bindApplications(root){
  $$('[data-bulk]',root).forEach(b=>b.onclick=()=>{const ids=[...R.sel];const k=b.dataset.bulk;
   if(k==='clear'){R.sel.clear();render();return}
   if(k==='short'){ids.forEach(id=>{if(getA(id).stage==='New')setStage(id,'Shortlisted',true)});toast(ids.length+' candidates shortlisted');R.sel.clear();render()}
-  if(k==='rej')confirmBox('Reject candidates',`Reject ${ids.length} selected applications?`,'Reject all',()=>{ids.forEach(id=>setStage(id,'Rejected',true));R.sel.clear();toast(ids.length+' applications rejected','var(--red)');render()},true);
+  if(k==='rej')askRejectReason(`Reject ${ids.length} selected applications?`,'Reject all',r=>{ids.forEach(id=>setStage(id,'Rejected',true,r));R.sel.clear();toast(ids.length+' applications rejected','var(--red)');render()});
   if(k==='gi'){const ops=[...new Set(ids.map(id=>getA(id).opId))];if(ops.length>1){toast('Pick candidates from one opening for a group interview','var(--orange)');return}scheduleGI(ops[0],ids)}});
  const bs=$('#bulkStage',root);if(bs)bs.onchange=()=>{if(!bs.value)return;const n=R.sel.size;[...R.sel].forEach(id=>setStage(id,bs.value,true));R.sel.clear();toast(`${n} moved to ${bs.value}`);render()};
- const br=$('#bulkRec',root);if(br)br.onchange=()=>{if(!br.value)return;[...R.sel].forEach(id=>getA(id).recruiter=br.value);toast('Assigned to '+br.value);R.sel.clear();save();render()};
+ const br=$('#bulkRec',root);if(br)br.onchange=()=>{if(!br.value)return;assignRecruiter([...R.sel],br.value);toast('Assigned to '+br.value);R.sel.clear();render()};
  bindAppTable(root);
  // kanban drag and drop
  $$('[data-drag]',root).forEach(k=>{k.ondragstart=e=>{e.dataTransfer.setData('text/plain',k.dataset.drag);k.classList.add('drag')};k.ondragend=()=>k.classList.remove('drag');k.onclick=e=>{if(!e.target.closest('button'))go('candidate',getA(k.dataset.drag).cid)}});

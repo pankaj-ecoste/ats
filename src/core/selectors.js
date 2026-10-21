@@ -1,6 +1,10 @@
 /* Lookups over state: getOp, getC, getA, intStatus ... */
 "use strict";
 /* ---------- lookups ---------- */
+// the team lives in settings (S.settings.team) so it can be edited; the built-in names are only the starting point
+// connected: only people with an account can be picked, because a typed name has no account to save against
+const recruiters=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter']);const t=S.settings.team;return t&&t.recruiters&&t.recruiters.length?t.recruiters:DEFAULT_RECRUITERS};
+const interviewers=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter','hiring_manager','interviewer']);const t=S.settings.team;return t&&t.interviewers&&t.interviewers.length?t.interviewers:DEFAULT_INTERVIEWERS};
 const getOp=id=>S.openings.find(o=>o.id===id);
 const getC=id=>S.candidates.find(c=>c.id===id);
 const getA=id=>S.applications.find(a=>a.id===id);
@@ -11,6 +15,6 @@ const offerOfA=aid=>S.offers.filter(o=>o.appId===aid).slice(-1)[0];
 const primaryApp=cid=>{const l=appsOfC(cid);return l.sort((a,b)=>stageRank(b)-stageRank(a))[0]};
 const stageRank=a=>a.stage==='Rejected'||a.stage==='On Hold'?-1:STAGES.indexOf(a.stage);
 function intStatus(i){
- if(i.status==='Scheduled'){const end=new Date(parseD(i.date));const [h,m]=i.time.split(':').map(Number);end.setHours(h,m+i.duration);if(end<NOW)return 'Pending Feedback';}
+ if(i.status==='Scheduled'){const end=new Date(parseD(i.date));const [h,m]=i.time.split(':').map(Number);end.setHours(h,m+i.duration);if(end<now())return 'Pending Feedback';}
  return i.status;
 }

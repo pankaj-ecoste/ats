@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="data:,">
 <title>Ecoste Recruit Tracker — Recruitment workspace</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/vendor/figtree.css">
 <!-- Styles: order is the cascade order. Add feature CSS after the shared sheets. -->
 <link rel="stylesheet" href="src/styles/tokens.css">
 <link rel="stylesheet" href="src/styles/base.css">
@@ -21,6 +19,7 @@
 <link rel="stylesheet" href="src/features/posting/posting.css">
 <link rel="stylesheet" href="src/features/sheets/auto-import.css">
 <link rel="stylesheet" href="src/features/management-report/report.css">
+<link rel="stylesheet" href="src/features/auth/auth.css">
 </head>
 <body>
 <div class="app">
@@ -35,23 +34,56 @@
 <div id="printArea" aria-hidden="true"></div>
 
 <!-- Scripts: classic scripts sharing one global scope, so ORDER MATTERS.
-     core -> data -> domain -> app -> features -> app/main.js (always last).
+     core -> data -> domain -> services -> app -> features -> app/main.js (always last).
      scripts/build-single.mjs reads this list to produce the single-file build. -->
+<script src="src/generated/config.js"></script>
+<script src="src/vendor/supabase.js"></script>
+<script type="text/x-lazy" data-lazy="src/vendor/pdf.min.js"></script>
+<script type="text/x-lazy" data-lazy="src/vendor/pdf.worker.min.js"></script>
+<script type="text/x-lazy" data-lazy="src/vendor/exceljs.min.js"></script>
 <script src="src/core/assets.js"></script>
 <script src="src/generated/form-script.js"></script>
 <script src="src/core/utils.js"></script>
+<script src="src/core/supabase.js"></script>
 <script src="src/core/icons.js"></script>
 <script src="src/core/constants.js"></script>
 <script src="src/data/seed.js"></script>
+<script src="src/data/mapping.js"></script>
+<script src="src/data/api.js"></script>
+<script src="src/data/files.js"></script>
 <script src="src/domain/salary.js"></script>
 <script src="src/core/store.js"></script>
 <script src="src/core/selectors.js"></script>
+<script src="src/core/repo.js"></script>
+<script src="src/core/hooks.js"></script>
 <script src="src/domain/match.js"></script>
 <script src="src/domain/resume-parser.js"></script>
+<script src="src/domain/resume-text.js"></script>
+<script src="src/domain/messaging.js"></script>
+<script src="src/domain/sheet-values.js"></script>
+<script src="src/services/activity.js"></script>
+<script src="src/services/tasks.js"></script>
+<script src="src/services/stages.js"></script>
+<script src="src/services/openings.js"></script>
+<script src="src/services/candidates.js"></script>
+<script src="src/services/applications.js"></script>
+<script src="src/services/interviews.js"></script>
+<script src="src/services/offers.js"></script>
+<script src="src/services/onboarding.js"></script>
+<script src="src/services/posting.js"></script>
+<script src="src/services/settings.js"></script>
+<script src="src/services/report.js"></script>
+<script src="src/services/sheets.js"></script>
+<script src="src/services/auth.js"></script>
+<script src="src/services/audit.js"></script>
+<script src="src/services/summary.js"></script>
+<script src="src/services/report-counts.js"></script>
 <script src="src/app/router.js"></script>
 <script src="src/app/shell.js"></script>
 <script src="src/app/ui.js"></script>
+<script src="src/app/lazy.js"></script>
 <script src="src/app/actions.js"></script>
+<script src="src/app/ui-actions.js"></script>
 <script src="src/features/dashboard/dashboard.js"></script>
 <script src="src/features/openings/openings.js"></script>
 <script src="src/features/applications/applications.js"></script>
@@ -69,11 +101,16 @@
 <script src="src/features/reports/reports.js"></script>
 <script src="src/features/assistant/assistant.js"></script>
 <script src="src/features/settings/settings.js"></script>
+<script src="src/app/url.js"></script>
 <script src="src/app/render.js"></script>
 <script src="src/features/sheets/sheets-io.js"></script>
 <script src="src/features/sheets/sheets.js"></script>
 <script src="src/features/pipeline/pipeline.js"></script>
 <script src="src/features/posting/posting.js"></script>
+<script src="src/features/auth/auth.js"></script>
+<script src="src/features/auth/setup.js"></script>
+<script src="src/features/users/users.js"></script>
+<script src="src/features/audit/audit.js"></script>
 <script src="src/features/sheets/auto-import.js"></script>
 <script src="src/features/management-report/report-events.js"></script>
 <script src="src/features/management-report/report-metrics.js"></script>

@@ -3,11 +3,13 @@
 /* ---------- utilities ---------- */
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const uid=p=>p+'-'+Math.random().toString(36).slice(2,8).toUpperCase();
+// collision-proof ids: prefix + 8 random characters (about 40 bits) from the crypto source; no look-alike letters (0/O, 1/I)
+const ID_CHARS='23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+const uid=p=>p+'-'+[...crypto.getRandomValues(new Uint8Array(8))].map(b=>ID_CHARS[b&31]).join('');
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-const NOW=new Date(); const TODAY=iso(NOW);
-const addDays=(n,base=NOW)=>{const d=new Date(base);d.setDate(d.getDate()+n);return iso(d)};
+const now=()=>new Date(); const today=()=>iso(now()); // evaluated on use, so a tab left open overnight stays correct
+const addDays=(n,base=now())=>{const d=new Date(base);d.setDate(d.getDate()+n);return iso(d)};
 const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const fmtD=s=>{if(!s)return '—';const d=parseD(s);return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()};

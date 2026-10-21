@@ -1,5 +1,6 @@
 /* Management report: SVG line and bar charts */
 /* ---- tiny SVG charts ---- */
+"use strict";
 function lineChart(labels,series,h=220){const W=640,H=h,p={l:34,r:12,t:12,b:28};const max=Math.max(1,...series.flatMap(s=>s.v));const nice=Math.ceil(max/5)*5||5;
  const x=i=>p.l+(W-p.l-p.r)*(labels.length<2?0:i/(labels.length-1)),y=v=>H-p.b-(H-p.t-p.b)*v/nice;
  let g='';for(let k=0;k<=5;k++){const v=nice*k/5;g+=`<line x1="${p.l}" x2="${W-p.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${p.l-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--tx3)">${Math.round(v)}</text>`}

@@ -11,11 +11,13 @@ const target = process.argv[2] === 'dist' ? 'dist/Ecoste_Recruit_Tracker.html' :
 
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const page = await browser.newPage();
+// these tests cover the app itself, so they always run in demo mode, whatever .env says (sign-in is tested in auth.mjs)
+await page.addInitScript(() => { globalThis.__APP_CONFIG_OVERRIDE = { supabaseUrl: '', anonKey: '' }; });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(pathToFileURL(resolve(root, target)).href);
 
-const views = await page.evaluate(() => NAV.filter((n) => n[0] !== 'sep').map((n) => n[0]));
+const views = await page.evaluate(() => NAV.filter((n) => n[0] !== 'sep' && (!n[3] || n[3]())).map((n) => n[0]));
 const empty = [];
 for (const v of views) {
   await page.click(`[data-go="${v}"]`);

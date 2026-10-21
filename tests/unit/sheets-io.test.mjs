@@ -5,7 +5,9 @@ import vm from 'node:vm';
 
 // sheets-io.js is written to run in the browser (window.SheetsIO) or under CommonJS (module.exports)
 const mod = { exports: {} };
-vm.runInNewContext(readFileSync(new URL('../../src/features/sheets/sheets-io.js', import.meta.url), 'utf8'), { module: mod });
+const ctx = vm.createContext({ module: mod });
+// constants.js defines STAGES, which sheets-io.js receives at load time
+for (const f of ['core/constants.js', 'features/sheets/sheets-io.js']) vm.runInContext(readFileSync(new URL(`../../src/${f}`, import.meta.url), 'utf8'), ctx);
 const { SheetsIO } = mod.exports;
 
 test('every sheet in SHEET_ORDER has a schema', () => {

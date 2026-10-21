@@ -1,5 +1,6 @@
 /* Screening call workspace */
 /* ---------- screening call ---------- */
+"use strict";
 function screeningCall(aid){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const prev=a.screening||{};
  const navList=R.view==='candidate'&&(R.navList||[]).includes(c.id)?R.navList:(()=>{const l=navListFromDOM();return l.includes(c.id)?l:[c.id]})();
@@ -11,7 +12,7 @@ function screeningCall(aid){
   <div style="font-size:18px;font-weight:700;margin:10px 0">${esc(c.phone)}</div>
   <div id="callT" style="font-size:28px;font-weight:700;letter-spacing:1px;color:var(--tx3)">00:00</div>
   <div class="row" style="justify-content:center;margin-top:10px"><button class="btn ok" id="callGo">${ic('phone')}Start call</button><button class="btn bad hide" id="callEnd">End call</button></div></div>
-  <div style="border-top:1px solid var(--line);padding:14px 18px"><dl class="kv" style="grid-template-columns:96px 1fr">${[['Opening',o.title],['AI match',m.score+'% · '+m.verdict],['Experience',c.exp+' years'],['Notice',c.notice+' days'],['Expected',lpa(c.expSal)+' (budget '+lpa(o.salMax)+')']].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>
+  <div style="border-top:1px solid var(--line);padding:14px 18px"><dl class="kv" style="grid-template-columns:96px 1fr">${[['Opening',o.title],['Match score',m.score+'% · '+m.verdict],['Experience',c.exp+' years'],['Notice',c.notice+' days'],['Expected',lpa(c.expSal)+' (budget '+lpa(o.salMax)+')']].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>
   <div style="margin-top:10px">${c.skills.slice(0,8).map(s=>`<span class="tag ${hasSkill(c,s)&&o.mandatory.some(x=>norm(x)===norm(s))?'ok':''}">${esc(s)}</span>`).join('')}</div>
   ${m.risks.length?`<div class="small" style="margin-top:10px;padding:8px 10px;background:var(--orange2);border-radius:8px"><b>Probe:</b> ${m.risks.map(esc).join('; ')}</div>`:''}</div></section></div>
  <div><h4 style="margin:0 0 10px">Screening questions</h4>${SCREEN_Q.map((q,k)=>`<label class="f" style="margin-bottom:10px">${k+1}. ${esc(q)}<input class="inp" data-q="${k}" value="${esc((prev.answers||[])[k]??pre[k])}" placeholder="Candidate's answer"></label>`).join('')}
@@ -24,20 +25,19 @@ function screeningCall(aid){
   $('#callGo',el).onclick=()=>{timer=setInterval(()=>{secs++;fmt()},1000);$('#callT',el).style.color='var(--green)';$('#callGo',el).classList.add('hide');$('#callEnd',el).classList.remove('hide')};
   $('#callEnd',el).onclick=()=>{clearInterval(timer);$('#callT',el).style.color='var(--tx2)';$('#callEnd',el).classList.add('hide');toast('Call ended · '+$('#callT',el).textContent)};
   const oc=$('#outc',el),nx=$('#nxt',el);oc.onchange=()=>{nx.value={'Not Connected':'Schedule Follow-up','Call Back':'Schedule Follow-up','Not Interested':'Reject','Rejected':'Reject'}[oc.value]||'Move to Group Interview'};
-  const doSave=(andNext)=>{clearInterval(timer);a.screening={outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,date:TODAY,duration:secs};
-   log(`Screening call completed with ${c.name} (${oc.value})`,'call',aid);closeModal();
+  const doSave=(andNext)=>{clearInterval(timer);recordScreening(aid,{outcome:oc.value,answers:$$('[data-q]',el).map(i=>i.value),notes:$('#cnotes',el).value,duration:secs});closeModal();
    const n=nx.value;
    if(andNext){
     if(n==='Move to Group Interview')setStage(aid,'Group Interview',true);
-    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);S.tasks.unshift({id:uid('T'),title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',done:false,owner:a.recruiter})}
-    else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true);
-    save();const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
+    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);addTask({title:`Follow-up call with ${c.name}`,due:addDays(1),related:o.title,priority:'Medium',owner:a.recruiter})}
+    else if(n==='Keep on Hold')setStage(aid,'On Hold',true);else setStage(aid,'Rejected',true,'Failed the screening');
+    const nc=getC(nextCid);toast(`Call saved (${n}). Next: ${nc.name}`);R.navList=navList;R.keepNav=true;
     const na=appsOfC(nextCid).find(x=>['Shortlisted','Screening','New'].includes(x.stage))||primaryApp(nextCid);R.appSel=na.id;go('candidate',nextCid);return}
    if(n==='Move to Group Interview'){setStage(aid,'Group Interview',true);toast(`${c.name} moved to Group Interview`);confirmBox('Schedule group interview?',`${esc(c.name)} is ready for the group round. Schedule it now?`,'Schedule now',()=>scheduleGI(o.id,[aid]))}
    else if(n==='Schedule Follow-up'){if(a.stage==='Shortlisted')setStage(aid,'Screening',true);taskForm({title:`Follow-up call with ${c.name}`,related:o.title,due:addDays(1),priority:'Medium'})}
    else if(n==='Keep on Hold')setStage(aid,'On Hold',true),toast(c.name+' kept on hold','var(--orange)');
-   else setStage(aid,'Rejected',true),toast(c.name+' rejected','var(--red)');
-   save();refresh()};
+   else setStage(aid,'Rejected',true,'Failed the screening'),toast(c.name+' rejected','var(--red)');
+   refresh()};
   $('#callSave',el).onclick=()=>doSave(false);$('#callNext',el).onclick=()=>doSave(true);
  }});
 }

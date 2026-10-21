@@ -1,23 +1,20 @@
-/* Cross-feature actions: activity log, notifications, stage changes, next action, journey */
+/* Cross-feature UI actions: stage change with feedback, next action, journey. Data changes live in src/services/ */
 /* ---------- actions ---------- */
-function log(text,type='info',appId){S.activity.unshift({ts:Date.now(),text,type,appId});if(S.activity.length>300)S.activity.length=300}
-function notify(text,goArgs=['dashboard']){S.notifications.unshift({id:Date.now()+Math.random(),text,ts:Date.now(),read:false,go:goArgs})}
-function setStage(aid,stage,quiet){
- const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const prev=a.stage;if(prev===stage)return;
- a.stage=stage;a.stageSince=TODAY;const idx=STAGES.indexOf(stage);if(idx>a.maxStage)a.maxStage=idx;
- const type={Shortlisted:'shortlist',Rejected:'reject','Employee Ready':'joined',Onboarding:'joined',Selected:'interview'}[stage]||'stage';
- log(`${c.name} moved to ${stage} for ${o.title}`,type,aid);
- // keep opening status in sync with its furthest pipeline
- const furthest=Math.max(...appsOfOp(o.id).map(stageRank));
- if(!['Draft','On Hold','Closed','Filled'].includes(o.status)){
-  const hired=appsOfOp(o.id).filter(x=>STAGES.indexOf(x.stage)>=STAGES.indexOf('Joining')).length;
-  o.status=hired>=o.positions?'Filled':furthest>=6?'Offer':furthest>=3?'Interviewing':furthest>=1?'Screening':'Open';
- }
- save();if(!quiet){toast(`${c.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}
+// UI wrapper over the moveStage() service: adds the toast and the re-render
+"use strict";
+function setStage(aid,stage,quiet,reason){
+ const r=moveStage(aid,stage,reason);if(!r)return;
+ if(!quiet){toast(`${r.candidate.name} moved to ${stage}`,stage==='Rejected'?'var(--red)':'var(--green)');refresh()}
 }
 function refresh(){render()}
 function shortlist(aid){setStage(aid,'Shortlisted')}
-function rejectApp(aid){const c=getC(getA(aid).cid);confirmBox('Reject candidate',`Reject <b>${esc(c.name)}</b> for ${esc(getOp(getA(aid).opId).title)}? You can reopen the application later.`,'Reject',()=>setStage(aid,'Rejected'),true)}
+// asks why, then calls fn(reason). The reason is the picked phrase, with the note after it when one is typed
+function askRejectReason(intro,okLabel,fn){
+ modal({title:'Reject',body:`<p style="margin-top:0">${intro} You can reopen the application later.</p><label class="f">Reason<select class="inp" id="rjR">${REJECT_REASONS.map(r=>`<option>${esc(r)}</option>`).join('')}</select></label><label class="f" style="margin-top:8px">Note (optional)<input class="inp" id="rjN" placeholder="Anything the team should know"></label>`,
+  foot:`<button class="btn" data-close>Cancel</button><button class="btn bad" id="rjOK">${okLabel}</button>`,
+  onMount:el=>{$('#rjOK',el).onclick=()=>{const n=$('#rjN',el).value.trim();const r=$('#rjR',el).value+(n?': '+n:'');closeModal();fn(r)}}});
+}
+function rejectApp(aid){const c=getC(getA(aid).cid);askRejectReason(`Reject <b>${esc(c.name)}</b> for ${esc(getOp(getA(aid).opId).title)}?`,'Reject',r=>setStage(aid,'Rejected',false,r))}
 function nextAction(a){
  const gi=S.interviews.find(i=>i.appId===a.id&&i.kind==='Group'&&i.status!=='Cancelled'&&!i.rec);
  const pi=S.interviews.filter(i=>i.appId===a.id&&i.kind==='Personal'&&i.status!=='Cancelled'&&!i.decision);
@@ -26,7 +23,7 @@ function nextAction(a){
   case 'New':return ['Review AI match',()=>aiMatchModal(a.id)];
   case 'Shortlisted':return ['Screening call',()=>screeningCall(a.id)];
   case 'Screening':return ['Call back',()=>screeningCall(a.id)];
-  case 'Group Interview':return gi?(intStatus(gi)==='Scheduled'&&gi.date>TODAY?['Invite status',()=>groupDetail(gi.groupId)]:['Evaluate group',()=>groupEval(gi.groupId)]):['Schedule group',()=>scheduleGI(a.opId,[a.id])];
+  case 'Group Interview':return gi?(intStatus(gi)==='Scheduled'&&gi.date>today()?['Invite status',()=>groupDetail(gi.groupId)]:['Evaluate group',()=>groupEval(gi.groupId)]):['Schedule group',()=>scheduleGI(a.opId,[a.id])];
   case 'Personal Interview':return pi.length?['Submit scorecard',()=>piScorecard(pi[0].id)]:['Schedule interview',()=>schedulePI(a.id)];
   case 'Selected':return of?['Open offer',()=>offerEditor(of.id)]:['Create offer',()=>offerEditor(null,a.id)];
   case 'Offer':return of&&of.status==='Sent'?['Record response',()=>offerResponse(of.id)]:['Send offer',()=>offerEditor(of&&of.id,a.id)];

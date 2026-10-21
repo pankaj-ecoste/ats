@@ -2,6 +2,8 @@
 "use strict";
 /* ---------- domain constants ---------- */
 const STAGES=['New','Shortlisted','Screening','Group Interview','Personal Interview','Selected','Offer','Offer Accepted','Joining','Onboarding','Employee Ready'];
+// shown when a recruiter rejects a candidate; the chosen phrase (and any note) is kept on the application
+const REJECT_REASONS=['Skills do not match','Not enough experience','Salary expectation too high','Location or relocation','Notice period too long','Not interested any more','Failed the interview','Failed the screening','Position filled','Other'];
 const JOURNEY=['Applied','AI Matched','Shortlisted','Screening Call','Group Interview','Personal Interview','Selected','Offer Letter','Offer Accepted','Joining','Onboarding','Employee Ready'];
 // map stage index -> journey index
 const stageToJourney=i=>i===0?1:i+1;
@@ -11,8 +13,8 @@ const OP_COLOR={Draft:'',Open:'blue',Screening:'ai',Interviewing:'cyan',Offer:'o
 const OFFER_STATUS=['Draft','Generated','Sent','Accepted','Declined','Negotiation','Withdrawn'];
 const OFFER_COLOR={Draft:'',Generated:'ai',Sent:'blue',Accepted:'green',Declined:'red',Negotiation:'orange',Withdrawn:'red'};
 const INT_COLOR={Scheduled:'blue',Completed:'green','Pending Feedback':'orange',Cancelled:'red','No-show':'red'};
-const RECRUITERS=['Priya Sharma','Arjun Nair','Sneha Kapoor'];
-const INTERVIEWERS=['Rahul Mehta','Kavita Rao','Vikram Singh','Neha Joshi','Aman Gupta','Farah Khan'];
+const DEFAULT_RECRUITERS=['Priya Sharma','Arjun Nair','Sneha Kapoor'];
+const DEFAULT_INTERVIEWERS=['Rahul Mehta','Kavita Rao','Vikram Singh','Neha Joshi','Aman Gupta','Farah Khan'];
 const SOURCES=['LinkedIn','Naukri','Referral','Careers Page','Indeed','foundit','Shine','Apna','Glassdoor','Internshala','WhatsApp','Google Sheet','Walk-in'];
 const EDU_LEVEL={'12th':0,'Graduate':1,'B.Com':1,'B.A.':1,'BBA':1,'B.Sc':1,'B.Tech':2,'B.E.':2,'BCA':1,'B.Des':2,'MBA':3,'M.Tech':3,'MCA':3,'M.Sc':3,'M.Des':3,'MA HR':3};
 const GI_CRIT=['Communication','Confidence','Technical Knowledge','Problem Solving','Teamwork','Relevant Experience','Overall Impression'];

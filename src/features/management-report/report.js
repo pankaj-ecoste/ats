@@ -1,5 +1,6 @@
 /* Management report view, modals, dashboard tab hook */
 /* ---- the report ---- */
+"use strict";
 function vReport(){
  if(!S.events)seedHistory();if(!S.callLog)S.callLog=[];if(!S.monthly)S.monthly={};
  const c=repCfg();const rd=R.rep.date;const wk=mondayOf(rd),pwk=addDays(-7,parseD(wk)),wkE=addDays(6,parseD(wk)),pwkE=addDays(-1,parseD(wk));
@@ -66,32 +67,32 @@ function vReport(){
 }
 function bindReport(root){
  const c=repCfg();const on=(s,f)=>{const x=$(s,root);if(x)f(x)};
- on('#rpDate',x=>x.onchange=()=>{R.rep.date=x.value||TODAY;render()});
- $$('[data-rc]',root).forEach(i=>i.onchange=()=>{c[i.dataset.rc]=Math.max(0,+i.value||0);save();render()});
- on('#rpClearDemo',x=>x.onclick=e=>{e.preventDefault();confirmBox('Clear sample history','Remove the sample weekly history, call logs and demo posting costs? Real activity from the app is kept.','Clear',()=>{S.events=S.events.filter(e=>!e.demo);S.callLog=S.callLog.filter(e=>!e.demo);S.postings=S.postings.filter(p=>!p.demo);S.demoHistory=false;save();render();toast('Sample history cleared')},true)});
+ on('#rpDate',x=>x.onchange=()=>{R.rep.date=x.value||today();render()});
+ $$('[data-rc]',root).forEach(i=>i.onchange=()=>{setReportThreshold(i.dataset.rc,Math.max(0,+i.value||0));render()});
+ on('#rpClearDemo',x=>x.onclick=e=>{e.preventDefault();confirmBox('Clear sample history','Remove the sample weekly history, call logs and demo posting costs? Real activity from the app is kept.','Clear',()=>{clearDemoHistory();render();toast('Sample history cleared')},true)});
  on('#rpCalls',x=>x.onclick=callLogModal);on('#rpTargets',x=>x.onclick=targetsModal);
  $$('[data-rop]',root).forEach(tr=>tr.onclick=()=>go('opening',tr.dataset.rop));
  $$('[data-gocand]',root).forEach(a=>a.onclick=e=>{e.preventDefault();go('candidate',a.dataset.gocand)});
- $$('[data-risk]',root).forEach(s=>s.onchange=()=>{getA(s.dataset.risk).dropRisk=s.value;save();render()});
+ $$('[data-risk]',root).forEach(s=>s.onchange=()=>{setDropRisk(s.dataset.risk,s.value);render()});
  $$('[data-bk]',root).forEach(b=>b.onclick=()=>backupModal(b.dataset.bk));
  $$('[data-drop]',root).forEach(b=>b.onclick=()=>dropModal(b.dataset.drop));
 }
 function callLogModal(){
  const rec=S.callLog.filter(c=>!c.demo).slice(-8).reverse();
- modal({title:'Log calls',body:`<div class="fgrid"><label class="f">Date<input class="inp" type="date" id="clD" value="${TODAY}"></label><label class="f">Position<select class="inp" id="clO">${S.openings.filter(o=>!['Closed','Draft'].includes(o.status)).map(o=>`<option value="${o.id}">${esc(o.title)}</option>`).join('')}</select></label>
+ modal({title:'Log calls',body:`<div class="fgrid"><label class="f">Date<input class="inp" type="date" id="clD" value="${today()}"></label><label class="f">Position<select class="inp" id="clO">${S.openings.filter(o=>!['Closed','Draft'].includes(o.status)).map(o=>`<option value="${o.id}">${esc(o.title)}</option>`).join('')}</select></label>
  <label class="f">Calls made<input class="inp" type="number" min="0" id="clM" value="0"></label><label class="f">Connected / interested<input class="inp" type="number" min="0" id="clC" value="0"></label></div>
  ${rec.length?`<h4 style="margin:16px 0 6px">Recent entries</h4>${rec.map(r=>`<div class="list-it" style="padding:6px 0"><span class="grow small">${fmtD(r.d)} · ${esc(getOp(r.op)?.title||r.op)} · ${r.made} made, ${r.conn} connected</span><button class="btn sm ghost" data-cldel="${r.id}" aria-label="Delete">${ic('x')}</button></div>`).join('')}`:''}`,
  foot:`<button class="btn" data-close>Close</button><button class="btn pri" id="clS">Add</button>`,
  onMount:el=>{$('#clS',el).onclick=()=>{const m=+val(el,'#clM')||0,cn=+val(el,'#clC')||0;if(!m){toast('Enter the number of calls made','var(--red)');return}if(cn>m){toast('Connected cannot be more than calls made','var(--red)');return}
-   S.callLog.push({id:uid('CL'),d:val(el,'#clD')||TODAY,op:val(el,'#clO'),made:m,conn:cn});save();closeModal();toast(`${m} calls logged`);render()};
-  $$('[data-cldel]',el).forEach(b=>b.onclick=()=>{S.callLog=S.callLog.filter(c=>c.id!==b.dataset.cldel);save();closeModal();callLogModal();render()})}});
+   logCalls({d:val(el,'#clD')||today(),op:val(el,'#clO'),made:m,conn:cn});closeModal();toast(`${m} calls logged`);render()};
+  $$('[data-cldel]',el).forEach(b=>b.onclick=()=>{deleteCallLog(b.dataset.cldel);closeModal();callLogModal();render()})}});
 }
 function targetsModal(){
  const months=[-2,-1,0,1,2].map(n=>shiftMonth(R.rep.date,n));
  modal({title:'Monthly targets, budget and other spend',size:'w',body:`<p class="small muted" style="margin-top:0">Job-posting costs come from the Job posting page automatically. Use “Other spend” for consultants, assessments, travel and similar.</p><div class="tbl-wrap"><table><thead><tr><th>Month</th><th>Planned hires</th><th>Hiring budget (₹)</th><th>Other spend (₹)</th><th>Job-post costs</th></tr></thead><tbody>
  ${months.map(m=>{const v=S.monthly[ym(m)]||{};return `<tr><td><b>${MONTHS[parseD(m).getMonth()]} ${parseD(m).getFullYear()}</b></td><td><input class="inp" type="number" min="0" data-tm="${ym(m)}" data-k="target" value="${v.target||''}" style="width:90px"></td><td><input class="inp" type="number" min="0" data-tm="${ym(m)}" data-k="budget" value="${v.budget||''}" style="width:130px"></td><td><input class="inp" type="number" min="0" data-tm="${ym(m)}" data-k="other" value="${v.other||''}" style="width:130px"></td><td class="small">${inr(monthCost(m).post)}</td></tr>`}).join('')}</tbody></table></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="tmS">Save</button>`,
- onMount:el=>$('#tmS',el).onclick=()=>{$$('[data-tm]',el).forEach(i=>{const k=i.dataset.tm;S.monthly[k]=S.monthly[k]||{};S.monthly[k][i.dataset.k]=+i.value||0});save();closeModal();toast('Targets saved');render()}});
+ onMount:el=>$('#tmS',el).onclick=()=>{saveMonthlyTargets($$('[data-tm]',el).map(i=>[i.dataset.tm,i.dataset.k,+i.value||0]));closeModal();toast('Targets saved');render()}});
 }
 function backupModal(aid){
  const a=getA(aid),c=getC(a.cid),o=getOp(a.opId);const cands=S.applications.filter(b=>b.opId===a.opId&&b.id!==aid&&!['Employee Ready','Onboarding','Joining','Offer Accepted'].includes(b.stage)).sort((x,y)=>matchA(y).score-matchA(x).score);
@@ -100,20 +101,23 @@ function backupModal(aid){
  <label class="f" style="margin-top:10px">Backup status<select class="inp" id="bkS">${['Ready','In process','Offered'].map(s=>`<option ${a.backup&&a.backup.status===s?'selected':''}>${s}</option>`).join('')}</select></label>
  ${cands.length?'':'<p class="small" style="color:var(--orange)">No other candidates on this opening yet. Add more applications to name a backup.</p>'}`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="bkSave">Save</button>`,
- onMount:el=>$('#bkSave',el).onclick=()=>{const b=val(el,'#bkA');const had=!!a.backup;if(b){a.backup={aid:b,status:val(el,'#bkS')};if(!had)addEvent('backup',aid);log(`Backup ${getC(getA(b).cid).name} lined up for ${c.name}`,'info',aid)}else a.backup=null;save();closeModal();toast('Backup saved');render()}});
+ onMount:el=>$('#bkSave',el).onclick=()=>{setBackup(aid,val(el,'#bkA'),val(el,'#bkS'));closeModal();toast('Backup saved');render()}});
 }
 function dropModal(aid){
  const a=getA(aid),c=getC(a.cid);const b=a.backup&&getA(a.backup.aid);
  modal({title:`${esc(c.name)} dropped out`,body:`<p style="margin-top:0">Mark ${esc(c.name)} as dropped after the offer? The application moves to Rejected and counts in “Dropped after accepting”.</p>${b?`<label class="checkl" style="border:none"><input type="checkbox" class="chk" id="dpPromote" checked><span>Move backup <b>${esc(getC(b.cid).name)}</b> to Selected so you can send them an offer</span></label>`:'<p class="small" style="color:var(--orange)">No backup was named for this seat.</p>'}
  <label class="f" style="margin-top:8px">Reason<input class="inp" id="dpR" placeholder="e.g. Took another offer"></label>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn bad" id="dpOK">Mark dropped</button>`,
- onMount:el=>$('#dpOK',el).onclick=()=>{const r=val(el,'#dpR');if(a.stage==='Offer'){a.dropped=TODAY;addEvent('dropped',aid)}setStage(aid,'Rejected',true);if(r)c.notes.unshift({text:'Dropped after offer: '+r,by:S.settings.user,ts:Date.now()});
-  const pr=$('#dpPromote',el);if(b&&pr&&pr.checked){setStage(b.id,'Selected',true);toast(`${getC(b.cid).name} moved to Selected`)}else toast(`${c.name} marked dropped`,'var(--red)');a.backup=null;save();closeModal();render()}});
+ onMount:el=>$('#dpOK',el).onclick=()=>{const r=val(el,'#dpR');const pr=$('#dpPromote',el);const {promoted}=recordDropout(aid,{reason:r,promoteBackup:!!(pr&&pr.checked)});
+  if(promoted)toast(`${getC(promoted.cid).name} moved to Selected`);else toast(`${c.name} marked dropped`,'var(--red)');closeModal();render()}});
 }
 
 /* Dashboard: add Management report tab */
 R.dashTab=R.dashTab||'report';
-{const [v,b]=VIEWS.dashboard;VIEWS.dashboard=[()=>{const tabs=`<div class="row no-print" style="justify-content:space-between;margin-bottom:6px"><div class="seg dash-tabs" role="tablist"><button class="${R.dashTab==='report'?'on':''}" data-dt="report">Management report</button><button class="${R.dashTab==='today'?'on':''}" data-dt="today">Today</button></div>${R.dashTab==='report'?`<button class="btn" id="rpPrint">${ic('print')}Print / PDF</button>`:''}</div>`;
+decorateView('dashboard',{view:v=>{const tabs=`<div class="row no-print" style="justify-content:space-between;margin-bottom:6px"><div class="seg dash-tabs" role="tablist"><button class="${R.dashTab==='report'?'on':''}" data-dt="report">Management report</button><button class="${R.dashTab==='today'?'on':''}" data-dt="today">Today</button></div>${R.dashTab==='report'?`<button class="btn" id="rpPrint">${ic('print')}Print / PDF</button>`:''}</div>`;
  if(R.dashTab==='report')return `<div class="page-h"><div><h1>Hiring dashboard · management report</h1><p>${esc(S.settings.company)} · as of ${fmtD(R.rep.date)}</p></div></div>`+tabs+vReport();return tabs+v()},
- r=>{$$('[data-dt]',r).forEach(x=>x.onclick=()=>{R.dashTab=x.dataset.dt;render()});const p=$('#rpPrint',r);if(p)p.onclick=()=>{$('#printArea').innerHTML=`<h1 style="font-family:Figtree,sans-serif">Hiring dashboard · management report</h1><p>${esc(S.settings.company)} · as of ${fmtD(R.rep.date)}</p>`+vReport();try{window.print()}catch(e){toast('Printing is blocked here. Use the browser menu to print.','var(--orange)')}};
-  if(R.dashTab==='report')bindReport(r);else b(r)}]}
+ bind:(r,b)=>{$$('[data-dt]',r).forEach(x=>x.onclick=()=>{R.dashTab=x.dataset.dt;render()});const p=$('#rpPrint',r);if(p)p.onclick=()=>{$('#printArea').innerHTML=`<h1 style="font-family:Figtree,sans-serif">Hiring dashboard · management report</h1><p>${esc(S.settings.company)} · as of ${fmtD(R.rep.date)}</p>`+vReport();try{window.print()}catch(e){toast('Printing is blocked here. Use the browser menu to print.','var(--orange)')}};
+  if(R.dashTab==='report')bindReport(r);else b(r)}});
+
+// the database's totals arrived: redraw the report tab if it is showing
+onEvent('report:counts',()=>{if(R.view==='dashboard'&&R.dashTab==='report')render()});

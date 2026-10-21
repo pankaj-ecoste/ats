@@ -4,6 +4,7 @@
 const hasSkill=(c,s)=>{const n=norm(s);return c.skills.some(k=>{const m=norm(k);return m===n||(n==='excel'&&m==='msexcel')||(n==='msexcel'&&m==='excel')})};
 function match(c,op){
  const W=S.settings.weights;
+ const expSal=+c.expSal||0;   // not known (hidden from this role, or not entered) counts as no expectation
  const mm=op.mandatory.filter(s=>hasSkill(c,s)), miss=op.mandatory.filter(s=>!hasSkill(c,s));
  const pm=op.preferred.filter(s=>hasSkill(c,s)), pmiss=op.preferred.filter(s=>!hasSkill(c,s));
  const skills=Math.round((mm.length/Math.max(1,op.mandatory.length))*85+(pm.length/Math.max(1,op.preferred.length))*15);
@@ -21,8 +22,8 @@ function match(c,op){
  else if(c.reloc){location=75;locNote=`in ${c.location}, open to relocate`}
  else {location=35;locNote=`in ${c.location}, not open to relocate`}
  let salary,salNote;
- if(c.expSal<=op.salMax){salary=100;salNote='expectation within budget'}
- else {const over=(c.expSal-op.salMax)/op.salMax;salary=Math.max(20,Math.round(100-over*220));salNote=`expects ${lpa(c.expSal)}, ${Math.round(over*100)}% above budget`}
+ if(expSal<=op.salMax){salary=100;salNote='expectation within budget'}
+ else {const over=(expSal-op.salMax)/op.salMax;salary=Math.max(20,Math.round(100-over*220));salNote=`expects ${lpa(expSal)}, ${Math.round(over*100)}% above budget`}
  const notice=c.notice<=30?100:c.notice<=60?80:55;
  const tot=Object.values(W).reduce((a,b)=>a+b,0)||1;
  const score=Math.round((skills*W.skills+experience*W.experience+education*W.education+location*W.location+salary*W.salary+notice*W.notice)/tot);
@@ -43,6 +44,8 @@ function match(c,op){
  if(experience<80)risks.push('Experience below requirement');
  return {score,verdict,skills,experience,education,location,salary,notice,mm,miss,pm,pmiss,summary,risks,certs,industry};
 }
+// the part of a match worth keeping with the application: the score and why (a snapshot when they applied)
+const matchSnapshot=m=>({score:m.score,reasons:{verdict:m.verdict,skills:m.skills,experience:m.experience,education:m.education,location:m.location,salary:m.salary,notice:m.notice,missing:m.miss,risks:m.risks}});
 const matchA=a=>match(getC(a.cid),getOp(a.opId));
 const scoreColor=s=>s>=80?'var(--green)':s>=60?'var(--ai)':s>=45?'var(--orange)':'var(--red)';
 const ring=(s,cls='')=>`<span class="ring ${cls}" style="--p:${s};--c:${scoreColor(s)}"><span>${s}${cls?'%':''}</span></span>`;
