@@ -111,6 +111,7 @@ const pi1 = await ev(() => S.interviews.at(-1).id);
 await ev((id) => piScorecard(id), pi1);
 for (let k = 0; k < 5; k++) await page.click(`[data-crit="${k}"] button[data-v="4"]`);
 await page.selectOption('#pDec', 'Rejected');
+await page.waitForFunction(() => !document.querySelector('#toasts .toast'), null, { timeout: 15000 }).catch(() => {});   // a toast over the button would swallow the click
 await page.click('#pSub');
 await modalGone();
 check('personal interview: scorecard completes it and applies the decision', await ev(([id, a]) => { const i = S.interviews.find((x) => x.id === id); return i.status === 'Completed' && i.decision === 'Rejected' && getA(a).stage === 'Rejected'; }, [pi1, pid]));
