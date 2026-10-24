@@ -4,7 +4,7 @@
 "use strict";
 const REPO_ID_KEY={onboarding:'appId'}; // collections not keyed by `id`
 const REPO_LISTENERS=[];
-// listener receives {op:'insert'|'update'|'remove'|'root', coll, id, record}
+// listener receives {op:'insert'|'insertMany'|'update'|'remove'|'root', coll, id, record} (insertMany carries `records`)
 function repoOnChange(fn){REPO_LISTENERS.push(fn)}
 function repoNotify(change){REPO_LISTENERS.forEach(f=>f(change))}
 const repo={
@@ -14,6 +14,13 @@ const repo={
   if(!S[coll])S[coll]=[];
   end?S[coll].push(record):S[coll].unshift(record);
   save();repoNotify({op:'insert',coll,id:record[REPO_ID_KEY[coll]||'id'],record});return record;
+ },
+ // many new records at once (a lead import): one save and one notice, so the writer can send them in batches
+ insertMany(coll,records,{end=false}={}){
+  if(!records.length)return records;
+  if(!S[coll])S[coll]=[];
+  end?S[coll].push(...records):S[coll].unshift(...records);
+  save();repoNotify({op:'insertMany',coll,records});return records;
  },
  // change is an object to merge, or a function that edits the record
  update(coll,id,change){

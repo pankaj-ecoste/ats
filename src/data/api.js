@@ -157,6 +157,22 @@ async function writeRecord(client,ctx,coll,id,record,isNew){
  }
 }
 
+// many new records in batches (a lead import): one request per 200 rows and table, parents before children
+async function writeMany(client,ctx,coll,records){
+ if(coll!=='candidates'&&coll!=='applications')throw new Error('This change cannot be saved to the server.');
+ const what=WHAT[coll],byTable={};
+ records.forEach(rec=>{
+  const res=rowsOf(coll,rec,ctx,true);
+  Object.entries(res).forEach(([t,r])=>{
+   if(r===null)return;
+   if(CHILD_SETS[t])ctx.last.set(t+rec.id,JSON.stringify(r));
+   (byTable[t]=byTable[t]||[]).push(...[].concat(r));
+  });
+ });
+ for(const [table,rows] of Object.entries(byTable))
+  for(let i=0;i<rows.length;i+=200)await dbRun(client.from(table).insert(rows.slice(i,i+200)),what);
+}
+
 // make the database hold exactly this list for a whole collection (a workbook import that replaces or merges, clearing the sample history)
 async function syncCollection(client,ctx,coll,list){
  const m=WRITE_MAP[coll],what=WHAT[coll];
@@ -211,6 +227,7 @@ async function sendRecord(client,ctx,ch){
 async function applyChange(client,ctx,ch){
  if(ch.op==='send')return sendRecord(client,ctx,ch);
  if(ch.op==='insert')return writeRecord(client,ctx,ch.coll,ch.id,ch.record,true);
+ if(ch.op==='insertMany')return writeMany(client,ctx,ch.coll,ch.records);
  if(ch.op==='update')return writeRecord(client,ctx,ch.coll,ch.id,ch.record,false);
  if(ch.op==='remove'){const m=WRITE_MAP[ch.coll];if(m&&m.key)await dbRunOne(client.from(m.table).delete().eq(m.key,ch.id).select(m.key),WHAT[ch.coll]);return}
  if(ch.op==='root')return writeRoot(client,ctx,ch.coll,ch.record);
@@ -233,6 +250,7 @@ function createWriter(client,ctx){
    pending++;emitEvent('data:pending',{n:pending});
    // the record is copied now: written later, it would show the latest state for every queued change, and the stage history would lose steps
    if(ch.record!==undefined&&ch.record!==null)ch={...ch,record:JSON.parse(JSON.stringify(ch.record))};
+   if(ch.records)ch={...ch,records:JSON.parse(JSON.stringify(ch.records))};
    chain=chain.then(()=>attempt(ch)).then(
     ()=>{pending--;emitEvent('data:pending',{n:pending});if(failing){failing=false;emitEvent('data:ok',{})}},
     e=>{pending--;emitEvent('data:pending',{n:pending});if(!failing){failing=true;emitEvent('data:error',{message:e.message})}});
