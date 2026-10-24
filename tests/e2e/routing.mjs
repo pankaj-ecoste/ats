@@ -59,7 +59,8 @@ check('the dashboard remembers which tab', (await page.evaluate(() => R.dashTab)
 await page.goto(base + '#/applications'); await page.reload(); await settle();
 await page.evaluate(() => { const c = document.getElementById('content'); c.style.maxHeight = '300px'; c.style.overflow = 'auto'; c.scrollTop = 120; });
 const before = await page.evaluate(() => document.getElementById('content').scrollTop);
-await page.fill('[data-f="skill"]', 'a'); await page.keyboard.press('Tab'); await settle();
+// the redraw is triggered directly: a real fill() would scroll the field into view first, and where that field sits depends on the toolbar above it
+await page.evaluate(() => { const i = document.querySelector('[data-f="skill"]'); i.value = 'a'; i.dispatchEvent(new Event('change')); }); await settle();
 const stay = await page.evaluate(() => ({ top: document.getElementById('content').scrollTop, tag: document.activeElement && document.activeElement.tagName }));
 check('a redraw on the same screen keeps the scroll position', before > 0 && stay.top === before);
 await page.fill('[data-f="skill"]', 'ab');
