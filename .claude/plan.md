@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-16
-- **Current phase:** Phases 1 to 6 are done as far as they can be without outside accounts (see the log). Deployed on Vercel from `main`; the database was emptied of sample data on 2026-10-24 and the lead import is built on branch `feat/import-leads` (unmerged). Next: Phase 7 (hardening and launch on Vercel). Waiting on the owner: Vercel project and environment variables, GitHub secrets for the clean-up job, branch protection, secret rotation, Brevo email later.
+- **Current phase:** Phases 1 to 7 are built as far as they can be without the owner's outside steps (see the log). The app is **live on Vercel from `main`** (ats-gamma.vercel.app), with real accounts and the first real use started. The owner went through the app on 2026-10-24 and has a list of changes and tweaks, to be built **one by one, as they are given**; each one is recorded in section 10 when done. Waiting on the owner: the real lead sheet's headings, pasting the live-lead-sheet script into the Google Sheet, company details, team accounts, consent text, the handover security steps (`docs/SECURITY_CHECKLIST.md`), Brevo email later.
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -547,6 +547,16 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☐ Collect feedback; prioritise v2 (candidate portal, HRMS sync, richer analytics, multi-user approvals)
 - ☐ Quarterly: dependency updates, access review, backup restore drill
 
+### 7.7a Owner's tweak list (2026-10-24)
+
+The owner reviewed the live app and will give changes one by one. Work directly on `main` (it deploys to production), keep tests green, record each in the change log. Not yet asked for, but known and possible:
+
+- A calling queue that walks the New leads in order (the screening call screen has Save & next candidate; there is no queue view).
+- Per-lead opening from a column (the live lead sheet script already sends `position`; the Import leads screen uses one opening per file).
+- A "new version available" notice, so old browser tabs refresh after a deploy (the team met a stale tab on 2026-10-24).
+- Pipeline board and Applications page speed above about 5,000 leads (1.7 s and 0.7 s measured).
+- A separate Supabase project for tests; per-role one-page guides; handover note; the `v1.0.0` tag after the team walkthrough.
+
 ### 7.8 Immediate next steps (in order)
 
 1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
@@ -594,6 +604,8 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 | Date | Change | By |
 |---|---|---|---|
+| 2026-10-24 | **Owner review:** the owner went through the live app and has many changes and tweaks; they will be raised and built one by one. Nothing else was changed in this step except this plan and the memory notes | Claude Code |
+| 2026-10-24 | **Tests and checks:** GitHub checks were red on `main` after the lead import (a routing test measured scroll after Playwright's own scroll-into-view, so a different toolbar button moved the field by 6 px); the test now triggers the redraw directly. The 100,000-random-ids test failed by chance about once in 200 runs; it now checks 5,000 ids strictly and 100,000 loosely. The access-rule database tests (`rls.test.mjs`) wiped all accounts in a transaction and broke once real stage history existed; the wipe now runs with foreign-key actions off inside the transaction. CI is green on `1173701`. Note: the database tests and the live browser tests run on the same Supabase project as production (rolled-back transactions, or prefixed records removed afterwards); a separate test project is advisable before the data grows | Claude Code |
 | 2026-10-24 | **Live lead sheet:** migrations 0018 to 0020 applied to the Supabase project, Apps Script generator, Settings panel, `docs/LEAD_SHEET.md`; worked directly on `main` as the owner asked | Claude Code |
 | 2026-10-24 | **Deployed and first real use:** Vercel project from `main` (build failed once because `main` held the old baseline; fixed by merging PR #1, CI moved to Node 22 because `node --test` globs need it). First admin created with `db:create-admin`; sample data removed with `db:unseed`. **Lead import** built (see Phase 4); the Google Sheet panel now points people to it outside claude.ai | Claude Code |
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
