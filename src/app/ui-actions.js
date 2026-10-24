@@ -4,6 +4,7 @@
 "use strict";
 registerAction('go',(view,param)=>go(view,param));
 registerAction('addCandidate',opId=>addCandidate(opId));
+registerAction('importLeads',()=>leadImportModal());
 registerAction('openingForm',id=>openingForm(id));
 registerAction('scheduleGI',opId=>scheduleGI(opId));
 registerAction('schedulePI',aid=>schedulePI(aid));

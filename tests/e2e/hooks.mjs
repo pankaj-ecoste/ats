@@ -20,6 +20,12 @@ const text = () => page.evaluate(() => document.getElementById('content').textCo
 
 check('nav order is dashboard, pipeline, openings, posting', await page.evaluate(() => NAV.slice(0, 4).map((n) => n[0]).join() === 'dashboard,pipeline,openings,posting'));
 
+// outside claude.ai the live Google Sheet connection cannot work, so the same slot offers Import leads instead
+await page.click('[data-go="sheets"]');
+check('sheets slot: outside claude.ai the card offers Import leads, not a connection that cannot work', (await text()).includes('Leads from a Google Sheet or Excel file') && !(await page.evaluate(() => !!document.getElementById('asconnect'))));
+await page.click('[data-go="applications"]');
+check('applications slot: outside claude.ai the toolbar offers Import leads', (await text()).includes('Import leads') && !(await text()).includes('Auto-import from Google Sheet'));
+await page.evaluate(() => { window.claude = { use: async () => ({}) }; });
 await page.click('[data-go="sheets"]');
 check('sheets slot: auto-import card is rendered above the grid', (await text()).includes('Auto-import applications from Google Sheet'));
 check('sheets bind hook: connect button is wired', await page.evaluate(() => !!document.getElementById('asconnect')?.onclick));

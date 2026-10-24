@@ -111,8 +111,12 @@ function mappingUI(el,fileId,url,data){
    startSync();closeModal();toast(res.added?`${res.added} applications imported. Auto-import is on.`:'Auto-import is on. New rows will be added automatically.','var(--ai)');render()}};
  draw();
 }
+// Reading a Google Sheet live works only inside claude.ai (it uses that page's Google Drive connection). Everywhere else people are sent to Import leads (a downloaded .csv or .xlsx).
+const liveSheetAvailable=()=>!!(window.claude&&window.claude.use);
 function autoImportCard(){
  const cfg=asCfg();
+ if(!cfg.fileId&&!liveSheetAvailable())return `<section class="panel" style="margin-bottom:16px"><header><div><span class="ai-lbl">${ic('upload')}Leads from a Google Sheet or Excel file</span><p>In Google Sheets use File → Download → CSV or Excel, then import the file. You choose which column is which, and see who is new before anything is saved.</p></div>
+ <div class="row">${canEdit()?`<button class="btn pri" data-act="importLeads">${ic('upload')}Import leads</button>`:''}</div></header></section>`;
  return `<section class="panel" style="margin-bottom:16px;border-color:color-mix(in srgb,var(--ai) 35%,var(--line))"><header><div><span class="ai-lbl">${ic('refresh')}Auto-import applications from Google Sheet</span><p>For sheets filled by a job site, form or other tool. New rows become applications automatically.</p></div>
  <div class="row">${cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:''}<button class="btn ${cfg.fileId?'':'pri'}" id="asconnect">${cfg.fileId?'Change sheet or columns':'Connect Google Sheet'}</button></div></header>
  ${cfg.fileId?`<div class="pbody"><div class="grid g2"><dl class="kv"><dt>Sheet</dt><dd>${cfg.url?`<a href="${esc(cfg.url)}" target="_blank" rel="noopener">${esc(cfg.title||'Open sheet')}</a>`:esc(cfg.title)}</dd><dt>Tab</dt><dd>${esc(cfg.tab)}</dd><dt>Checks</dt><dd>Every ${cfg.interval} min while the app is open, and each time it opens</dd><dt>Last run</dt><dd>${cfg.lastRun?`${timeAgo(cfg.lastRun)} · ${cfg.last.read} rows read, ${cfg.last.added} added`:'Not yet'}</dd><dt>Unmatched rows</dt><dd>${cfg.defaultOp?'Go to '+esc(getOp(cfg.defaultOp)?.title||''):'Skipped'}</dd></dl>
@@ -127,7 +131,7 @@ function bindAutoImport(root){const b=$('#asconnect',root);if(!b)return;b.onclic
 // hook into the Google Sheets page and the Applications page
 /* extension points: see src/app/hooks.js */
 fillSlot('sheets.top',autoImportCard);
-fillSlot('applications.toolbar',()=>{const cfg=asCfg();return cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:`<button class="btn" data-act="go" data-a1="sheets">${ic('refresh')}Auto-import from Google Sheet</button>`});
+fillSlot('applications.toolbar',()=>{const cfg=asCfg();return cfg.fileId?`<span data-syncslot>${syncChipHTML()}</span>`:liveSheetAvailable()?`<button class="btn" data-act="go" data-a1="sheets">${ic('refresh')}Auto-import from Google Sheet</button>`:canEdit()?`<button class="btn" data-act="importLeads">${ic('upload')}Import leads</button>`:''});
 onBind('sheets',bindAutoImport);
 onBind('applications',bindSyncNow);
 // start: first check shortly after load, then on the interval

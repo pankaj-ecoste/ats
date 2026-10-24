@@ -192,3 +192,37 @@ test('a notification for someone else is written for their account; a name with 
   assert.equal(client.calls[0].rows.user_id, 'u-me');
   assert.deepEqual(plain(client.calls[0].rows.link), ['tasks']);
 });
+
+test('many new candidates and applications are written in batches of 200, parents first, with their creator', async () => {
+  const client = fakeClient(), w = newWriter(client);
+  const cands = Array.from({ length: 450 }, (_, i) => ({ ...cand, id: 'C-B' + i, email: `b${i}@example.com`, documents: [{ name: 'Resume', status: 'Pending' }] }));
+  await w.enqueue({ op: 'insertMany', coll: 'candidates', records: cands });
+  assert.deepEqual(ops(client), ['insert candidates', 'insert candidates', 'insert candidates',
+    'insert candidate_compensation', 'insert candidate_compensation', 'insert candidate_compensation',
+    'insert candidate_documents', 'insert candidate_documents', 'insert candidate_documents']);
+  assert.deepEqual(client.calls.filter((c) => c.table === 'candidates').map((c) => c.rows.length), [200, 200, 50]);
+  assert.ok(client.calls.filter((c) => c.table === 'candidates').every((c) => c.rows.every((r) => r.created_by === 'u-me')));
+  const apps = Array.from({ length: 3 }, (_, i) => ({ id: 'A-B' + i, cid: 'C-B' + i, opId: 'OP-1', stage: 'New', maxStage: 0, stageSince: '2026-10-01', date: '2026-10-01', recruiter: 'Priya Sharma' }));
+  const before = client.calls.length;
+  await w.enqueue({ op: 'insertMany', coll: 'applications', records: apps });
+  assert.deepEqual(client.calls.slice(before).map((c) => `${c.op} ${c.table} ${c.rows.length}`), ['insert applications 3']);
+  assert.equal(client.calls[before].rows[0].recruiter_id, 'u-me');
+});
+
+test('insertMany keeps the records as they were when it was queued, refuses other collections, and reports a refused batch once', async () => {
+  const client = fakeClient({ fail: (s) => (s.table === 'candidates' ? { code: '23505', message: 'duplicate key' } : null) });
+  const errors = [];
+  app.onEvent('data:error', (e) => errors.push(e.message));
+  const w = newWriter(client);
+  const rec = { ...cand, id: 'C-Q1', email: 'q1@example.com' };
+  const p = w.enqueue({ op: 'insertMany', coll: 'candidates', records: [rec] });
+  rec.name = 'changed after queueing';
+  await p;
+  assert.notEqual(client.calls[0].rows[0].name, 'changed after queueing');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /Could not save the candidate\. This already exists/);
+  const w2 = newWriter(fakeClient());
+  await w2.enqueue({ op: 'insertMany', coll: 'offers', records: [{ id: 'O-1' }] });
+  assert.equal(errors.length, 2);
+  assert.match(errors[1], /cannot be saved to the server/);
+});

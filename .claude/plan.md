@@ -4,7 +4,7 @@ Single source of truth for **what exists, what was done, what is pending, and ho
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
 - **Last updated:** 2026-10-16
-- **Current phase:** Phases 1 to 6 are done as far as they can be without outside accounts (see the log). Next: Phase 7 (hardening and launch on Vercel). Waiting on the owner: Vercel project and environment variables, GitHub secrets for the clean-up job, branch protection, secret rotation, Brevo email later.
+- **Current phase:** Phases 1 to 6 are done as far as they can be without outside accounts (see the log). Deployed on Vercel from `main`; the database was emptied of sample data on 2026-10-24 and the lead import is built on branch `feat/import-leads` (unmerged). Next: Phase 7 (hardening and launch on Vercel). Waiting on the owner: Vercel project and environment variables, GitHub secrets for the clean-up job, branch protection, secret rotation, Brevo email later.
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
 
@@ -206,7 +206,7 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | ~~8~~ | ~~Strict mode only in `core/data/domain`~~ — fixed, all files strict | | | |
 | 9 | Whole-page `innerHTML` render | `app/render.js` | Loses focus/scroll; no pagination | P4 |
 | ~~10~~ | ~~Storage key `spectra-ats-v3`~~ — migrated | `core/store.js` | Cosmetic, but migrate carefully | P1.4 |
-| 11 | `window.claude.use('mcp')` for Sheet auto-import (no fallback) | `sheets/auto-import.js` | Does nothing outside claude.ai | P3 |
+| ~~11~~ | ~~`window.claude.use('mcp')` for Sheet auto-import (no fallback)~~ — replaced outside claude.ai by **Import leads** (a downloaded .csv or .xlsx); the live connection is shown only inside claude.ai | `sheets/auto-import.js`, `leads/leads.js` | Did nothing on Vercel (the team met the error on 2026-10-24) | done |
 | 12 | ExcelJS + Figtree font from public CDNs | `index.html`, sheets | Offline/privacy/availability | P5 |
 
 ## 6. Production blockers (summary of `docs/PRODUCTION_ROADMAP.md`)
@@ -493,6 +493,8 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 *Exit criteria:* a candidate applies on the careers page or the form and appears in New within a minute, with consent recorded.
 
+- ☑ **Lead import (2026-10-24):** the real process is: Ecoste runs ads, thousands of leads land in an Excel or Google Sheet, the team calls every lead, then group interview, one personal interview, offer, onboarding. So the start of the flow is a bulk list of leads, not single applications. **Import leads** (Candidates page, staff only) reads a `.csv` or `.xlsx` as it is, guesses the columns from the headings (`src/domain/lead-import.js`), lets the person correct them, pick the opening and the source, and shows a preview before saving: new, already in the system (an application is added), repeated or already applied, and unusable (no name, no valid phone or email), with the row numbers. Phones are tidied to `+91 98765 43210`, repeats are found by email or the last 10 digits of the phone, dates are read day first. Saved by `importLeads` (`src/services/lead-import.js`) through `repo.insertMany` and a writer branch that sends 200 rows per request, parents first. Measured: 5,000 leads plan in 13 ms and import in 54 ms in the browser; the database inserts took about 31 s over the network from this machine (4 tables, 100 requests). With 5,000 leads the pipeline board takes about 1.7 s to draw, the applications page 0.7 s: acceptable, to be improved if the team reaches 10,000 or more. Tests: 11 unit, 2 writer, 3 database (real RLS: a recruiter may import, an interviewer is refused), 22 browser checks. The old Google Sheet live connection is shown only inside claude.ai. Not built yet (waiting for the team's real sheet): a lead per row choosing its own opening, and a calling queue that walks the New leads in order.
+
 ### Phase 5: Automation and insight
 
 *Goal:* the system nudges people instead of waiting to be looked at.
@@ -590,6 +592,7 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 
 | Date | Change | By |
 |---|---|---|---|
+| 2026-10-24 | **Deployed and first real use:** Vercel project from `main` (build failed once because `main` held the old baseline; fixed by merging PR #1, CI moved to Node 22 because `node --test` globs need it). First admin created with `db:create-admin`; sample data removed with `db:unseed`. **Lead import** built (see Phase 4); the Google Sheet panel now points people to it outside claude.ai | Claude Code |
 | 2026-10-06 | Branch `chore/restructure-p1`: git, SSH key and host alias, `.env` and `.env.example`, Supabase project linked in `.env`, single `STAGES`, `today()` and `now()`; tests, build and smoke test green; plan.md expanded with file inventory | Claude Code |
 | 2026-10-16 | **Notifications for other people, role-aware screens, staff settings:** `notify(..., to)` and `repo.send`; `ROLE_PAGES` with sidebar, search, quick-add and start page following the role; hidden-candidate placeholder for management; migration 0009 (staff change `config`, admins keep company details; trigger guard); 7 new notification and 7 role unit tests (126 total); live checks grew to 29 data (management, interviewer and hiring-manager sign-ins, their pages, no salary, no candidates for management) and 29 write checks (delivery of notifications, recipient rules, recruiter SLA change allowed and signatory change refused) | Claude Code |
 | 2026-10-16 | **Write path:** the writer in `src/data/api.js` (ordered queue, snapshot of each change, retries, one plain error per run of failures, detection of changes that access rules silently drop), settings parts that only suit the demo hidden when connected, accounts-only pickers, `repo.reset` refused when connected, new openings get collision-proof ids (the last counter id), notification ids are uuids, theme kept in the browser. 12 writer unit tests (114 total) and 23 live write checks. **Found and fixed by the tests:** (1) updates hidden by access rules changed zero rows and looked like success; (2) three quick stage moves were written as three copies of the last stage, losing history, until each change was copied when made; (3) test cleanup left audit rows behind | Claude Code |

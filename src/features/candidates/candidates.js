@@ -4,7 +4,7 @@
 let candQ='';
 function vCandidates(){
  const l=S.candidates.filter(c=>(c.name+c.skills.join(' ')+c.company+c.location+c.designation).toLowerCase().includes(candQ.toLowerCase()));
- return `<div class="page-h"><div><h1>Candidates</h1><p>${S.candidates.length} people in your talent pool</p></div><button class="btn pri" data-act="addCandidate">${ic('upload')}Add candidate</button></div>
+ return `<div class="page-h"><div><h1>Candidates</h1><p>${S.candidates.length} people in your talent pool</p></div><div class="row">${canEdit()?`<button class="btn" data-act="importLeads">${ic('upload')}Import leads</button>`:''}<button class="btn pri" data-act="addCandidate">${ic('upload')}Add candidate</button></div></div>
  <section class="panel"><div class="filters"><input class="inp" id="cq" placeholder="Search by name, skill, company, city" value="${esc(candQ)}" style="min-width:280px"></div>
  <div class="tbl-wrap"><table><thead><tr><th>Candidate</th><th>Experience</th><th>Location</th><th>Top skills</th><th>Applied for</th><th>Best match</th><th>Stage</th><th>Source</th></tr></thead><tbody>
  ${pageRows(l,'cands').map(c=>{const a=primaryApp(c.id);const m=a?matchA(a):null;return `<tr class="click" data-cand="${c.id}"><td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td><td>${c.exp} yrs</td><td>${esc(c.location)}</td><td>${c.skills.slice(0,3).map(s=>`<span class="tag">${esc(s)}</span>`).join('')}${c.skills.length>3?`<span class="muted small">+${c.skills.length-3}</span>`:''}</td><td>${appsOfC(c.id).map(x=>esc(getOp(x.opId).title)).join('<br>')}</td><td>${m?ring(m.score):'—'}</td><td>${a?stagePill(a.stage):'—'}</td><td class="small">${esc(c.source)}</td></tr>`}).join('')}
