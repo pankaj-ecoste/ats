@@ -66,7 +66,10 @@ before(async () => {
   await c.connect();
   await q('begin');
   // start from an empty set of profiles so the "first user becomes admin" rule can be tested
+  // the project also holds real data, whose append-only history points at real accounts: the clean-up of those references is switched off for this one statement (rolled back with everything else)
+  await q("set local session_replication_role = 'replica'");
   await q('delete from public.profiles');
+  await q("set local session_replication_role = 'origin'");
   await q("select set_config('app.allow_user_create', 'on', true)");   // the door that only the admin functions open
   for (const [name, id] of Object.entries(U)) {
     await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `${name}@ats.ecoste.in`, JSON.stringify({ full_name: name })]);

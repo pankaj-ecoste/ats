@@ -187,6 +187,16 @@ export interface JobBoards {
   position: number;
 }
 
+export interface LeadFeed {
+  singleton: boolean;
+  token_hash: string | null;
+  token_made_at: string | null;
+  opening_id: string | null;
+  source: string;
+  enabled: boolean;
+  last_received_at: string | null;
+}
+
 export interface Messages {
   id: string;
   candidate_id: string | null;
@@ -373,6 +383,7 @@ export interface Tables {
   interview_scores: InterviewScores;
   interviews: Interviews;
   job_boards: JobBoards;
+  lead_feed: LeadFeed;
   messages: Messages;
   monthly_targets: MonthlyTargets;
   notifications: Notifications;

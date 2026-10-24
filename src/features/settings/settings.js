@@ -25,7 +25,7 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
- ${CONNECTED?intakePanel():''}${summaryPanel()}
+ ${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
 // admin switch for the Claude draft summaries; off until an admin turns it on

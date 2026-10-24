@@ -2,6 +2,8 @@
 
 For the recruiting team. This is how a sheet of leads from an ad campaign gets into the app.
 
+This page is for loading a sheet by hand. To have new rows arrive by themselves, see [LEAD_SHEET.md](LEAD_SHEET.md).
+
 ## Before you start
 
 1. **There must be an opening.** Every lead is added to one opening (Openings → New opening). If one ad is for one job, make that opening first. If the ad is general, make one opening for it, for example "Ad leads October".
