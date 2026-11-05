@@ -238,6 +238,8 @@ try {
   const fa = (await all('select a.answers, a.source from public.applications a join public.candidates c on c.id = a.candidate_id where lower(c.email) = $1', [FORM_EMAIL]))[0];
   check('the answers are kept on the application, by the question in words', fa && fa.answers['Do you have a bike?'] === 'Yes' && fa.answers['Preferred area'] === 'South');
   const formCand = (await all('select id from public.candidates where lower(email) = $1', [FORM_EMAIL]))[0];
+  await app.reload();   // the person applied after this page loaded
+  await app.waitForSelector('.app', { state: 'visible', timeout: 20000 });
   await app.evaluate((id) => go('candidate', id), formCand.id);
   await app.waitForFunction(() => document.getElementById('content').textContent.includes('Form answers'), null, { timeout: 15000 });
   const shown = await app.locator('#content').innerText();
