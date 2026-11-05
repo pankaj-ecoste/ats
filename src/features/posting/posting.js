@@ -23,7 +23,10 @@ function boards(){if(!S.boards)S.boards=JSON.parse(JSON.stringify(DEFAULT_BOARDS
 function postCfg(){if(!S.postCfg)S.postCfg={formUrl:'',applyEmail:'',applyLink:'',showSalary:true,about:'',hashtags:'#hiring #jobs'};return S.postCfg}
 if(!S.postings)S.postings=[];
 R.post={op:null,filter:'all'};
-function formLink(o,b){const t=String(postCfg().formUrl||'').trim();if(!t)return '';return t.replace(/__JOB__/g,encodeURIComponent(`${o.title} (${o.id})`)).replace(/__SRC__/g,encodeURIComponent(b?b.src:'Careers Page'))}
+// The application form link of a post. With no form set in Posting settings it is the app's own careers page, which tags the source by itself: the link of a
+// platform ends with ?src=<platform>, so everyone who applies through it is counted as that source. A form of the company's own can still be set.
+const ownFormLink=(o,src)=>applyLinkFor(careersUrl(location.href),o.id,src);
+function formLink(o,b){const t=String(postCfg().formUrl||'').trim();if(!t)return CONNECTED?ownFormLink(o,b&&b.src):'';return t.replace(/__JOB__/g,encodeURIComponent(`${o.title} (${o.id})`)).replace(/__SRC__/g,encodeURIComponent(b?b.src:'Careers Page'))}
 function applyBlock(o,b,fmt){const f=formLink(o,b);
  if(f)return ({whatsapp:`*Apply here (takes 2 minutes):*\n${f}`,linkedin:`👉 Apply here: ${f}`,email:`Apply here: ${f}`,html:`<p><strong>Apply here:</strong> <a href="${esc(f)}">${esc(f)}</a></p>`})[fmt]||`Apply here: ${f}`;
  const l=applyLine(o);return ({whatsapp:`*How to apply:* ${l}`,email:`To apply: ${l}`,html:`<p><strong>How to apply:</strong> ${esc(l)}</p>`})[fmt]||`How to apply: ${l}`}
@@ -57,6 +60,7 @@ function boardCard(o,b){
  ${p&&col!=='red'?`<button class="btn sm ghost" data-pm="${b.id}">Update</button>`:`<button class="btn sm ghost" data-pm="${b.id}">Mark posted</button>`}</div></div>`;
 }
 function formBanner(op){const c=postCfg();
+ if(!c.formUrl&&CONNECTED){const g=ownFormLink(op,'');return `<div class="panel" style="padding:12px 16px;margin-bottom:14px;border-color:color-mix(in srgb,var(--green) 40%,var(--line))"><div class="row"><span class="pill green">Application form on</span><b>${esc(op.title)}</b><span class="small muted">The app's own form. Every site below gets its own link, so people who apply are tagged with where they came from.</span><span class="grow"></span><button class="btn sm" data-fcopy="${esc(g)}">Copy form link</button><a class="btn sm" href="${esc(g)}" target="_blank" rel="noopener">Test form</a><button class="btn sm ghost" data-pcfg2>Use a different form</button></div></div>`}
  if(!c.formUrl)return `<div class="panel" style="padding:12px 16px;margin-bottom:14px;background:var(--orange2);border-color:transparent;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="grow"><b>Add your common application form link.</b> Every post and preview will then include it, and each answer becomes an application automatically.</div><button class="btn pri" data-formsetup>Set up application form</button><button class="btn" data-pcfg2>I have a link</button></div>`;
  const g=formLink(op,{src:'Careers Page'});const pre=/__JOB__/.test(c.formUrl);
  return `<div class="panel" style="padding:12px 16px;margin-bottom:14px;border-color:color-mix(in srgb,var(--green) 40%,var(--line))"><div class="row"><span class="pill green">Application form on</span><b>${esc(op.title)}</b><span class="small muted">${pre?'Job and source are pre-filled in every link':'Same link for every job (add __JOB__ / __SRC__ to pre-fill)'}</span><span class="grow"></span><button class="btn sm" data-fcopy="${esc(g)}">Copy form link</button><a class="btn sm" href="${esc(g)}" target="_blank" rel="noopener">Test form</a><button class="btn sm ghost" data-pcfg2>Change</button></div></div>`}
@@ -116,7 +120,7 @@ function markPosted(o,b){
 }
 function postingSettings(){
  const c=postCfg();
- modal({title:'Posting settings',size:'w',body:`<div class="fgrid"><label class="f full">Application form link <span class="muted">(added to every post and preview)</span><input class="inp" id="psf" value="${esc(c.formUrl||'')}" placeholder="https://docs.google.com/forms/d/e/…/viewform?usp=pp_url&entry.…=__JOB__&entry.…=__SRC__"></label>
+ modal({title:'Posting settings',size:'w',body:`<div class="fgrid"><label class="f full">Application form link <span class="muted">(added to every post and preview)${CONNECTED?'. Leave it empty to use the app&#39;s own form, which tags each platform by itself':''}</span><input class="inp" id="psf" value="${esc(c.formUrl||'')}" placeholder="https://docs.google.com/forms/d/e/…/viewform?usp=pp_url&entry.…=__JOB__&entry.…=__SRC__"></label>
  <div class="full small muted" style="margin-top:-6px">Paste the “Application link template” from the setup script. <b>__JOB__</b> is replaced with the job (e.g. “CRM Executive (OP-1002)”) and <b>__SRC__</b> with the site the post goes to. <a href="#" id="psfsetup">Create the form →</a></div>
  <label class="f">Fallback apply link <span class="muted">(only if no form)</span><input class="inp" id="psl" value="${esc(c.applyLink)}" placeholder="https://yourcompany.com/careers"></label>
  <label class="f">Fallback apply email<input class="inp" id="pse" value="${esc(c.applyEmail)}" placeholder="careers@yourcompany.com"></label>

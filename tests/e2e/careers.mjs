@@ -132,6 +132,23 @@ try {
   await page.waitForSelector('.ok', { timeout: 30000 });
   check('applying twice says so and adds nothing', (await page.locator('.ok').innerText()).includes('already applied')
     && (await all('select 1 from public.applications where candidate_id = $1', [cand.id])).length === 1);
+  // a link posted on a platform tags the applicant with it; a name nobody listed is the careers page
+  const roleUrl = (q) => pathToFileURL(resolve(root, dist ? 'dist/careers.html' : 'careers.html')).href + `#${OP}${q}`;
+  for (const [q, email, want] of [['?src=LinkedIn', `${tag}li@example.com`, 'LinkedIn'], ['?src=facebook%20ad', `${tag}fb@example.com`, 'Facebook Ad'], ['?src=Made%20Up', `${tag}mu@example.com`, 'Careers Page']]) {
+    await page.goto('about:blank');
+    await page.goto(roleUrl(q));
+    await page.waitForSelector('form');
+    await fillApplication(page, { email, name: `Via ${want} ${tag}` });
+    await page.check('[name=consent]');
+    await page.click('button[type=submit]');
+    await page.waitForSelector('.ok', { timeout: 30000 });
+    const row = (await all('select c.source as cs, a.source as asrc from public.candidates c join public.applications a on a.candidate_id = c.id where lower(c.email) = $1', [email]))[0];
+    check(`a link with ${q} tags the applicant "${want}"`, row && row.cs === want && row.asrc === want);
+  }
+  await page.goto('about:blank');
+  await page.goto(roleUrl('?src=LinkedIn'));
+  await page.waitForSelector('form');
+  check('a role link with a platform opens the role and keeps the platform in the address', (await page.evaluate(() => location.hash)) === `#${OP}?src=LinkedIn`);
   await openRole(page);
   await page.waitForSelector('form');
   await fillApplication(page, { email: `${tag}bot@example.com` });

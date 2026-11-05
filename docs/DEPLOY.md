@@ -13,7 +13,7 @@ Production is the Vercel link (no company domain for now). The app, the careers 
 | `ANTHROPIC_API_KEY` | your Anthropic key | draft summaries only. Leave it out and the button reports "not set up" |
 
 Never add the service-role key or `DATABASE_URL` to Vercel; the app does not need them.
-3. Deploy. The app is at `/`, the careers page at `/careers.html`, a role at `/careers.html#OP-1001`.
+3. Deploy. The app is at `/`, the careers page at `/careers.html`, a role at `/careers.html#OP-1001`. A role link can name the platform it is posted on, `/careers.html#OP-1001?src=LinkedIn`: everyone who applies through it is tagged with that source (only names on the company's list are accepted; anything else counts as the careers page). The Job posting screen builds these links, one per site.
 4. In Supabase → Authentication → URL settings, put the Vercel link as the site URL (sign-in is by username, so this is only tidiness).
 
 ## Draft summaries (Claude)

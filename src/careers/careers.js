@@ -48,11 +48,24 @@
   }
   const expText = (j) => (+j.exp_max ? `${+j.exp_min}–${+j.exp_max} years` : +j.exp_min ? `${+j.exp_min}+ years` : '');
 
+  /* ---------- where a link comes from ---------- */
+  // A link is careers.html#OP-1001 or careers.html#OP-1001?src=LinkedIn: the part after ?src= is the platform the link was posted on. It is kept for this visit
+  // and sent with the application, so the app can tell where the person came from. The database only accepts names on the company's own list.
+  let SRC = '';
+  function route() {
+    const raw = location.hash.slice(1), q = raw.indexOf('?');
+    let id = '';
+    try { id = decodeURIComponent(q < 0 ? raw : raw.slice(0, q)); } catch (e) { id = ''; }
+    if (q >= 0) { const s = new URLSearchParams(raw.slice(q + 1)).get('src'); if (s) SRC = s.slice(0, 80); }
+    return id;
+  }
+  const hashFor = (id) => '#' + id + (SRC ? '?src=' + encodeURIComponent(SRC) : '');
+
   /* ---------- one role ---------- */
   function detail(id) {
     const j = jobs.find((x) => x.id === id);
     if (!j) return list();
-    history.replaceState(null, '', '#' + id);
+    history.replaceState(null, '', hashFor(id));
     const part = (h, t) => (t ? [el('h3', null, h), el('p', null, t)] : []);
     show(el('button', { class: 'back', onclick: () => { history.replaceState(null, '', location.pathname); list(); } }, '← All roles'),
       el('article', { class: 'card detail' }, el('h1', null, j.title), el('div', { class: 'meta' }, [j.dept, j.location, j.mode, j.type, expText(j), j.education && j.education !== 'Graduate' ? j.education : ''].filter(Boolean).map((t) => el('span', null, t))),
@@ -102,7 +115,7 @@
         const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/submit_application`, { method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: JSON.stringify({
           p_opening: j.id, p_name: d.get('name'), p_email: d.get('email'), p_phone: d.get('phone'), p_location: d.get('location'), p_experience: +d.get('exp'), p_notice: +d.get('notice'),
           p_current_lpa: +d.get('cur'), p_expected_lpa: +d.get('expected'), p_skills: skills, p_education: d.get('edu'), p_resume_path: path, p_resume_name: pick ? pick.name : null,
-          p_consent: d.get('consent') === 'on', p_website: d.get('website') || '' }) });
+          p_consent: d.get('consent') === 'on', p_website: d.get('website') || '', p_source: SRC }) });
         if (!r.ok) throw new Error('Your application could not be sent. Please try again in a moment.');
         const out = await r.json();
         if (!out.ok) { msg.textContent = out.message; btn.disabled = false; btn.textContent = 'Submit application'; return; }
@@ -116,7 +129,7 @@
   }
 
   // a link to one role opened while the page is already showing
-  window.addEventListener('hashchange', () => { if (!jobs.length) return; const id = decodeURIComponent(location.hash.slice(1)); jobs.some((x) => x.id === id) ? detail(id) : list(); });
-  loadJobs().then(() => { const id = decodeURIComponent(location.hash.slice(1)); jobs.some((x) => x.id === id) ? detail(id) : list(); },
+  window.addEventListener('hashchange', () => { if (!jobs.length) return; const id = route(); jobs.some((x) => x.id === id) ? detail(id) : list(); });
+  loadJobs().then(() => { const id = route(); jobs.some((x) => x.id === id) ? detail(id) : list(); },
     (e) => show(el('div', { class: 'empty' }, e.message + ' Please try again later.')));
 })();
