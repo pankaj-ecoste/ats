@@ -75,7 +75,20 @@
   }
 
   /* ---------- the application ---------- */
+  // The form of a role: the usual questions (the recruiter may switch some off: form.hide) and the recruiter's own questions (form.questions).
+  // Name, email, mobile number and the consent are always asked. The database checks every answer again.
+  function ownQuestion(q) {
+    const name = 'q_' + q.id, req = !!q.required;
+    let input;
+    if (q.type === 'long') input = el('textarea', { name, required: req, maxlength: 1000 });
+    else if (q.type === 'number') input = el('input', { name, required: req, type: 'number', step: 'any', inputmode: 'decimal' });
+    else if (q.type === 'yesno') input = el('select', { name, required: req }, el('option', { value: '' }, 'Choose…'), el('option', { value: 'Yes' }, 'Yes'), el('option', { value: 'No' }, 'No'));
+    else if (q.type === 'choice') input = el('select', { name, required: req }, el('option', { value: '' }, 'Choose…'), (q.options || []).map((o) => el('option', { value: o }, o)));
+    else input = el('input', { name, required: req, maxlength: 300 });
+    return el('label', { class: q.type === 'long' ? 'full' : null }, q.label, req ? '' : el('span', { class: 'hint' }, ' (optional)'), input);
+  }
   function form(j) {
+    const F = j.form || {}, off = new Set(F.hide || []), on = (k) => !off.has(k), own = F.questions || [];
     const f = (name, label, attrs, hint) => el('label', null, label, hint ? el('span', { class: 'hint' }, ' ' + hint) : null, el('input', { name, required: true, ...attrs }));
     const msg = el('p', { class: 'err', role: 'alert' });
     const btn = el('button', { class: 'pri', type: 'submit' }, 'Submit application');
@@ -84,20 +97,23 @@
       el('h2', null, 'Apply for this role'),
       el('div', { class: 'grid' },
         f('name', 'Full name', { autocomplete: 'name', maxlength: 120 }), f('email', 'Email', { type: 'email', autocomplete: 'email', maxlength: 200 }),
-        f('phone', 'Mobile number', { type: 'tel', autocomplete: 'tel', inputmode: 'tel', maxlength: 30 }), f('location', 'Current city', { autocomplete: 'address-level2', maxlength: 80 }),
-        f('exp', 'Total experience', { type: 'number', min: 0, max: 60, step: '0.1' }, '(years, 0 if fresher)'),
-        el('label', null, 'Notice period', el('select', { name: 'notice', required: true }, NOTICE.map(([t, d]) => el('option', { value: d, selected: d === 30 }, t)))),
-        f('cur', 'Current salary', { type: 'number', min: 0, max: 1000, step: '0.1' }, '(lakh per year, 0 if not working)'), f('expected', 'Expected salary', { type: 'number', min: 0, max: 1000, step: '0.1' }, '(lakh per year)'),
-        el('label', null, 'Highest qualification', el('select', { name: 'edu', required: true }, EDUCATION.map((e) => el('option', { value: e, selected: e === 'Graduate' }, e)))),
-        el('label', { class: 'full' }, 'Key skills ', el('span', { class: 'hint' }, '(separated by commas)'), el('textarea', { name: 'skills', required: true, maxlength: 600, placeholder: (j.mandatory || []).slice(0, 4).join(', ') })),
-        el('label', { class: 'full' }, 'Resume ', el('span', { class: 'hint' }, '(PDF or Word, up to 5 MB; optional but helps us)'), file)),
+        f('phone', 'Mobile number', { type: 'tel', autocomplete: 'tel', inputmode: 'tel', maxlength: 30 }),
+        on('location') ? f('location', 'Current city', { autocomplete: 'address-level2', maxlength: 80 }) : null,
+        on('exp') ? f('exp', 'Total experience', { type: 'number', min: 0, max: 60, step: '0.1' }, '(years, 0 if fresher)') : null,
+        on('notice') ? el('label', null, 'Notice period', el('select', { name: 'notice', required: true }, NOTICE.map(([t, d]) => el('option', { value: d, selected: d === 30 }, t)))) : null,
+        on('cur') ? f('cur', 'Current salary', { type: 'number', min: 0, max: 1000, step: '0.1' }, '(lakh per year, 0 if not working)') : null,
+        on('expected') ? f('expected', 'Expected salary', { type: 'number', min: 0, max: 1000, step: '0.1' }, '(lakh per year)') : null,
+        on('edu') ? el('label', null, 'Highest qualification', el('select', { name: 'edu', required: true }, EDUCATION.map((e) => el('option', { value: e, selected: e === 'Graduate' }, e)))) : null,
+        on('skills') ? el('label', { class: 'full' }, 'Key skills ', el('span', { class: 'hint' }, '(separated by commas)'), el('textarea', { name: 'skills', required: true, maxlength: 600, placeholder: (j.mandatory || []).slice(0, 4).join(', ') })) : null,
+        own.map(ownQuestion),
+        on('resume') ? el('label', { class: 'full' }, 'Resume ', el('span', { class: 'hint' }, '(PDF or Word, up to 5 MB; optional but helps us)'), file) : null),
       el('div', { class: 'trap', 'aria-hidden': 'true' }, el('label', null, 'Website', el('input', { name: 'website', tabindex: '-1', autocomplete: 'off' }))),
-      el('label', { class: 'check', style: 'margin-top:12px' }, el('input', { type: 'checkbox', name: 'consent', required: true }), `I agree that ${company || 'the company'} stores and uses my details and resume to consider my application and contact me about it.`),
+      el('label', { class: 'check', style: 'margin-top:12px' }, el('input', { type: 'checkbox', name: 'consent', required: true }), `I agree that ${company || 'the company'} stores and uses my details${on('resume') ? ' and resume' : ''} to consider my application and contact me about it.`),
       msg, el('div', { style: 'margin-top:12px' }, btn));
     frm.addEventListener('submit', async (e) => {
       e.preventDefault();
       msg.textContent = '';
-      const d = new FormData(frm), pick = file.files[0];
+      const d = new FormData(frm), pick = on('resume') ? file.files[0] : null;
       if (pick) {
         const ext = pick.name.toLowerCase().split('.').pop();
         if (!FILE_TYPES[ext]) { msg.textContent = 'Please attach a PDF, Word (.docx) or text file.'; return; }
@@ -111,11 +127,15 @@
           const up = await fetch(`${CFG.supabaseUrl}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: headers({ 'Content-Type': FILE_TYPES[pick.name.toLowerCase().split('.').pop()], 'x-upsert': 'false' }), body: pick });
           if (!up.ok) throw new Error('The resume could not be uploaded. Please try again, or apply without it.');
         }
-        const skills = String(d.get('skills')).split(',').map((s) => s.trim()).filter(Boolean);
+        // a question that is switched off is not asked: the database then uses its usual default for it
+        const num = (k) => (on(k) && d.get(k) !== null && d.get(k) !== '' ? +d.get(k) : null);
+        const skills = on('skills') ? String(d.get('skills')).split(',').map((s) => s.trim()).filter(Boolean) : [];
+        const answers = {};
+        own.forEach((q) => { const v = d.get('q_' + q.id); if (v !== null && String(v).trim() !== '') answers[q.id] = String(v).trim(); });
         const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/submit_application`, { method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: JSON.stringify({
-          p_opening: j.id, p_name: d.get('name'), p_email: d.get('email'), p_phone: d.get('phone'), p_location: d.get('location'), p_experience: +d.get('exp'), p_notice: +d.get('notice'),
-          p_current_lpa: +d.get('cur'), p_expected_lpa: +d.get('expected'), p_skills: skills, p_education: d.get('edu'), p_resume_path: path, p_resume_name: pick ? pick.name : null,
-          p_consent: d.get('consent') === 'on', p_website: d.get('website') || '', p_source: SRC }) });
+          p_opening: j.id, p_name: d.get('name'), p_email: d.get('email'), p_phone: d.get('phone'), p_location: on('location') ? d.get('location') : '', p_experience: num('exp'), p_notice: num('notice'),
+          p_current_lpa: num('cur'), p_expected_lpa: num('expected'), p_skills: skills, p_education: on('edu') ? d.get('edu') : '', p_resume_path: path, p_resume_name: pick ? pick.name : null,
+          p_consent: d.get('consent') === 'on', p_website: d.get('website') || '', p_source: SRC, p_answers: answers }) });
         if (!r.ok) throw new Error('Your application could not be sent. Please try again in a moment.');
         const out = await r.json();
         if (!out.ok) { msg.textContent = out.message; btn.disabled = false; btn.textContent = 'Submit application'; return; }

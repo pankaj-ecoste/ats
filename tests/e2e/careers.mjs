@@ -189,6 +189,59 @@ try {
   await app.waitForSelector('text=Careers page');
   const log = await app.locator('main, #content').first().innerText();
   check('Settings lists what arrived and what was turned away', log.includes(EMAIL) && log.includes('Added') && log.includes('Applied before') && log.includes('no longer accepting'));
+  /* ---- the application form builder, then the form a visitor gets ---- */
+  await app.evaluate((id) => go('opening', id, 'form'), OP);
+  await app.waitForSelector('#afAdd', { timeout: 15000 });
+  check('the opening has an Application form tab, with nothing changed yet', !(await app.isEnabled('#afSave')));
+  await app.click('#afAdd');
+  await app.fill('[data-af-label="0"]', 'Do you have a bike?');
+  await app.selectOption('[data-af-type="0"]', 'yesno');
+  await app.check('[data-af-req="0"]');
+  await app.click('#afAdd');
+  await app.fill('[data-af-label="1"]', 'Preferred area');
+  await app.selectOption('[data-af-type="1"]', 'choice');
+  await app.fill('[data-af-opts="1"]', 'North\nSouth\nEast');
+  await app.uncheck('[data-af-field="cur"]');
+  await app.uncheck('[data-af-field="expected"]');
+  check('Save wakes up once the form is changed', await app.isEnabled('#afSave'));
+  await app.click('#afSave');
+  await app.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  const saved = (await all('select form from public.openings where id = $1', [OP]))[0].form;
+  check('the builder saves the usual questions switched off and the new questions',
+    saved.hide.join() === 'cur,expected' && saved.questions.length === 2 && saved.questions[0].label === 'Do you have a bike?' && saved.questions[0].type === 'yesno'
+    && saved.questions[0].required === true && saved.questions[1].type === 'choice' && saved.questions[1].options.join() === 'North,South,East');
+  // a bad form is turned back in words, and nothing is saved
+  await app.click('#afAdd');
+  await app.click('#afSave');
+  check('an empty question is refused before saving', (await app.locator('.toast').last().innerText()).includes('Question 3 has no text'));
+
+  await openRole(page);
+  await page.waitForSelector('form');
+  const names = await page.$$eval('form [name]', (e) => e.map((x) => x.name));
+  const [qBike, qArea] = saved.questions.map((q) => `q_${q.id}`);
+  check('the careers form follows the opening: switched-off questions are gone, its own are there',
+    !names.includes('cur') && !names.includes('expected') && names.includes('location') && names.includes('skills') && names.includes(qBike) && names.includes(qArea));
+  const FORM_EMAIL = `${tag}form@example.com`;
+  const fillShort = async () => {
+    await page.fill('[name=name]', `Form Person ${tag}`); await page.fill('[name=email]', FORM_EMAIL); await page.fill('[name=phone]', '+91 98450 33445');
+    await page.fill('[name=location]', 'Pune'); await page.fill('[name=exp]', '2'); await page.fill('[name=skills]', 'Java');
+    await page.check('[name=consent]');
+  };
+  await fillShort();
+  await page.click('button[type=submit]');
+  check('a required question of the opening must be answered before anything is sent',
+    (await all('select 1 from public.candidates where lower(email) = $1', [FORM_EMAIL])).length === 0 && (await page.$$eval('form :invalid', (e) => e.length)) > 0);
+  await page.selectOption(`[name=${qBike}]`, 'Yes');
+  await page.selectOption(`[name=${qArea}]`, 'South');
+  await page.click('button[type=submit]');
+  await page.waitForSelector('.ok', { timeout: 30000 });
+  const fa = (await all('select a.answers, a.source from public.applications a join public.candidates c on c.id = a.candidate_id where lower(c.email) = $1', [FORM_EMAIL]))[0];
+  check('the answers are kept on the application, by the question in words', fa && fa.answers['Do you have a bike?'] === 'Yes' && fa.answers['Preferred area'] === 'South');
+  const formCand = (await all('select id from public.candidates where lower(email) = $1', [FORM_EMAIL]))[0];
+  await app.evaluate((id) => go('candidate', id), formCand.id);
+  await app.waitForFunction(() => document.getElementById('content').textContent.includes('Form answers'), null, { timeout: 15000 });
+  const shown = await app.locator('#content').innerText();
+  check('the candidate page shows the form answers', shown.includes('Do you have a bike?') && shown.includes('Yes') && shown.includes('Preferred area') && shown.includes('South'));
   check('the staff screens had no page errors', app.errors.length === 0 || (console.error(app.errors), false));
 } catch (e) {
   check(`unexpected failure: ${String(e.message).split('\n')[0]}`, false);

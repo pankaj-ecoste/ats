@@ -31,7 +31,7 @@ const FROM_ROW={
  opening:(r,P)=>({id:r.id,title:r.title,dept:r.dept,positions:r.positions,location:r.location,mode:r.mode,type:r.type,
   expMin:r.exp_min,expMax:r.exp_max,salMin:r.sal_min,salMax:r.sal_max,education:r.education,mandatory:r.mandatory,preferred:r.preferred,
   desc:r.description,resp:r.responsibilities,req:r.requirements,recruiter:P.name(r.recruiter_id),manager:P.name(r.manager_id),
-  opened:r.opened_on,target:r.target_on||'',priority:r.priority,status:r.status}),
+  opened:r.opened_on,target:r.target_on||'',priority:r.priority,status:r.status,...(r.form&&Object.keys(r.form).length?{form:r.form}:{})}),
  candidate:(r,P,ctx)=>{
   const comp=ctx.compensation.get(r.id);
   return {id:r.id,name:r.name,designation:r.designation,company:r.company,exp:r.exp_years,location:r.location,education:r.education,
@@ -144,7 +144,7 @@ const TO_ROW={
  opening:(o,P)=>({openings:{id:o.id,title:o.title,dept:o.dept||'',positions:o.positions||1,location:o.location||'',mode:o.mode,type:o.type,
   exp_min:o.expMin||0,exp_max:o.expMax||0,sal_min:o.salMin||0,sal_max:o.salMax||0,education:o.education||'',mandatory:o.mandatory||[],preferred:o.preferred||[],
   description:o.desc||'',responsibilities:o.resp||'',requirements:o.req||'',recruiter_id:P.id(o.recruiter),manager_id:P.id(o.manager),
-  opened_on:o.opened,target_on:o.target||null,priority:o.priority,status:o.status}}),
+  opened_on:o.opened,target_on:o.target||null,priority:o.priority,status:o.status,form:o.form||{}}}),
  candidate:(c,P)=>({
   candidates:{id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',designation:c.designation||'',company:c.company||'',exp_years:c.exp||0,location:c.location||'',
    relocate:!!c.reloc,education:c.education||'',edu_field:c.eduField||'',university:c.university||'',grad_year:c.gradYear||null,skills:c.skills||[],

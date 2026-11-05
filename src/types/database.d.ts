@@ -295,6 +295,7 @@ export interface Openings {
   target_on: string | null;
   priority: string;
   status: string;
+  form: Json;
   created_by: string | null;
   created_at: string;
   updated_at: string;
