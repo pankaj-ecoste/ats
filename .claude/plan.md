@@ -3,7 +3,7 @@
 Single source of truth for **what exists, what was done, what is pending, and how changes are made**.
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
-- **Last updated:** 2026-10-16
+- **Last updated:** 2026-11-05
 - **Current phase:** Phases 1 to 7 are built as far as they can be without the owner's outside steps (see the log). The app is **live on Vercel from `main`** (ats-gamma.vercel.app), with real accounts and the first real use started. The owner went through the app on 2026-10-24 and has a list of changes and tweaks, to be built **one by one, as they are given**; each one is recorded in section 10 when done. Waiting on the owner: the real lead sheet's headings, pasting the live-lead-sheet script into the Google Sheet, company details, team accounts, consent text, the handover security steps (`docs/SECURITY_CHECKLIST.md`), Brevo email later.
 - **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
 - **Status of the app:** working browser-only prototype. Not production-ready (see §6).
@@ -557,6 +557,29 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 - Pipeline board and Applications page speed above about 5,000 leads (1.7 s and 0.7 s measured).
 - A separate Supabase project for tests; per-role one-page guides; handover note; the `v1.0.0` tag after the team walkthrough.
 
+### 7.7b Lead intake redesign (agreed in talk 2026-11-05; not built yet)
+
+**Owner's flow.** The recruiter creates an opening first. Leads then reach it by three doors, each labelled with where it came from; after that the pipeline is unchanged.
+- **Door A:** the opening is posted on LinkedIn, Indeed and others with the app's form link (one tracked link per platform, so the source is set by the link).
+- **Door B:** an ad. The people fill the form **inside Facebook or Google**, so the answers land in a Google Sheet, and the app reads them from the sheet (decided: not our own form page).
+- **Door C:** the same sheets, brought in by the sheet link below.
+
+**Facts about the real workbook.** About 46 tabs. Every tab is a **different opening** (also per city, for example Sales Executive Hyderabad, Jammu, Bhubaneswar). Tab names are free text, some carry the source ("Billing_Naukri", "facebook leads (BDE)"), some are junk ("Sheet18", "Pivot Table 1"). Each tab has **different columns** (custom ad-form questions). More tabs will be added. So: no guessing from tab names.
+
+**Agreed design: link a tab to an opening, from the opening.**
+1. On an opening: **Link a sheet**. Choose the tab from a dropdown of the workbook's tabs, the **source** (fixed list: LinkedIn, Indeed, Naukri, Facebook Ad, Google Ad, Referral and so on), and the **columns** to bring in. Name and phone-or-email are required; the rest are chosen.
+2. **One tab belongs to one opening only** (a locked link; a linked tab shows "linked to ..."). An opening may have several tabs (assumed, to confirm).
+3. **After linking, new rows in that tab reach the app by themselves**; each lead carries the opening, the source and the tab (campaign) label.
+4. Chosen columns that are not standard fields are kept with the lead as **form answers** ("question: answer"), shown on the candidate page.
+5. Link by the tab's stable id, not its name (a renamed tab must not break the link). A column added later shows as "new column, not selected". An admin can unlink; leads already imported stay.
+6. Source moves from the candidate to the **application** (one person can come by LinkedIn for one role and an ad for another), and becomes a fixed list managed in Settings.
+
+**Build on what exists.** `lead_feed` (one tab, one opening, one token), `ingest_leads`, the Apps Script generator, `intake_batches`, the duplicate check. Today only the mapped standard columns are read; **every other column is dropped** (this is the gap). The script would run once for the whole workbook: it reports the tabs and headings to the app, asks which tabs are linked, and sends only new rows of linked tabs.
+
+**Order:** (1) source list and source on the application; (2) the tab link (new table, script, link screen on the opening, saved form answers); (3) Door A tracked form links; (4) per-opening question builder for our own form.
+
+**Still open:** can an opening have several tabs; whether the extra answers only show or also score or filter (suggested: only show at first); what the coloured tab dots mean in the workbook.
+
 ### 7.8 Immediate next steps (in order)
 
 1. ☐ Rotate the Supabase database password and `service_role` key (they were shared in chat)
@@ -604,6 +627,7 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 
 | Date | Change | By |
 |---|---|---|---|
+| 2026-11-05 | **Clean-up and two tweaks:** the live database was cleared of the 450 leads imported from the whole workbook (candidates and everything tied to them; the audit log stays, it is append-only) and then of the 4 test openings; opening label "Hiring manager" is now "Reporting manager"; opening priority is now P1 (highest) to P4 (lowest), migration 0021 converts old values (Urgent, High, Medium, Low), tasks keep Low, Medium, High. Pushed straight to `main` as the owner asked. The lead intake redesign is agreed in talk and recorded in 7.7b | Claude Code |
 | 2026-10-24 | **Owner review:** the owner went through the live app and has many changes and tweaks; they will be raised and built one by one. Nothing else was changed in this step except this plan and the memory notes | Claude Code |
 | 2026-10-24 | **Tests and checks:** GitHub checks were red on `main` after the lead import (a routing test measured scroll after Playwright's own scroll-into-view, so a different toolbar button moved the field by 6 px); the test now triggers the redraw directly. The 100,000-random-ids test failed by chance about once in 200 runs; it now checks 5,000 ids strictly and 100,000 loosely. The access-rule database tests (`rls.test.mjs`) wiped all accounts in a transaction and broke once real stage history existed; the wipe now runs with foreign-key actions off inside the transaction. CI is green on `1173701`. Note: the database tests and the live browser tests run on the same Supabase project as production (rolled-back transactions, or prefixed records removed afterwards); a separate test project is advisable before the data grows | Claude Code |
 | 2026-10-24 | **Live lead sheet:** migrations 0018 to 0020 applied to the Supabase project, Apps Script generator, Settings panel, `docs/LEAD_SHEET.md`; worked directly on `main` as the owner asked | Claude Code |
