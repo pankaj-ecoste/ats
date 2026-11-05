@@ -1,11 +1,12 @@
 /* Settings > Lead sheet connection (admin): connect the Google workbook once, get its script, see what arrived.
    Which tab feeds which opening is set on each opening ("Lead sheets" tab), not here. */
 "use strict";
-const LF={status:null,batches:[],loading:false,error:''};
+const LF={status:null,batches:[],loading:false,error:'',at:0};
+const LF_FRESH_MS=5000;   // coming back to Settings after this long reads the status again, so the tab count and last lead are not stale
 
 async function loadLeadFeed(){
  if(LF.loading)return;LF.loading=true;LF.error='';
- try{[LF.status,LF.batches]=await Promise.all([leadFeedStatus(),leadFeedBatches()])}
+ try{[LF.status,LF.batches]=await Promise.all([leadFeedStatus(),leadFeedBatches()]);LF.at=Date.now()}
  catch(e){LF.error=e.message||'Could not read the lead sheet settings'}
  LF.loading=false;if(R.view==='settings')render();
 }
@@ -53,7 +54,7 @@ function leadFeedModal(token,first){
 }
 function bindLeadFeed(root){
  if(!CONNECTED||!isAdmin())return;
- if(!LF.status&&!LF.loading&&!LF.error)loadLeadFeed();
+ if(!LF.loading&&!LF.error&&(!LF.status||Date.now()-LF.at>LF_FRESH_MS))loadLeadFeed();
  const on=(sel,fn)=>{const e=$(sel,root);if(e)e.onclick=fn};
  const fail=e=>toast(e.message||'Could not save','var(--red)');
  const reload=()=>{LF.status=null;LF.error='';render();loadLeadFeed()};

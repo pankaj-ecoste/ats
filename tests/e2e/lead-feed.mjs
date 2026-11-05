@@ -138,7 +138,9 @@ try {
   check('nothing is linked yet, so no lead moved and no tab was changed', (await db.query('select count(*)::int n from public.candidates where name like $1', [`${tag}%`])).rows[0].n === 0 && gridA[0].length === 7);
 
   // ---- link a tab to an opening from the opening's page
-  await page.evaluate(() => go('settings')); await page.waitForSelector('#lfOn', { timeout: 15000 });
+  await page.evaluate(() => go('settings')); await page.waitForSelector('#lfRefresh', { timeout: 15000 });
+  await page.click('#lfRefresh');   // what a person does after the script has run
+  await page.waitForFunction(() => /2 tabs reported/.test(document.getElementById('content').textContent), null, { timeout: 15000 }).catch(() => {});
   check('Settings now counts the tabs the workbook reported', /2 tabs reported/.test(await text('#content')));
   await page.evaluate((id) => go('opening', id, 'leads'), OP);
   await page.waitForSelector('#lsLink', { timeout: 15000 });
