@@ -66,7 +66,7 @@ function vOpening(){
  else if(R.tab==='applications'||R.tab==='shortlisted'){const l=R.tab==='shortlisted'?ap.filter(a=>a.maxStage>=1&&a.stage!=='Rejected'):ap;body=`<section class="panel">${appTable(l,true)}</section>`}
  else if(R.tab==='interviews'){const l=S.interviews.filter(i=>ap.some(a=>a.id===i.appId));body=`<section class="panel">${intTable(l)}</section>`}
  else if(R.tab==='offers'){const l=S.offers.filter(f=>ap.some(a=>a.id===f.appId));body=`<section class="panel">${offerTable(l)}</section>`}
- else if(R.tab==='analytics'){const sc=ap.map(a=>matchA(a).score);const b=[[0,50],[50,65],[65,80],[80,101]];const src={};ap.forEach(a=>{const s=getC(a.cid).source;src[s]=(src[s]||0)+1});
+ else if(R.tab==='analytics'){const sc=ap.map(a=>matchA(a).score);const b=[[0,50],[50,65],[65,80],[80,101]];const src={};ap.forEach(a=>{const s=appSource(a);src[s]=(src[s]||0)+1});
   body=`<div class="grid g2"><section class="panel"><header><h3>Funnel for this opening</h3></header><div class="pbody">${funnelHTML(ap)}</div></section>
   <section class="panel"><header><h3>Match score distribution</h3></header><div class="pbody hbars">${b.map(r=>{const n=sc.filter(s=>s>=r[0]&&s<r[1]).length;return `<div class="hb"><span>${r[0]}–${Math.min(100,r[1]-1)}%</span><div class="bar"><i style="width:${ap.length?n/ap.length*100:0}%;background:${scoreColor(r[0]+1)}"></i></div><b>${n}</b></div>`}).join('')}
   <h4 style="margin:18px 0 6px">Sources</h4>${Object.entries(src).map(([k,v])=>`<div class="hb"><span>${k}</span><div class="bar"><i style="width:${v/ap.length*100}%"></i></div><b>${v}</b></div>`).join('')}

@@ -45,7 +45,7 @@ function postText(o,fmt,b){
 function boardUrl(b,o,text){const c=postCfg();const ap=formLink(o,b)||c.applyLink||'';return (b.id==='careers'?ap:b.url).replace('{text}',encodeURIComponent(text)).replace('{apply}',encodeURIComponent(ap)).replace('{subject}',encodeURIComponent(`${o.title} at ${S.settings.company} (${o.id})`))}
 async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
 const postingOf=(opId,bid)=>S.postings.filter(p=>p.opId===opId&&p.board===bid).slice(-1)[0];
-function boardApplicants(o,b){return appsOfOp(o.id).filter(a=>getC(a.cid).source===b.src).length}
+function boardApplicants(o,b){return appsOfOp(o.id).filter(a=>appSource(a)===b.src).length}
 function postStatus(p){if(!p)return ['Not posted',''];if(p.status==='Closed')return ['Closed','red'];if(p.status==='Paused')return ['Paused','orange'];if(p.expires&&p.expires<today())return ['Expired','red'];return [`Posted ${daysBetween(p.postedOn,today())===0?'today':daysBetween(p.postedOn,today())+'d ago'}`,'green']}
 function boardCard(o,b){
  const p=postingOf(o.id,b.id);const [st,col]=postStatus(p);const n=boardApplicants(o,b);const text=postText(o,b.fmt,b);const url=boardUrl(b,o,text);
@@ -63,7 +63,7 @@ function formBanner(op){const c=postCfg();
 function vPosting(){
  const op=getOp(R.param)||getOp(R.post.op)||S.openings.find(o=>!['Closed','Filled'].includes(o.status))||S.openings[0];R.post.op=op.id;
  const c=postCfg();const bl=boards();const live=S.postings.filter(p=>p.opId===op.id&&postStatus(p)[1]==='green').length;
- const srcRows=[...new Set(bl.map(b=>b.src))].map(src=>{const l=S.applications.filter(a=>getC(a.cid).source===src);return {src,n:l.length,sh:l.filter(a=>a.maxStage>=1).length,int:l.filter(a=>a.maxStage>=3).length,hire:l.filter(a=>a.maxStage>=8).length}}).filter(r=>r.n).sort((a,b)=>b.n-a.n);
+ const srcRows=[...new Set(bl.map(b=>b.src))].map(src=>{const l=S.applications.filter(a=>appSource(a)===src);return {src,n:l.length,sh:l.filter(a=>a.maxStage>=1).length,int:l.filter(a=>a.maxStage>=3).length,hire:l.filter(a=>a.maxStage>=8).length}}).filter(r=>r.n).sort((a,b)=>b.n-a.n);
  const openOps=S.openings.filter(o=>!['Closed','Draft'].includes(o.status));
  return `<div class="page-h"><div><h1>Job posting</h1><p>Publish openings on job sites and social channels, then track where applicants come from.</p></div>
  <div class="row"><button class="btn" id="pcfg">Posting settings</button><button class="btn" id="pboards">Manage sites</button></div></div>

@@ -5,6 +5,10 @@
 // connected: only people with an account can be picked, because a typed name has no account to save against
 const recruiters=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter']);const t=S.settings.team;return t&&t.recruiters&&t.recruiters.length?t.recruiters:DEFAULT_RECRUITERS};
 const interviewers=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter','hiring_manager','interviewer']);const t=S.settings.team;return t&&t.interviewers&&t.interviewers.length?t.interviewers:DEFAULT_INTERVIEWERS};
+// the list of places a lead can come from: the one an admin saved in Settings, else the built-in list
+const sourceList=()=>{const s=S.settings.sources;return s&&s.length?s:SOURCES};
+// where an application came from: its own source, else the person's first source
+const appSource=a=>a.source||(getC(a.cid)||{}).source||'Unknown';
 const getOp=id=>S.openings.find(o=>o.id===id);
 const getC=id=>S.candidates.find(c=>c.id===id);
 const getA=id=>S.applications.find(a=>a.id===id);

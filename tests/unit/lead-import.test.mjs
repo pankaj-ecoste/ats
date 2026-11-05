@@ -193,3 +193,13 @@ test('5,000 rows are planned and imported quickly', () => {
   assert.equal(new Set(app.S.candidates.map((c) => c.id)).size, 5001);
   assert.ok(ms < 3000, `took ${ms} ms`);
 });
+
+test('every imported application keeps the source it came by, also for a person who was already in the system', () => {
+  const { app, op } = withPeople();
+  const t = sheet([{ Name: 'Asha Rao', Phone: '98765 43210' }, { Name: 'Ravi K', Phone: '97000 11111' }]);
+  const plan = app.planLeads(t, MAP, op.id);
+  const r = app.importLeads(plan, { opId: op.id, source: 'Facebook Ad' });
+  const apps = app.S.applications.filter((a) => a.opId === op.id && r.ids.includes(a.cid));
+  assert.ok(apps.length >= 2);
+  assert.ok(apps.every((a) => a.source === 'Facebook Ad'));
+});

@@ -38,7 +38,7 @@ function importSheetRows(plan){
    repo.insert('candidates',c);
   }
   const date=SheetsIO.readDate(r.date)||today();let aid='APP-G'+h36(p.key);while(S.applications.some(x=>x.id===aid))aid+='X';
-  repo.insert('applications',{id:aid,cid:c.id,opId:p.op.id,date,stage:'New',maxStage:0,recruiter:p.op.recruiter,screening:null,stageSince:today()});
+  repo.insert('applications',{id:aid,cid:c.id,opId:p.op.id,date,source:String(r.source||'').trim()||c.source||'Google Sheet',stage:'New',maxStage:0,recruiter:p.op.recruiter,screening:null,stageSince:today()});
   log(`${c.name} applied for ${p.op.title} (Google Sheet)`,'application',aid);
   seenKeys.push(p.key);added++;names.push(c.name);
  });

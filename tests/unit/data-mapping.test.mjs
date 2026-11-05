@@ -89,6 +89,13 @@ test('an application\'s stored score and reasons go to the database and come bac
   assert.equal(plain(app.TO_ROW.application({ ...a, matchScore: undefined, matchReasons: undefined }, P).applications).match_score, null);
 });
 
+test('an application keeps its own source to the database; none is stored as an empty text', () => {
+  const P = app.makePeople([]);
+  const a = { id: 'APP-1', cid: 'C-1', opId: 'OP-1', date: '2026-01-01', stage: 'New', maxStage: 0, stageSince: '2026-01-01' };
+  assert.equal(plain(app.TO_ROW.application({ ...a, source: 'LinkedIn' }, P).applications).source, 'LinkedIn');
+  assert.equal(plain(app.TO_ROW.application(a, P).applications).source, '');
+});
+
 test('the draft-summary switch is kept in the company settings and comes back', () => {
   const P = app.makePeople([]);
   const s = plain(app.stateFromRows({ company_settings: [{ company: 'X', config: { modelSummary: true } }] }, P));

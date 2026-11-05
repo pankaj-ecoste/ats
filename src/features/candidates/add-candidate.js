@@ -23,7 +23,7 @@ Java, Spring Boot, Microservices, SQL, REST API, Kafka, AWS, Docker, Git
 CERTIFICATIONS
 AWS Certified Developer – Associate`;
  modal({title:'Add candidate from resume',size:'w',body:`<div class="fgrid"><label class="f">Apply to opening<select class="inp" id="acOp">${S.openings.filter(o=>o.status!=='Closed').map(o=>`<option value="${o.id}" ${o.id===opId?'selected':''}>${esc(o.title)} (${o.id})</option>`).join('')}</select></label>
- <label class="f">Source<select class="inp" id="acSrc">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></label>
+ <label class="f">Source<select class="inp" id="acSrc">${sourceList().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
  <label class="f full">Upload a PDF, Word (.docx) or text file, or paste the resume text ${CONNECTED?'':'<span class="muted">(a sample is filled in so you can try it)</span>'}<textarea class="inp" id="acTxt" rows="12" placeholder="Paste the resume here" style="font-family:ui-monospace,Menlo,monospace;font-size:12px">${CONNECTED?'':esc(sample)}</textarea></label>
  <label class="f full"><input type="file" id="acFile" accept=".pdf,.docx,.txt,.md" style="font-size:13px"><span class="muted small" id="acNote" role="status"></span></label></div><div id="acOut"></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn aib" id="acParse">${ic('ai')}Parse and match</button><button class="btn pri hide" id="acSave">Create application</button>`,
@@ -47,7 +47,7 @@ AWS Certified Developer – Associate`;
    const opId2=$('#acOp',el).value;
    const c={name:parsed.name,designation:parsed.designation||'—',company:parsed.company||'—',exp:parsed.exp,location:parsed.location||'—',education:parsed.education,eduField:/Tech|B\.E|MCA|Computer/.test($('#acTxt',el).value)?'Computer Science':'General',university:(($('#acTxt',el).value.match(/,\s*([A-Z][\w ]+(?:University|Institute|IIT|NIT)[\w ]*),/)||[])[1])||'—',gradYear:2026-Math.ceil(parsed.exp||1),skills:parsed.skills,curSal:parsed.curSal,expSal:parsed.expSal,notice:parsed.notice,reloc:false,email:parsed.email,phone:parsed.phone,certifications:parsed.certifications,achievements:[],documents:[{name:'Resume.pdf',status:'Received'},{name:'ID proof',status:'Pending'}],notes:[],source:$('#acSrc',el).value,created:today(),history:[{company:parsed.company||'—',designation:parsed.designation||'—',from:'—',to:'Present',summary:'Parsed from resume.'}],resumeText:$('#acTxt',el).value};
    const dup=findDuplicateCandidate(c);
-   if(dup){closeModal();duplicateModal(dup,c,opId2,picked);return}
+   if(dup){closeModal();duplicateModal(dup,c,opId2,picked,c.source);return}
    const {cid,score:sc}=createCandidateApplication(c,opId2);
    closeModal();toast(`${c.name} added · AI match ${sc}%`,'var(--ai)');go('candidate',cid);
    if(picked)storeResume(cid,picked)}}});
@@ -64,13 +64,13 @@ async function storeResume(cid,file){
  }catch(e){toast(e.message,'var(--red)')}
 }
 // the email or phone number is already in the pool: open that person, or apply them to this opening, instead of creating a second profile
-function duplicateModal(dup,c,opId,file){
+function duplicateModal(dup,c,opId,file,source){
  const o=getOp(opId),was=S.applications.some(a=>a.cid===dup.id&&a.opId===opId);
  modal({title:'Already in your pool',body:`<p style="margin-top:0"><b>${esc(dup.name)}</b> has the same ${String(dup.email||'').toLowerCase()===String(c.email||'').trim().toLowerCase()&&c.email?'email':'phone number'}.</p>
   <dl class="kv"><dt>Email</dt><dd>${esc(dup.email||'—')}</dd><dt>Phone</dt><dd>${esc(dup.phone||'—')}</dd><dt>Now at</dt><dd>${esc(dup.designation||'—')}, ${esc(dup.company||'—')}</dd></dl>
   <p class="muted small" style="margin-bottom:0">${was?`They have already applied for ${esc(o.title)}.`:`You can add an application for ${esc(o.title)} to their profile.`}</p>`,
   foot:`<button class="btn" data-close>Cancel</button><button class="btn" id="dpOpen">Open profile</button>${was?'':`<button class="btn pri" id="dpApply">Apply to ${esc(o.title)}</button>`}`,
   onMount:el=>{$('#dpOpen',el).onclick=()=>{closeModal();go('candidate',dup.id)};
-   const ap=$('#dpApply',el);if(ap)ap.onclick=()=>{const r=applyCandidate(dup,opId);closeModal();toast(`${dup.name} applied for ${o.title} · AI match ${r.score}%`,'var(--ai)');go('candidate',dup.id);
+   const ap=$('#dpApply',el);if(ap)ap.onclick=()=>{const r=applyCandidate(dup,opId,source);closeModal();toast(`${dup.name} applied for ${o.title} · AI match ${r.score}%`,'var(--ai)');go('candidate',dup.id);
     if(file&&!dup.resumePath)storeResume(dup.id,file)}}});
 }

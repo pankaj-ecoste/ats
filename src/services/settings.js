@@ -11,6 +11,8 @@ function saveTeam({recruiters,interviewers}){
  const clean=l=>[...new Set(l.map(x=>String(x).trim()).filter(Boolean))];
  repo.root('settings',s=>{s.team={recruiters:clean(recruiters),interviewers:clean(interviewers)}});
 }
+// the places a lead can come from; an empty list goes back to the built-in one
+function saveSources(list){const clean=[...new Set(list.map(x=>String(x).trim()).filter(Boolean))];repo.root('settings',s=>{if(clean.length)s.sources=clean;else delete s.sources})}
 // rules: {stageKey: days}
 function saveSla(rules){repo.root('settings',s=>{s.sla={...rules}})}
 function resetDemoData(){repo.reset(seed())}

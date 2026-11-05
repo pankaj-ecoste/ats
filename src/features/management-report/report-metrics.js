@@ -21,7 +21,7 @@ function positionRows(rd){const c=repCfg();return S.openings.filter(o=>o.status!
  const days=Math.max(0,daysBetween(o.opened,rd));const st=pend===0?'Closed':o.target<rd?'Overdue':daysBetween(rd,o.target)<=c.dueSoon?'Due soon':'On track';return {o,j,pend,days,st}})}
 function upcoming(){return S.applications.filter(a=>['Offer','Offer Accepted','Joining'].includes(a.stage)).map(a=>{const of=offerOfA(a.id);return {a,c:getC(a.cid),o:getOp(a.opId),join:a.joining||(of&&of.joining)||'',offer:a.stage==='Offer'?'Pending':'Accepted',risk:a.dropRisk||'Low',backup:a.backup&&getA(a.backup.aid)?a.backup:null}})}
 function monthCost(mStart){const mE=monthEnd(mStart);const post=S.postings.filter(p=>p.cost&&inR(p.postedOn,mStart,mE)).reduce((s,p)=>s+(+p.cost||0),0);const m=S.monthly[ym(mStart)]||{};return {post,other:+m.other||0,total:post+(+m.other||0),target:+m.target||0,budget:+m.budget||0}}
-function sourceRows(mS){const mE=monthEnd(mS);const srcOf=a=>getC(a.cid).source;const all=new Set();
+function sourceRows(mS){const mE=monthEnd(mS);const srcOf=a=>appSource(a);const all=new Set();
  const apps=S.applications.filter(a=>inR(a.date,mS,mE));apps.forEach(a=>all.add(srcOf(a)));
  const intA=new Set(S.interviews.filter(i=>i.status==='Completed'&&inR(i.date,mS,mE)).map(i=>i.appId));
  const jn=S.events.filter(e=>e.t==='joined'&&inR(e.d,mS,mE));jn.forEach(e=>all.add(e.src||(e.aid&&getA(e.aid)?srcOf(getA(e.aid)):'Other')));

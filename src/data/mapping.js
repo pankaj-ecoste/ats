@@ -46,7 +46,7 @@ const FROM_ROW={
   const s=ctx.screenings.get(r.id);
   return withValues({id:r.id,cid:r.candidate_id,opId:r.opening_id,date:r.applied_on,stage:r.stage,maxStage:r.max_stage,
    recruiter:P.name(r.recruiter_id),screening:s?{outcome:s.outcome,answers:s.answers,notes:s.notes,date:s.screened_on,...(s.duration_seconds?{duration:s.duration_seconds}:{})}:null,stageSince:r.stage_since},
-   {joining:r.joining_on,joinedOn:r.joined_on,dropped:r.dropped_on,dropRisk:r.drop_risk,
+   {source:r.source||null,joining:r.joining_on,joinedOn:r.joined_on,dropped:r.dropped_on,dropRisk:r.drop_risk,
     backup:r.backup_application_id?{aid:r.backup_application_id,status:r.backup_status}:null,matchScore:r.match_score,matchReasons:r.match_reasons,rejectReason:r.rejection_reason});
  },
  group:(r,P,ctx)=>({id:r.id,opId:r.opening_id,date:r.on_date,time:dbTime(r.at_time),duration:r.duration_min,mode:r.mode,location:r.location,link:r.link,
@@ -94,7 +94,7 @@ function stateFromRows(rows,people){
  const s=rows.company_settings&&rows.company_settings[0];
  const cfg=(s&&s.config)||{};
  const settings=s?{company:s.company,companyAddr:s.address,signatory:s.signatory,signTitle:s.sign_title,threshold:s.match_threshold,weights:s.match_weights,
-  ...(cfg.sla?{sla:cfg.sla}:{}),...(cfg.report?{report:cfg.report}:{}),...(cfg.team?{team:cfg.team}:{}),...(cfg.modelSummary?{modelSummary:true}:{})}:{};
+  ...(cfg.sla?{sla:cfg.sla}:{}),...(cfg.report?{report:cfg.report}:{}),...(cfg.team?{team:cfg.team}:{}),...(cfg.sources?{sources:cfg.sources}:{}),...(cfg.modelSummary?{modelSummary:true}:{})}:{};
  const monthly={};(rows.monthly_targets||[]).forEach(m=>{monthly[m.month]={target:m.target,budget:m.budget,other:m.other}});
  const state={v:3,
   settings,
@@ -153,7 +153,7 @@ const TO_ROW={
   candidate_compensation:{candidate_id:c.id,current_lpa:c.curSal||0,expected_lpa:c.expSal||0},
   candidate_documents:(c.documents||[]).map(d=>({candidate_id:c.id,name:d.name,status:d.status,storage_path:d.path||null,file_name:d.path?(d.file||''):null}))}),
  application:(a,P)=>({
-  applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),
+  applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),source:a.source||'',
    joining_on:a.joining||null,joined_on:a.joinedOn||null,dropped_on:a.dropped||null,drop_risk:a.dropRisk||null,
    backup_application_id:a.backup?a.backup.aid:null,backup_status:a.backup?a.backup.status:null,match_score:a.matchScore??null,match_reasons:a.matchReasons||null,rejection_reason:a.rejectReason||null},
   screenings:a.screening?{application_id:a.id,outcome:a.screening.outcome,answers:a.screening.answers||[],notes:a.screening.notes||'',screened_on:a.screening.date,duration_seconds:a.screening.duration||0}:null}),
@@ -182,7 +182,7 @@ const TO_ROW={
 function settingsRow(state){
  const s=state.settings||{};
  return {company:s.company||'',address:s.companyAddr||'',signatory:s.signatory||'',sign_title:s.signTitle||'',match_threshold:s.threshold??65,match_weights:s.weights,
-  config:{...(s.sla?{sla:s.sla}:{}),...(s.report?{report:s.report}:{}),...(s.team?{team:s.team}:{}),...(s.modelSummary?{modelSummary:true}:{}),...(state.postCfg?{postCfg:state.postCfg}:{}),...(state.autoSync?{autoSync:state.autoSync}:{})}};
+  config:{...(s.sla?{sla:s.sla}:{}),...(s.report?{report:s.report}:{}),...(s.team?{team:s.team}:{}),...(s.sources?{sources:s.sources}:{}),...(s.modelSummary?{modelSummary:true}:{}),...(state.postCfg?{postCfg:state.postCfg}:{}),...(state.autoSync?{autoSync:state.autoSync}:{})}};
 }
 // one interviewer's own scorecard (null until every criterion has a score)
 const scoreRow=(i,interviewerId)=>i.scores&&interviewerId?{interview_id:i.id,interviewer_id:interviewerId,scores:i.scores,recommendation:i.rec||null,decision:i.decision||null,feedback:i.feedback||''}:null;

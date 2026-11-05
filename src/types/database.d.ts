@@ -31,6 +31,7 @@ export interface Applications {
   created_at: string;
   updated_at: string;
   rejection_reason: string | null;
+  source: string;
 }
 
 export interface AuditLog {

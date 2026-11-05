@@ -58,7 +58,7 @@ function leadImportModal(){
    const sheetPick=st.sheets.length>1?`<label class="f">Sheet in the file<select class="inp" id="ldSheet">${st.sheets.map((s,i)=>`<option value="${i}" ${i===st.sheet?'selected':''}>${esc(s.name)} (${s.rows.length} rows)</option>`).join('')}</select></label>`:'';
    body.innerHTML=`<p style="margin-top:0"><b>${esc(st.fname)}</b>: ${st.table.rows.length.toLocaleString('en-IN')} rows. Check that each field points at the right column.</p>
     <div class="fgrid"><label class="f">Add these leads to the opening<select class="inp" id="ldOp">${ops.map(o=>`<option value="${o.id}">${esc(o.title)} (${o.id})</option>`).join('')}</select></label>
-    <label class="f">Where they came from<input class="inp" id="ldSrc" list="ldSrcList" value="Ad campaign"><datalist id="ldSrcList">${SOURCES.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></label>${sheetPick}</div>
+    <label class="f">Where they came from<select class="inp" id="ldSrc">${sourceList().map(s=>`<option ${s==='Ad campaign'?'selected':''}>${esc(s)}</option>`).join('')}</select></label>${sheetPick}</div>
     <div class="tbl-wrap" style="max-height:290px;margin-top:10px"><table><thead><tr><th>Field</th><th>Column in your file</th><th>First row</th></tr></thead><tbody>
     ${LEAD_FIELDS.map(f=>`<tr><td>${esc(f.label)}${f.need?' <span class="muted small">(needed)</span>':''}</td><td><select class="inp" data-ldf="${f.key}" style="padding:4px 8px;font-size:13px">${opts().map(([v,l])=>`<option value="${esc(v)}" ${st.map[f.key]===v?'selected':''}>${esc(l)}</option>`).join('')}</select></td><td class="small muted" data-lds="${f.key}">${sample(f)}</td></tr>`).join('')}
     </tbody></table></div><div id="ldSum" role="status" style="margin-top:12px"></div>`;

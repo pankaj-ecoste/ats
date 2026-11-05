@@ -12,7 +12,7 @@ function addEvent(t,aid,extra={}){
 onEvent('stage:changing',({aid,stage,prev})=>{
  const a=getA(aid);
  const map={Shortlisted:'shortlist',Selected:'selected','Offer Accepted':'accepted'};if(map[stage])addEvent(map[stage],aid);
- if(stage==='Onboarding'&&!a.joinedOn){repo.update('applications',aid,{joinedOn:today()});addEvent('joined',aid,{days:daysBetween(a.date,today()),src:getC(a.cid).source})}
+ if(stage==='Onboarding'&&!a.joinedOn){repo.update('applications',aid,{joinedOn:today()});addEvent('joined',aid,{days:daysBetween(a.date,today()),src:appSource(a)})}
  if(stage==='Rejected'&&['Offer Accepted','Joining'].includes(prev)){repo.update('applications',aid,{dropped:today()});addEvent('dropped',aid)}
 });
 

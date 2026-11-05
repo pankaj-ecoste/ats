@@ -61,7 +61,7 @@ function importLeads(plan,{opId,source}){
     resumeText:`${p.name}\n${[p.phone,p.email,v.location].filter(Boolean).join(' · ')}\nLead from ${src}, ${fmtD(date)}. No resume yet.`});
   }else existing++;
   const aid=uid('APP');ids.push(cid);
-  apps.push({id:aid,cid,opId,date,stage:'New',maxStage:0,recruiter:o.recruiter,screening:null,stageSince:today()});
+  apps.push({id:aid,cid,opId,date,source:(p.v&&p.v.source)||source||'Ad campaign',stage:'New',maxStage:0,recruiter:o.recruiter,screening:null,stageSince:today()});
  });
  // the candidates are written first: an application refers to its candidate
  repo.insertMany('candidates',cands);
