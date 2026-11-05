@@ -88,7 +88,7 @@ test('remove deletes by id; records without an id column (activity) are only eve
 
 test('changes are written one after another, in the order they were made', async () => {
   const client = fakeClient(), w = newWriter(client);
-  w.enqueue({ op: 'insert', coll: 'openings', id: 'OP-1', record: { id: 'OP-1', title: 'T', mode: 'Remote', type: 'Full-time', priority: 'Low', status: 'Open', opened: '2026-01-01' } });
+  w.enqueue({ op: 'insert', coll: 'openings', id: 'OP-1', record: { id: 'OP-1', title: 'T', mode: 'Remote', type: 'Full-time', priority: 'P4', status: 'Open', opened: '2026-01-01' } });
   w.enqueue({ op: 'insert', coll: 'candidates', id: 'C-1', record: cand });
   w.enqueue({ op: 'insert', coll: 'applications', id: 'A-1', record: { id: 'A-1', cid: 'C-1', opId: 'OP-1', date: '2026-01-01', stage: 'New', stageSince: '2026-01-01' } });
   assert.ok(w.pending() > 0);

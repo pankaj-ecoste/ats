@@ -90,7 +90,7 @@ try {
   await signIn(page, ADMIN);
   const made = await page.evaluate((t) => {
     const op = saveOpening({ id: uid('OP'), title: `Zed Opening ${t}`, dept: 'Engineering', positions: 1, location: 'Pune', mode: 'Hybrid', type: 'Full-time', expMin: 1, expMax: 3, salMin: 5, salMax: 9,
-      education: 'Graduate', mandatory: ['Java'], preferred: ['SQL'], desc: 'd', resp: 'r', req: 'q', recruiter: 'Test Recruiter', manager: 'Test Admin', opened: today(), target: addDays(30), priority: 'High', status: 'Open' });
+      education: 'Graduate', mandatory: ['Java'], preferred: ['SQL'], desc: 'd', resp: 'r', req: 'q', recruiter: 'Test Recruiter', manager: 'Test Admin', opened: today(), target: addDays(30), priority: 'P2', status: 'Open' });
     const fields = { name: `Zed Candidate ${t}`, designation: 'Engineer', company: 'Acme', exp: 2, location: 'Pune', education: 'Graduate', eduField: 'General', university: 'X', gradYear: 2022, skills: ['Java', 'SQL'],
       curSal: 6, expSal: 8, notice: 30, reloc: false, email: `${t}@example.com`, phone: '+91 9000000000', certifications: [], achievements: [], documents: [{ name: 'Resume.pdf', status: 'Received' }], notes: [],
       source: 'Referral', created: today(), history: [], resumeText: 'Zed' };
