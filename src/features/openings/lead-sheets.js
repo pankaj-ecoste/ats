@@ -72,7 +72,7 @@ function linkModal(o,link){
  modal({title:edit?`Change the link · ${esc(link.tabName)}`:`Link a sheet to ${esc(o.title)}`,size:'w',body:`<div class="fgrid">${tabSel}
   <label class="f">Where these leads come from<select class="inp" id="lkSrc">${[...new Set([...list,d.source])].map(s=>opt(s,s,s===d.source)).join('')}</select></label>
   ${edit?`<label class="checkl" style="align-self:end"><input type="checkbox" id="lkOn" ${d.enabled?'checked':''}> Receiving leads from this tab</label>`:''}</div>
-  <div id="lkCols">${grid()}</div>`,
+  <div id="lkCols">${grid()}</div><p id="lkSure" hidden class="small" style="margin:14px 0 0;padding:10px 12px;border:1px solid var(--orange,#f59e0b);border-radius:8px"></p>`,
   foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="lkSave">${edit?'Save':'Link this sheet'}</button>`,
   onMount:el=>{
    const paint=()=>{$('#lkCols',el).innerHTML=grid();bindCols()};
@@ -84,14 +84,21 @@ function linkModal(o,link){
    $('#lkSrc',el).onchange=e=>{d.source=e.target.value};
    const tsel=$('#lkTab',el);
    if(tsel){
-    tsel.onchange=()=>{d.tabKey=tsel.value;reset();$('#lkSrc',el).innerHTML=[...new Set([...list,d.source])].map(s=>opt(s,s,s===d.source)).join('');paint()};
+    tsel.onchange=()=>{d.tabKey=tsel.value;const sb=$('#lkSave',el);delete sb.dataset.sure;sb.textContent='Link this sheet';$('#lkSure',el).hidden=true;reset();$('#lkSrc',el).innerHTML=[...new Set([...list,d.source])].map(s=>opt(s,s,s===d.source)).join('');paint()};
     $('#lkFilter',el).oninput=e=>{const q=e.target.value.trim().toLowerCase();[...tsel.options].forEach(op=>{op.hidden=!!q&&!op.textContent.toLowerCase().includes(q)})};
    }
    $('#lkSave',el).onclick=async()=>{
     if(!d.tabKey){toast('Choose the tab first','var(--red)');return}
     const extra=[...d.extra].filter(h=>d.hs.includes(h)&&!Object.values(d.map).includes(h));
     const problem=linkProblem(d.map);if(problem){toast(problem,'var(--red)');return}
-    const btn=$('#lkSave',el);btn.disabled=true;
+    const btn=$('#lkSave',el);
+    if(!edit&&btn.dataset.sure!==d.tabKey){
+     // first press: say plainly which tab goes to which opening, then ask again
+     btn.dataset.sure=d.tabKey;btn.textContent='Yes, link this tab';
+     const t=tabNow();const msg=$('#lkSure',el);msg.hidden=false;
+     msg.innerHTML=`You are linking the tab <b>${esc(t?t.name:'')}</b> to <b>${esc(o.title)}</b>. Every row already in that tab will arrive here as a lead, and new rows after that. Check it is the right tab, then press the button again.`;
+     return}
+    btn.disabled=true;
     try{
      if(edit)await sheetLinkUpdate({id:link.id,source:d.source,map:d.map,extra,enabled:$('#lkOn',el).checked});
      else await sheetLinkSave({opening:o.id,tabKey:d.tabKey,source:d.source,map:d.map,extra});

@@ -159,6 +159,8 @@ try {
   }));
   await page.selectOption('#lkSrc', 'Facebook Ad');
   await page.click('#lkSave');
+  await page.waitForSelector('#lkSure:not([hidden])', { timeout: 5000 });   // it says which tab goes where, then asks again
+  await page.click('#lkSave');
   await page.waitForFunction((n) => document.getElementById('content').textContent.includes(n), TAB_A, { timeout: 15000 });
   const l = (await db.query('select opening_id, source, map, extra, enabled from public.sheet_links where tab_key = $1', [`zzbook${tag}/1`])).rows[0];
   check('the link is saved: opening, source, columns and answers', l && l.opening_id === OP && l.source === 'Facebook Ad' && l.map.name === 'Full Name' && l.extra.includes('Do you have a bike?') && !l.extra.includes('ad_id') && l.enabled);
