@@ -57,7 +57,7 @@ function openingForm(id){
 }
 function vOpening(){
  const o=getOp(R.param);if(!o)return '<div class="empty">Opening not found.</div>';
- const ap=appsOfOp(o.id);const tabs=['overview','applications','shortlisted','interviews','offers','posting','analytics','activity'];
+ const ap=appsOfOp(o.id);const tabs=['overview','applications','shortlisted','interviews','offers','posting',...(CONNECTED&&canEdit()?['leads']:[]),'analytics','activity'];
  let body='';
  if(R.tab==='overview')body=`<div class="grid g2"><section class="panel"><header><h3>Details</h3><button class="btn sm" data-act="openingForm" data-a1="${o.id}">${ic('edit')}Edit</button></header><div class="pbody"><dl class="kv">
   ${[['Department',o.dept],['Positions',o.positions],['Location',o.location+' ('+o.mode+')'],['Employment type',o.type],['Experience',o.expMin+'–'+o.expMax+' years'],['Salary range',lpa(o.salMin)+' – '+lpa(o.salMax)],['Education',o.education],['Recruiter',o.recruiter],['Reporting manager',o.manager],['Opened',fmtD(o.opened)],['Target joining',fmtD(o.target)],['Priority',o.priority]].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}
@@ -72,10 +72,11 @@ function vOpening(){
   <h4 style="margin:18px 0 6px">Sources</h4>${Object.entries(src).map(([k,v])=>`<div class="hb"><span>${k}</span><div class="bar"><i style="width:${v/ap.length*100}%"></i></div><b>${v}</b></div>`).join('')}
   <p class="muted small" style="margin-top:14px">Average match ${sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0}% · Opening age ${daysBetween(o.opened,today())} days · ${Math.max(0,daysBetween(today(),o.target))} days to target joining</p></div></section></div>`}
  else if(R.tab==='posting')body=postingTabHTML(o);
+ else if(R.tab==='leads'&&CONNECTED&&canEdit())body=leadSheetsTab(o);
  else {const l=S.activity.filter(x=>x.text.includes(o.title)).slice(0,40);body=`<section class="panel">${activityList(l)}</section>`}
  return `<div class="navrow"><button class="btn ghost sm" data-act="go" data-a1="openings">${ic('back')}Openings</button>${navBar(R.opNavList||[],o.id,'opening')}</div>
  <div class="page-h"><div><h1>${esc(o.title)}</h1><p>${o.id} · ${esc(o.dept)} · ${esc(o.location)} · ${o.positions} position${o.positions>1?'s':''} · <span class="pill ${OP_COLOR[o.status]}">${o.status}</span></p></div>
  <div class="row"><button class="btn" data-act="go" data-a1="posting" data-a2="${o.id}">${ic('send')}Post job</button><button class="btn" data-act="addCandidate" data-a1="${o.id}">${ic('upload')}Add application</button><button class="btn" data-act="scheduleGI" data-a1="${o.id}">${ic('users')}Group interview</button><button class="btn pri" data-act="openingApplicationsBoard" data-a1="${o.id}">${ic('board')}Pipeline board</button></div></div>
- <div class="tabs" role="tablist">${tabs.map(t=>`<button class="${R.tab===t?'on':''}" data-tab="${t}">${t==='posting'?'Job posting':t[0].toUpperCase()+t.slice(1)}${t==='applications'?` (${ap.length})`:''}</button>`).join('')}</div>${body}`;
+ <div class="tabs" role="tablist">${tabs.map(t=>`<button class="${R.tab===t?'on':''}" data-tab="${t}">${t==='posting'?'Job posting':t==='leads'?'Lead sheets':t[0].toUpperCase()+t.slice(1)}${t==='applications'?` (${ap.length})`:''}</button>`).join('')}</div>${body}`;
 }
 function activityList(l){return l.length?l.map(x=>`<div class="list-it"><span style="width:8px;height:8px;border-radius:50%;background:${{reject:'var(--red)',joined:'var(--green)',offer:'var(--orange)',application:'var(--ai)'}[x.type]||'var(--blue)'};flex:none"></span><span class="grow">${esc(x.text)}</span><span class="muted small">${timeAgo(x.ts)}</span></div>`).join(''):'<div class="empty">No activity yet.</div>'}

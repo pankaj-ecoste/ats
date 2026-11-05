@@ -32,6 +32,8 @@ export interface Applications {
   updated_at: string;
   rejection_reason: string | null;
   source: string;
+  campaign: string;
+  answers: Json;
 }
 
 export interface AuditLog {

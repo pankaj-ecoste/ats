@@ -557,7 +557,7 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 - Pipeline board and Applications page speed above about 5,000 leads (1.7 s and 0.7 s measured).
 - A separate Supabase project for tests; per-role one-page guides; handover note; the `v1.0.0` tag after the team walkthrough.
 
-### 7.7b Lead intake redesign (agreed in talk 2026-11-05; not built yet)
+### 7.7b Lead intake redesign (agreed in talk 2026-11-05; step 1 live, step 2 built and waiting to go live)
 
 **Owner's flow.** The recruiter creates an opening first. Leads then reach it by three doors, each labelled with where it came from; after that the pipeline is unchanged.
 - **Door A:** the opening is posted on LinkedIn, Indeed and others with the app's form link (one tracked link per platform, so the source is set by the link).
@@ -576,9 +576,11 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 
 **Build on what exists.** `lead_feed` (one tab, one opening, one token), `ingest_leads`, the Apps Script generator, `intake_batches`, the duplicate check. Today only the mapped standard columns are read; **every other column is dropped** (this is the gap). The script would run once for the whole workbook: it reports the tabs and headings to the app, asks which tabs are linked, and sends only new rows of linked tabs.
 
-**Order:** (1) source list and source on the application; (2) the tab link (new table, script, link screen on the opening, saved form answers); (3) Door A tracked form links; (4) per-opening question builder for our own form.
+**Order:** (1) source list and source on the application (done, live); (2) the tab link (new tables, script, link screen on the opening, saved form answers; built 2026-11-05, see the log); (3) Door A tracked form links; (4) per-opening question builder for our own form.
 
-**Still open:** can an opening have several tabs; whether the extra answers only show or also score or filter (suggested: only show at first); what the coloured tab dots mean in the workbook.
+**Decided in the talk:** an opening may have several tabs (the lock is one way: a tab belongs to one opening); the workbook is a Google Sheet; the coloured tab dots mean nothing; ads are filled inside Facebook or Google, so leads reach us only through the sheet; extra answers are only shown for now (no scoring or filtering); the same person through another tab or platform keeps the first source and the activity log says so.
+
+**Still open:** whether the extra answers should one day score or filter (not now).
 
 ### 7.8 Immediate next steps (in order)
 
@@ -627,6 +629,7 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 
 | Date | Change | By |
 |---|---|---|---|
+| 2026-11-05 | **Lead intake step 2 (link a sheet tab to an opening), built, not yet live:** migration 0023 adds `sheet_tabs` (every tab the workbook script reports, with its headings), `sheet_links` (tab to opening, unique per tab, with source, column map, extra columns kept as answers, the headings known when chosen, on/off), and `applications.campaign` and `applications.answers`; new functions `sheet_sync_plan` and `ingest_tab_leads` (for the script, token), `sheet_link_save/update/remove` (admin or recruiter) and `lead_feed_connect` (admin); the old single-tab `ingest_leads`, `lead_feed_save` and the feed's opening and source columns are gone. The script is rewritten for a whole workbook (reports tabs, sends only linked tabs, per-tab failures do not stop the others). Screens: opening > **Lead sheets** tab (link, change, unlink, new or missing column flags, leads by source), Settings > **Lead sheet connection**, candidate page shows source, campaign and **Form answers**. Tests: 14 database tests (rolled back; they apply 0023 inside the transaction if it is not applied), 11 script tests, 14 service and helper tests, a new live browser test that puts a real feed setup aside and restores it. `docs/LEAD_SHEET.md` rewritten. **Waiting for the migration to be applied to the live project, then push; an older single-tab script pasted in the workbook must be replaced by the new one** | Claude Code |
 | 2026-11-05 | **Lead intake step 1 (source on the application), built, not yet live:** migration 0022 adds `applications.source` (backfilled from the person; a trigger copies the person's source when an application is created without one); every place that creates an application sets it (add candidate, duplicate apply, Import leads, Google Sheet import); reports, source performance, opening analytics and the joined event read the application's source (`appSource`); the source list is now one list (`sourceList()`, from Settings or the built-in one, with Facebook Ad, Google Ad, Instagram Ad, Ad campaign added) used by every dropdown, edited in a new Settings panel "Lead sources". 204 unit tests pass. **Waiting for the migration to be applied to the live project, then push** (the new code writes the column) | Claude Code |
 | 2026-11-05 | **Clean-up and two tweaks:** the live database was cleared of the 450 leads imported from the whole workbook (candidates and everything tied to them; the audit log stays, it is append-only) and then of the 4 test openings; opening label "Hiring manager" is now "Reporting manager"; opening priority is now P1 (highest) to P4 (lowest), migration 0021 converts old values (Urgent, High, Medium, Low), tasks keep Low, Medium, High. Pushed straight to `main` as the owner asked. The lead intake redesign is agreed in talk and recorded in 7.7b | Claude Code |
 | 2026-10-24 | **Owner review:** the owner went through the live app and has many changes and tweaks; they will be raised and built one by one. Nothing else was changed in this step except this plan and the memory notes | Claude Code |

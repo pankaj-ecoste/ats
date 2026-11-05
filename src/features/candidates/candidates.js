@@ -20,8 +20,8 @@ function vCandidate(){
  let body='';
  switch(R.tab){
   case 'overview':body=`<section class="panel" style="margin-bottom:16px"><header><div><h3>Journey for ${esc(o.title)}</h3><p>Stage since ${fmtD(a.stageSince)}</p></div>${nextBtn(a,'pri')}</header><div class="pbody">${journey(a)}</div></section>
-   <div class="grid g-dash">${aiMatchBlock(a)}<section class="panel"><header><h3>At a glance</h3></header><div class="pbody"><dl class="kv">${[['Email',c.email],['Phone',c.phone],['Current salary',lpa(c.curSal)],['Expected salary',lpa(c.expSal)],['Notice period',c.notice+' days'],['Relocation',c.reloc?'Open to relocate':'Prefers current city'],['Education',c.education+', '+c.university],['Source',c.source],...(c.consentAt?[['Consent','Agreed on '+fmtD(String(c.consentAt).slice(0,10))]]:[]),['Recruiter',a.recruiter]].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>
-   ${a.screening?`<h4 style="margin:16px 0 6px">Screening call · ${esc(a.screening.outcome)}</h4><p class="small" style="margin:0">${esc(a.screening.notes||'No notes')}</p>`:''}</div></section></div>`;break;
+   <div class="grid g-dash">${aiMatchBlock(a)}<section class="panel"><header><h3>At a glance</h3></header><div class="pbody"><dl class="kv">${[['Email',c.email],['Phone',c.phone],['Current salary',lpa(c.curSal)],['Expected salary',lpa(c.expSal)],['Notice period',c.notice+' days'],['Relocation',c.reloc?'Open to relocate':'Prefers current city'],['Education',c.education+', '+c.university],['Source',appSource(a)],...(a.campaign?[['Campaign',a.campaign]]:[]),...(c.consentAt?[['Consent','Agreed on '+fmtD(String(c.consentAt).slice(0,10))]]:[]),['Recruiter',a.recruiter]].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>
+   ${a.screening?`<h4 style="margin:16px 0 6px">Screening call · ${esc(a.screening.outcome)}</h4><p class="small" style="margin:0">${esc(a.screening.notes||'No notes')}</p>`:''}</div></section></div>${answersPanel(a)}`;break;
   case 'resume':body=resumeSplit(c,o);break;
   case 'experience':body=`<section class="panel">${c.history.map(h=>`<div class="list-it" style="align-items:flex-start"><span class="av" style="background:var(--card);color:var(--tx2);border:1px solid var(--line)">${initials(h.company)}</span><div class="grow"><b>${esc(h.designation)}</b><div class="muted small">${esc(h.company)} · ${esc(h.from)}–${esc(h.to)}</div><p style="margin:6px 0 0">${esc(h.summary)}</p></div></div>`).join('')}<div class="list-it"><span class="muted">Total experience</span><b class="grow" style="text-align:right">${c.exp} years</b></div></section>`;break;
   case 'education':body=`<section class="panel"><div class="list-it"><span class="av" style="background:var(--blue2);color:var(--blue)">🎓</span><div class="grow"><b>${esc(c.education)} · ${esc(c.eduField)}</b><div class="muted small">${esc(c.university)}, ${c.gradYear}</div></div><span class="pill ${m.education>=100?'green':'orange'}">${m.education}% match to ${esc(o.education)}</span></div>${c.certifications.map(x=>`<div class="list-it"><span class="av" style="background:var(--ai2);color:var(--ai)">★</span><b class="grow">${esc(x)}</b><span class="muted small">Certification</span></div>`).join('')}</section>`;break;
@@ -90,4 +90,10 @@ async function storeDocument(cid,index,file){
   if(old)removeFile(sb,FILE_BUCKETS.document,old).catch(()=>{});
   toast('File saved');render();
  }catch(e){toast(e.message,'var(--red)')}
+}
+// what the person answered in the ad form (the extra columns of a linked sheet), question and answer
+function answersPanel(a){
+ const e=Object.entries(a.answers||{});
+ if(!e.length)return '';
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Form answers</h3><p>What they answered when they applied${a.campaign?' · '+esc(a.campaign):''}</p></div></header><div class="pbody"><dl class="kv">${e.map(([q,v])=>`<dt>${esc(q)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div></section>`;
 }

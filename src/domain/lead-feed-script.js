@@ -1,27 +1,25 @@
-/* The script an admin pastes into the Google Sheet that collects the ad leads (Extensions > Apps Script). Once a minute it sends the sheet's new
-   rows to the database function ingest_leads (migration 0018) and writes what happened in a "Synced to ATS" column, so no row goes twice.
-   The script is plain text built here, with the app address, the public key and the secret token filled in. No DOM. */
+/* The script an admin pastes into the Google workbook that collects the ad leads (Extensions > Apps Script). Once a minute it
+     1. reports every tab (its name and headings) to the app, so the app can offer the tabs when an opening links one;
+     2. asks which tabs are linked to an opening, and with which columns and source (migration 0023, sheet_sync_plan);
+     3. sends the new rows of the linked tabs (ingest_tab_leads) and writes what happened in a "Synced to ATS" column, so no row goes twice.
+   Tabs that are not linked are only read for their headings and never changed. The script is plain text built here, with the app address,
+   the public key and the secret token filled in. No DOM. */
 "use strict";
 
-// words a heading may use for the opening a lead is for (the lead sheet's own opening is used when a row names none)
-const LEAD_POSITION_WORDS=['position','jobposition','opening','jobopening','appliedfor','positionappliedfor','postappliedfor','jobrole','vacancy'];
-
-// the script itself. __URL__, __KEY__, __TOKEN__ and __FIELDS__ are replaced by leadFeedScript(). Keep it free of backticks and dollar-brace.
-const LEAD_FEED_SCRIPT=String.raw`/* Ecoste Recruit Tracker: sends the new rows of this sheet to the app, once a minute.
+// the script itself. __URL__, __KEY__ and __TOKEN__ are replaced by leadFeedScript(). Keep it free of backticks and dollar-brace.
+const LEAD_FEED_SCRIPT=String.raw`/* Ecoste Recruit Tracker: sends the new leads of the linked tabs of this workbook to the app, once a minute.
    ONE-TIME SETUP: choose installLeadSync in the function list above, click Run, and allow access when Google asks.
+   Which tab belongs to which opening is set in the app, on the opening ("Link a sheet"). Nothing needs changing here.
    Keep this script private. It holds the secret that lets rows into the app. */
 
 var APP_URL = __URL__;
 var APP_KEY = __KEY__;
 var APP_TOKEN = __TOKEN__;
 
-var TAB = '';                          // the tab to read. Leave empty for the first tab.
-var STATUS_HEADER = 'Synced to ATS';   // the column this script fills in, so a row is never sent twice
-var MAP = {};                          // only if a column is not recognised, for example { phone: 'Contact 1', name: 'Full name' }
+var STATUS_HEADER = 'Synced to ATS';   // the column this script fills in (on linked tabs only), so a row is never sent twice
 var BATCH = 100;                       // rows sent in one go
-var MAX_BATCHES = 20;                  // per run, so one run stays short
-
-var FIELDS = __FIELDS__;               // what the app reads: [field, [words a heading may use]]
+var MAX_BATCHES = 20;                  // per tab and run, so one run stays short
+var HEADING_ROWS = 10;                 // how far down a tab is looked at to find its headings
 
 function installLeadSync() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -34,31 +32,7 @@ function installLeadSync() {
 function syncLeads() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
-  try { sendNewRows_(); } finally { lock.releaseLock(); }
-}
-
-function word_(h) { return String(h).toLowerCase().replace(/[^a-z0-9]/g, ''); }
-
-// which column holds which field: your MAP first, then an exact heading, then a heading that has the word in it
-function columns_(heads) {
-  var found = {}, used = {};
-  function take(key, ok) {
-    if (found[key] !== undefined) return;
-    for (var i = 0; i < heads.length; i++) {
-      if (!used[i] && heads[i] !== '' && ok(i)) { found[key] = i; used[i] = true; return; }
-    }
-  }
-  FIELDS.forEach(function (f) {
-    if (MAP[f[0]]) { var at = heads.indexOf(MAP[f[0]]); if (at >= 0 && !used[at]) { found[f[0]] = at; used[at] = true; } }
-  });
-  FIELDS.forEach(function (f) { take(f[0], function (i) { return f[1].indexOf(word_(heads[i])) >= 0; }); });
-  FIELDS.forEach(function (f) {
-    take(f[0], function (i) {
-      var w = word_(heads[i]), tokens = String(heads[i]).toLowerCase().split(/[^a-z0-9]+/);
-      return f[1].some(function (x) { return (x.length >= 6 && w.indexOf(x) >= 0) || tokens.indexOf(x) >= 0; });
-    });
-  });
-  return found;
+  try { run_(); } finally { lock.releaseLock(); }
 }
 
 // a cell as plain text: dates as 2026-10-12, whole numbers without an exponent (a phone number must stay a phone number)
@@ -67,6 +41,39 @@ function cell_(v, tz) {
   if (Object.prototype.toString.call(v) === '[object Date]') return isNaN(v) ? '' : Utilities.formatDate(v, tz, 'yyyy-MM-dd');
   if (typeof v === 'number') return String(Math.abs(v) >= 1e6 ? Math.round(v) : v);
   return String(v).trim();
+}
+
+// the heading row is the first row with two filled cells; -1 when there is none
+function headingRow_(rows) {
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].filter(function (c) { return String(c).trim() !== ''; }).length >= 2) return i;
+  }
+  return -1;
+}
+
+// what the app needs to know about a tab: a key that survives a rename, its name and its headings
+function tabInfo_(ss, sh) {
+  var info = { key: ss.getId() + '/' + sh.getSheetId(), name: sh.getName(), headings: [], sheet: sh };
+  var rows = sh.getLastRow(), cols = sh.getLastColumn();
+  if (!rows || !cols) return info;
+  var top = sh.getRange(1, 1, Math.min(rows, HEADING_ROWS), cols).getValues();
+  var h = headingRow_(top);
+  if (h < 0) return info;
+  info.headings = top[h].map(function (c) { return String(c).trim(); }).filter(function (c) { return c !== '' && c !== STATUS_HEADER; });
+  return info;
+}
+
+function call_(fn, payload) {
+  var resp = UrlFetchApp.fetch(APP_URL + '/rest/v1/rpc/' + fn, {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { apikey: APP_KEY, Authorization: 'Bearer ' + APP_KEY },
+    payload: JSON.stringify(payload)
+  });
+  var text = resp.getContentText(), body = null;
+  try { body = JSON.parse(text); } catch (e) { body = null; }
+  if (resp.getResponseCode() !== 200 || !body) throw new Error('The app answered ' + resp.getResponseCode() + ': ' + String(text).slice(0, 300));
+  if (!body.ok) throw new Error(body.message);
+  return body;
 }
 
 function label_(x, tz) {
@@ -78,38 +85,48 @@ function label_(x, tz) {
   return 'Skipped: ' + x.why;
 }
 
-function send_(rows) {
-  var resp = UrlFetchApp.fetch(APP_URL + '/rest/v1/rpc/ingest_leads', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: { apikey: APP_KEY, Authorization: 'Bearer ' + APP_KEY },
-    payload: JSON.stringify({ p_token: APP_TOKEN, p_rows: rows })
+function run_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tabs = ss.getSheets().map(function (sh) { return tabInfo_(ss, sh); });
+  var byKey = {};
+  tabs.forEach(function (t) { byKey[t.key] = t; });
+  var plan = call_('sheet_sync_plan', {
+    p_token: APP_TOKEN,
+    p_tabs: tabs.filter(function (t) { return t.headings.length > 0; }).map(function (t) { return { key: t.key, name: t.name, headings: t.headings }; })
   });
-  var text = resp.getContentText(), body = null;
-  try { body = JSON.parse(text); } catch (e) { body = null; }
-  if (resp.getResponseCode() !== 200 || !body) throw new Error('The app answered ' + resp.getResponseCode() + ': ' + String(text).slice(0, 300));
-  if (!body.ok) throw new Error(body.message);
-  return body;
+  var problems = [];
+  (plan.links || []).forEach(function (link) {
+    var tab = byKey[link.key];
+    if (!tab) return;
+    // one tab failing must not stop the others
+    try { sendTab_(ss, tab, link); } catch (e) { problems.push('"' + link.name + '": ' + e.message); }
+  });
+  if (problems.length) throw new Error(problems.join(' | '));
 }
 
-function sendNewRows_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = TAB ? ss.getSheetByName(TAB) : ss.getSheets()[0];
-  if (!sh) throw new Error('There is no tab called "' + TAB + '"');
-  var data = sh.getDataRange().getValues();
+function sendTab_(ss, tab, link) {
+  var sh = tab.sheet;
   var tz = ss.getSpreadsheetTimeZone();
-
-  // the heading row is the first row with two filled cells
-  var h = 0;
-  while (h < data.length && data[h].filter(function (c) { return String(c).trim() !== ''; }).length < 2) h++;
-  if (h >= data.length) return;
+  var data = sh.getDataRange().getValues();
+  var h = headingRow_(data);
+  if (h < 0) return;
   var heads = data[h].map(function (c) { return String(c).trim(); });
   var st = heads.indexOf(STATUS_HEADER);
   if (st < 0) { st = heads.length; heads.push(STATUS_HEADER); sh.getRange(h + 1, st + 1).setValue(STATUS_HEADER); }
 
-  var cols = columns_(heads);
-  if (cols.name === undefined || (cols.phone === undefined && cols.email === undefined)) {
-    throw new Error('Cannot find the Name column and a Phone or Email column. Headings found: ' + heads.join(', ') + '. Set MAP at the top of the script.');
-  }
+  // the columns chosen in the app: a heading for each field, and the extra headings kept as form answers
+  var fields = [], extras = [];
+  Object.keys(link.map || {}).forEach(function (f) {
+    var name = link.map[f];
+    if (!name) return;
+    var at = heads.indexOf(name);
+    if (at < 0) throw new Error('the column "' + name + '" is not in this tab any more. Choose the columns again in the app');
+    fields.push([f, at]);
+  });
+  (link.extra || []).forEach(function (name) {
+    var at = heads.indexOf(name);
+    if (at >= 0) extras.push([name, at]);
+  });
 
   // rows with something in them and nothing in the status column
   var pending = [];
@@ -126,11 +143,12 @@ function sendNewRows_() {
     for (var b = 0; b < MAX_BATCHES && b * BATCH < pending.length; b++) {
       var part = pending.slice(b * BATCH, (b + 1) * BATCH);
       var rows = part.map(function (r) {
-        var o = {};
-        FIELDS.forEach(function (f) { if (cols[f[0]] !== undefined) o[f[0]] = cell_(data[r][cols[f[0]]], tz); });
+        var o = { answers: {} };
+        fields.forEach(function (f) { o[f[0]] = cell_(data[r][f[1]], tz); });
+        extras.forEach(function (x) { var v = cell_(data[r][x[1]], tz); if (v !== '') o.answers[x[0]] = v; });
         return o;
       });
-      var res = send_(rows);
+      var res = call_('ingest_tab_leads', { p_token: APP_TOKEN, p_tab_key: link.key, p_rows: rows });
       part.forEach(function (r, i) { marks[r] = label_(res.rows[i], tz); });
     }
   } finally {
@@ -145,19 +163,10 @@ function sendNewRows_() {
 }
 `;
 
-// the script for the Settings screen: url is the app's Supabase address, anonKey its public key, token the secret made for this sheet
+// the script for the Settings screen: url is the app's Supabase address, anonKey its public key, token the secret made for this connection
 function leadFeedScript({url,anonKey,token}){
- const fields=LEAD_FIELDS.map(f=>[f.key,f.words]).concat([['position',LEAD_POSITION_WORDS]]);
  return LEAD_FEED_SCRIPT
   .replace('__URL__',()=>JSON.stringify(String(url).replace(/\/+$/,'')))
   .replace('__KEY__',()=>JSON.stringify(String(anonKey)))
-  .replace('__TOKEN__',()=>JSON.stringify(String(token)))
-  .replace('__FIELDS__',()=>JSON.stringify(fields));
-}
-
-// a starting sheet in the format the app understands best: headings and one example row
-const LEAD_TEMPLATE_HEADINGS=['Date','Name','Phone','Email','City','Experience (years)','Current company','Current CTC','Expected CTC','Notice period','Campaign','Position'];
-function leadTemplateCsv(){
- const row=['12/10/2026','Asha Rao','98765 43210','asha@example.com','Pune','3','Acme Pvt Ltd','6 LPA','8 LPA','1 month','Facebook Ad',''];
- return [LEAD_TEMPLATE_HEADINGS,row].map(r=>r.map(c=>/[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c).join(',')).join('\r\n')+'\r\n';
+  .replace('__TOKEN__',()=>JSON.stringify(String(token)));
 }
