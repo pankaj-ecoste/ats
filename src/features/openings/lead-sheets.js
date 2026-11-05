@@ -50,19 +50,20 @@ function linkModal(o,link){
  const open=LS.tabs.filter(t=>!takenBy(t));
  if(!edit&&!open.length){toast(LS.tabs.length?'Every tab seen so far is already linked':'No tab has been reported yet','var(--red)');return}
  const list=sourceList();
- const d={tabKey:edit?link.tabKey:open[0].key,source:edit?link.source:'',map:edit?{...link.map}:{},extra:new Set(edit?link.extra:[]),enabled:edit?link.enabled:true,hs:[]};
+ const d={tabKey:edit?link.tabKey:'',source:edit?link.source:'',map:edit?{...link.map}:{},extra:new Set(edit?link.extra:[]),enabled:edit?link.enabled:true,hs:[]};
  const tabNow=()=>LS.tabs.find(t=>t.key===d.tabKey);
  const reset=()=>{const t=tabNow();d.hs=t?t.headings:(edit?link.known:[]);
   if(!edit){const g=guessLink(d.hs);d.map=g.map;d.extra=new Set(g.extra);d.source=guessSourceFor(t&&t.name,list)}};
  reset();
  const opt=(v,l,sel,dis)=>`<option value="${esc(v)}" ${sel?'selected':''} ${dis?'disabled':''}>${esc(l)}</option>`;
  const tabSel=edit?`<div class="f"><div class="small muted">Tab</div><div><b>${esc(link.tabName)}</b></div></div>`
-  :`<label class="f full">Tab of the workbook <span class="muted small">(${open.length} free of ${LS.tabs.length})</span><input class="inp" id="lkFilter" placeholder="Type to find a tab" style="margin-bottom:6px"><select class="inp" id="lkTab" size="6">${LS.tabs.map(t=>{const b=takenBy(t);const ob=b&&getOp(b.opening);return opt(t.key,b?`${t.name}  (linked to ${ob?ob.title:'another opening'})`:t.name,t.key===d.tabKey,!!b)}).join('')}</select></label>`;
+  :`<label class="f full">Tab of the workbook <span class="muted small">(${open.length} free of ${LS.tabs.length}) · click the one that holds this opening's leads</span><input class="inp" id="lkFilter" placeholder="Type to find a tab" style="margin-bottom:6px"><select class="inp" id="lkTab" size="6">${LS.tabs.map(t=>{const b=takenBy(t);const ob=b&&getOp(b.opening);return opt(t.key,b?`${t.name}  (linked to ${ob?ob.title:'another opening'})`:t.name,t.key===d.tabKey,!!b)}).join('')}</select></label>`;
  const grid=()=>{
   const fresh=edit?newHeadings(link,d.hs):[];
   const used=new Set(Object.values(d.map).filter(Boolean));
   const optsFor=k=>[opt('','— not in the sheet —',!d.map[k])].concat(d.hs.map(h=>opt(h,h,d.map[k]===h))).join('');
   const extras=d.hs.filter(h=>!used.has(h));
+  if(!d.tabKey)return '<p class="muted" style="margin:14px 0 0">Choose the tab above first. Its columns will show here.</p>';
   return `<h4 style="margin:14px 0 6px">Which column is what</h4><div class="fgrid">${LINK_FIELDS.map(f=>`<label class="f">${esc(f.label)}${f.need?' <span class="muted small">(needed)</span>':''}<select class="inp" data-lk="${f.key}">${optsFor(f.key)}</select></label>`).join('')}</div>
   <p class="small muted" style="margin:6px 0 0">Name, and a phone or an email, are needed. The rest are optional.</p>
   <h4 style="margin:14px 0 6px">Other columns to keep with the lead</h4>
@@ -87,6 +88,7 @@ function linkModal(o,link){
     $('#lkFilter',el).oninput=e=>{const q=e.target.value.trim().toLowerCase();[...tsel.options].forEach(op=>{op.hidden=!!q&&!op.textContent.toLowerCase().includes(q)})};
    }
    $('#lkSave',el).onclick=async()=>{
+    if(!d.tabKey){toast('Choose the tab first','var(--red)');return}
     const extra=[...d.extra].filter(h=>d.hs.includes(h)&&!Object.values(d.map).includes(h));
     const problem=linkProblem(d.map);if(problem){toast(problem,'var(--red)');return}
     const btn=$('#lkSave',el);btn.disabled=true;
