@@ -21,6 +21,7 @@ before(async () => {
   await c.connect();
   await q('begin');
   if (!(await q("select to_regproc('public.sheet_sync_plan') as f")).rows[0].f) await q(readFileSync(new URL('../../supabase/migrations/0023_sheet_links.sql', import.meta.url), 'utf8'));
+  if (!(await q("select has_table_privilege('authenticated', 'public.sheet_links', 'select') as g")).rows[0].g) await q(readFileSync(new URL('../../supabase/migrations/0024_sheet_links_read_grant.sql', import.meta.url), 'utf8'));
   await q('delete from public.lead_feed');   // the real project may already be set up; the test starts from nothing, and the transaction is rolled back
   await q("select set_config('app.allow_user_create', 'on', true)");
   for (const [n, id] of Object.entries(U)) await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `lf${n}@ats.ecoste.in`, JSON.stringify({ full_name: 'Feed ' + n })]);
@@ -151,6 +152,18 @@ test('linking: staff only; the columns are checked; one tab belongs to one openi
   assert.ok((await one("select count(*)::int n from public.activity where text like 'Sheet tab%linked%'")).n >= 1);
   assert.ok((await one("select count(*)::int n from public.audit_log where table_name = 'sheet_links'")).n >= 1, 'a link is audited');
   await assert.rejects(rpc(U.rec, 'lead_feed_status'), /Only an admin/);
+});
+
+test('staff read the tabs and links the way the app does; nobody else does, and nobody writes the tables directly', { skip }, async () => {
+  assert.equal((await as(U.rec, 'select count(*)::int n from public.sheet_tabs')).rows[0].n, 3, 'a recruiter sees the tabs');
+  assert.equal((await as(U.admin, 'select count(*)::int n from public.sheet_links')).rows[0].n, 2, 'an admin sees the links');
+  const row = (await as(U.rec, "select tab_key, tab_name, headings, seen_at from public.sheet_tabs where tab_key = 'bk/1'")).rows[0];
+  assert.deepEqual(row.headings, HEAD);
+  assert.equal((await as(U.rec, 'select id, opening_id, tab_key, tab_name, source, map, extra, known, enabled, last_received_at from public.sheet_links order by created_at')).rows.length, 2, 'the columns the app asks for');
+  await assert.rejects(as(null, 'select * from public.sheet_tabs'), /permission denied/, 'someone not signed in sees nothing');
+  await assert.rejects(as(null, 'select * from public.sheet_links'), /permission denied/);
+  await assert.rejects(as(U.rec, "insert into public.sheet_tabs (tab_key, tab_name) values ('x', 'x')"), /permission denied|row-level/, 'no direct writes');
+  await assert.rejects(as(U.rec, "update public.sheet_links set source = 'x'"), /permission denied|row-level/);
 });
 
 test('the plan lists only enabled links of tabs just reported, on an open opening; a renamed tab keeps its link', { skip }, async () => {
