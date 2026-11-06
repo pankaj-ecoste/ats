@@ -138,3 +138,17 @@ test('the ad fields are kept in the company settings and come back; none stays o
   assert.deepEqual(plain(app.settingsRow({ settings: { adFields: f } }).config.adFields), f);
   assert.equal(app.settingsRow({ settings: {} }).config.adFields, undefined);
 });
+
+test('the call status via app and its time go to the database and come back; NA stays off the record', () => {
+  const P = app.makePeople([]);
+  const a = { id: 'A-1', cid: 'C-1', opId: 'OP-1', date: '2026-01-01', stage: 'New' };
+  assert.equal(app.TO_ROW.application(a, P).applications.app_call_status, 'NA');
+  assert.equal(app.TO_ROW.application(a, P).applications.app_call_at, null);
+  const row = app.TO_ROW.application({ ...a, appCall: 'Busy', appCallAt: 1762400000000 }, P).applications;
+  assert.equal(row.app_call_status, 'Busy');
+  assert.equal(row.app_call_at, new Date(1762400000000).toISOString());
+  const back = (r) => plain(app.stateFromRows({ openings: [{ id: 'OP-1', title: 'T', created_at: '2026-01-01' }], candidates: [{ id: 'C-1', name: 'A', created_at: '2026-01-01' }], applications: [{ id: 'A-1', candidate_id: 'C-1', opening_id: 'OP-1', stage: 'New', ...r }] }, P).applications[0]);
+  assert.equal(back(row).appCall, 'Busy');
+  assert.equal(back(row).appCallAt, 1762400000000);
+  assert.equal('appCall' in back({ app_call_status: 'NA', app_call_at: null }), false);
+});

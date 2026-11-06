@@ -46,7 +46,7 @@ const FROM_ROW={
   const s=ctx.screenings.get(r.id);
   return withValues({id:r.id,cid:r.candidate_id,opId:r.opening_id,date:r.applied_on,stage:r.stage,maxStage:r.max_stage,
    recruiter:P.name(r.recruiter_id),screening:s?{outcome:s.outcome,answers:s.answers,notes:s.notes,date:s.screened_on,...(s.duration_seconds?{duration:s.duration_seconds}:{})}:null,stageSince:r.stage_since},
-   {source:r.source||null,campaign:r.campaign||null,callStatus:r.call_status||null,custom:r.custom&&Object.keys(r.custom).length?r.custom:null,answers:r.answers&&Object.keys(r.answers).length?r.answers:null,joining:r.joining_on,joinedOn:r.joined_on,dropped:r.dropped_on,dropRisk:r.drop_risk,
+   {source:r.source||null,campaign:r.campaign||null,callStatus:r.call_status||null,appCall:r.app_call_status&&r.app_call_status!=='NA'?r.app_call_status:null,appCallAt:r.app_call_at?dbMs(r.app_call_at):null,custom:r.custom&&Object.keys(r.custom).length?r.custom:null,answers:r.answers&&Object.keys(r.answers).length?r.answers:null,joining:r.joining_on,joinedOn:r.joined_on,dropped:r.dropped_on,dropRisk:r.drop_risk,
     backup:r.backup_application_id?{aid:r.backup_application_id,status:r.backup_status}:null,matchScore:r.match_score,matchReasons:r.match_reasons,rejectReason:r.rejection_reason});
  },
  group:(r,P,ctx)=>({id:r.id,opId:r.opening_id,date:r.on_date,time:dbTime(r.at_time),duration:r.duration_min,mode:r.mode,location:r.location,link:r.link,
@@ -153,7 +153,7 @@ const TO_ROW={
   candidate_compensation:{candidate_id:c.id,current_lpa:c.curSal||0,expected_lpa:c.expSal||0},
   candidate_documents:(c.documents||[]).map(d=>({candidate_id:c.id,name:d.name,status:d.status,storage_path:d.path||null,file_name:d.path?(d.file||''):null}))}),
  application:(a,P)=>({
-  applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),source:a.source||'',campaign:a.campaign||'',call_status:a.callStatus||'',custom:a.custom||{},answers:a.answers||{},
+  applications:{id:a.id,candidate_id:a.cid,opening_id:a.opId,applied_on:a.date,stage:a.stage,max_stage:a.maxStage||0,stage_since:a.stageSince,recruiter_id:P.id(a.recruiter),source:a.source||'',campaign:a.campaign||'',call_status:a.callStatus||'',app_call_status:a.appCall||'NA',app_call_at:a.appCallAt?iso8601(a.appCallAt):null,custom:a.custom||{},answers:a.answers||{},
    joining_on:a.joining||null,joined_on:a.joinedOn||null,dropped_on:a.dropped||null,drop_risk:a.dropRisk||null,
    backup_application_id:a.backup?a.backup.aid:null,backup_status:a.backup?a.backup.status:null,match_score:a.matchScore??null,match_reasons:a.matchReasons||null,rejection_reason:a.rejectReason||null},
   screenings:a.screening?{application_id:a.id,outcome:a.screening.outcome,answers:a.screening.answers||[],notes:a.screening.notes||'',screened_on:a.screening.date,duration_seconds:a.screening.duration||0}:null}),

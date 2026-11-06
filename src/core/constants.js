@@ -10,6 +10,12 @@ const stageToJourney=i=>i===0?1:i+1;
 const STAGE_COLOR={'New':'ai','Shortlisted':'blue','Screening':'blue','Group Interview':'cyan','Personal Interview':'cyan','Selected':'green','Offer':'orange','Offer Accepted':'green','Joining':'green','Onboarding':'green','Employee Ready':'green','Rejected':'red','On Hold':'orange'};
 const OP_STATUS=['Draft','Open','Screening','Interviewing','Offer','Filled','On Hold','Closed'];
 const OP_COLOR={Draft:'',Open:'blue',Screening:'ai',Interviewing:'cyan',Offer:'orange',Filled:'green','On Hold':'orange',Closed:'red'};
+// "Call status via app": what a recruiter sets in the app when they call a lead. NA until someone calls; any other value counts as a call made (engaged).
+// A fixed list (the database checks the same list in migration 0034).
+const APP_CALL_STATUS=['NA','Call not connected','Connected','Busy','Switched Off','Wrong Number','Call Back Requested','Not Interested','Number Not Reachable','High Salary','Duplicate','Follow-UP','Not okay with 15 k Salary'];
+const APP_CALL_COLOR={'NA':'','Call not connected':'blue','Connected':'green','Busy':'ai','Switched Off':'','Wrong Number':'red','Call Back Requested':'cyan','Not Interested':'red','Number Not Reachable':'','High Salary':'orange','Duplicate':'red','Follow-UP':'orange','Not okay with 15 k Salary':'orange'};
+// the outcome picked in the screening call window, as the call status via app it stands for
+const SCREEN_OUTCOME_CALL={'Connected':'Connected','Interested':'Connected','Rejected':'Connected','Not Connected':'Call not connected','Not Interested':'Not Interested','Call Back':'Call Back Requested'};
 // the ad asked for an opening (optional, one per opening): Requested -> Running -> Paused -> Closed
 const AD_STATUS=['Requested','Running','Paused','Closed'];
 const AD_COLOR={Requested:'orange',Running:'green',Paused:'',Closed:'red'};

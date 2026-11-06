@@ -35,6 +35,8 @@ export interface Applications {
   campaign: string;
   answers: Json;
   call_status: string;
+  app_call_status: string;
+  app_call_at: string | null;
   custom: Json;
 }
 

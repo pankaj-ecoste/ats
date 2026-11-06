@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'recordScreening', 'scheduleGroupInterview', 'setInviteStatus', 'sendGroupReminders', 'cancelGroupInterview', 'evaluateGroup',
-    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd', 'recordAdBrief', 'adBrief', 'saveMarketingContact', 'saveAdFields', 'adFieldList'],
+    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd', 'recordAdBrief', 'adBrief', 'saveMarketingContact', 'saveAdFields', 'adFieldList', 'setAppCall', 'APP_CALL_STATUS'],
 });
 
 // three applications of the same opening that are still early in the pipeline
@@ -201,4 +201,32 @@ test('fields of their own on the ad: the names are tidy and at most 12; the valu
   assert.equal(o.ad.custom, undefined, 'emptied fields leave no trace');
   const many = Object.fromEntries(Array.from({ length: 21 }, (_, i) => ['F' + i, 'v']));
   assert.throws(() => app.saveAdRequest(o.id, { status: 'Paused', custom: many }), /At most 20/);
+});
+
+test('call status via app: NA until a call is logged; any other value is a call, again and again; NA only clears; a screening call sets it too', () => {
+  const app = fresh();
+  const a = app.S.applications[0];
+  assert.equal(a.appCall, undefined, 'a lead starts at NA');
+  assert.equal(app.APP_CALL_STATUS[0], 'NA');
+  assert.equal(app.APP_CALL_STATUS.length, 13);
+  assert.equal(new Set(app.APP_CALL_STATUS.map((s) => s.toLowerCase())).size, 13, 'no repeat in any letter case');
+  const t0 = Date.now();
+  app.setAppCall(a.id, 'Busy');
+  assert.equal(a.appCall, 'Busy');
+  assert.ok(a.appCallAt >= t0);
+  assert.match(app.S.activity[0].text, /Call logged on .*: Busy/);
+  const first = a.appCallAt;
+  const spin = Date.now() + 3; while (Date.now() < spin);
+  app.setAppCall(a.id, 'Busy');
+  assert.ok(a.appCallAt > first, 'the same status again carries a newer time, so the database logs another call');
+  const logged = app.S.activity.length;
+  app.setAppCall(a.id, 'NA');
+  assert.equal(a.appCall, null);
+  assert.equal(app.S.activity.length, logged, 'clearing is not a call');
+  assert.throws(() => app.setAppCall(a.id, 'Called'), /Choose a call status/);
+  assert.throws(() => app.setAppCall('nope', 'Busy'), /not found/);
+  for (const [outcome, status] of [['Connected', 'Connected'], ['Interested', 'Connected'], ['Not Connected', 'Call not connected'], ['Not Interested', 'Not Interested'], ['Call Back', 'Call Back Requested']]) {
+    app.recordScreening(a.id, { outcome, answers: [], notes: '', duration: 1 });
+    assert.equal(a.appCall, status, outcome);
+  }
 });

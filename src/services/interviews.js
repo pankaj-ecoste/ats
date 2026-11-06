@@ -3,6 +3,8 @@
 // custom: {question: answer} for the opening's own questions; an empty answer removes it
 function recordScreening(aid,{outcome,answers,notes,duration,custom}){
  const patch={screening:{outcome,answers,notes,date:today(),duration}};
+ const call=SCREEN_OUTCOME_CALL[outcome];   // a screening call is a call: the column "Call status via app" follows, and the database logs it
+ if(call){patch.appCall=call;patch.appCallAt=Date.now()}
  if(custom){const now={...(getA(aid).custom||{})};Object.entries(custom).forEach(([q,v])=>{const t=String(v||'').trim().slice(0,120);if(t)now[q]=t;else delete now[q]});patch.custom=now}
  const a=repo.update('applications',aid,patch);
  log(`Screening call completed with ${getC(a.cid).name} (${outcome})`,'call',aid);

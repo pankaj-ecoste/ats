@@ -17,4 +17,13 @@ function applyCandidate(candidate,opId,source){
  notify(`New application: ${candidate.name} scored ${score}% for ${o.title}`,['candidate',candidate.id],[o.recruiter]);
  return {aid,score,existing:false};
 }
+// A recruiter logs a call on a lead: sets "Call status via app". Any value but NA is a call made; the database records it with who and when (migration 0034).
+// Choosing the same value again is a new call. NA only clears the current value.
+function setAppCall(aid,status){
+ if(!APP_CALL_STATUS.includes(status))throw new Error('Choose a call status from the list');
+ const a=getA(aid);if(!a)throw new Error('Application not found');
+ repo.update('applications',aid,{appCall:status==='NA'?null:status,appCallAt:Date.now()});
+ if(status!=='NA')log(`Call logged on ${getC(a.cid).name}: ${status}`,'call',aid);
+ return getA(aid);
+}
 function assignRecruiter(appIds,recruiter){appIds.forEach(id=>repo.update('applications',id,{recruiter}))}

@@ -103,6 +103,26 @@ await ev(() => { saveAdFields([]); });
 await ev(() => { S.applications = S.applications.filter((a) => !a.id.startsWith('A-AD')); });
 await ev(() => dropAdRequest(S.openings[0].id));
 
+// ---- call status via app
+await ev(() => { R.af.op = ''; R.af.status = ''; go('applications'); });
+const callId = await ev(() => document.querySelector('[data-appcall]').dataset.appcall);
+check('call via app: every lead starts at NA and the column is in the list', await ev((id) => getA(id).appCall === undefined && [...document.querySelectorAll('thead th')].some((t) => t.textContent === 'Call status via app') && document.querySelector('[data-appcall="' + id + '"]').textContent.startsWith('NA'), callId));
+await page.click('[data-appcall="' + callId + '"]');
+check('call via app: the menu lists the fixed statuses, NA first', await ev(() => { const l = [...document.querySelectorAll('#acDD .it')].map((x) => x.textContent.replace('now', '').trim()); return l.length === 13 && l[0] === 'NA' && l.includes('Not okay with 15 k Salary') && l.includes('Follow-UP'); }));
+await page.click('#acDD .it[data-s="Busy"]');
+check('call via app: choosing Busy sets it and logs the call', await ev((id) => getA(id).appCall === 'Busy' && S.activity[0].text.includes('Call logged') && document.querySelector('[data-appcall="' + id + '"]').textContent.startsWith('Busy'), callId));
+const t1 = await ev((id) => getA(id).appCallAt, callId);
+await page.waitForTimeout(20);
+await page.click('[data-appcall="' + callId + '"]');
+await page.click('#acDD .it[data-s="Busy"]');
+check('call via app: choosing the same status again is a new call (newer time)', await ev((x) => getA(x.id).appCallAt > x.t, { id: callId, t: t1 }));
+await page.selectOption('[data-f="acall"]', 'Busy');
+check('call via app: the filter shows only leads with that status', await ev(() => { const rows = [...document.querySelectorAll('#content tbody tr')]; return rows.length >= 1 && rows.every((r) => r.querySelector('[data-appcall]').textContent.startsWith('Busy')); }));
+await page.click('#afClear');
+await page.click('[data-appcall="' + callId + '"]');
+await page.click('#acDD .it[data-s="NA"]');
+check('call via app: NA clears it again', await ev((id) => !getA(id).appCall, callId));
+
 // ---- add candidate from resume
 const before = await ev(() => ({ c: S.candidates.length, a: S.applications.length }));
 await ev(() => addCandidate());
