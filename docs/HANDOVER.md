@@ -29,7 +29,7 @@ The rules are enforced by the database, not only by what the screen shows.
 
 ## 3. The routine
 
-**Every day (recruiter).** Dashboard → today's interviews and activity. **Pipeline** → the *Action center*: "Action today", "Stuck" and "Awaiting feedback" say exactly who needs a nudge. **Applications** → set *Call status via app* after every call (this is what the management report counts; an admin or management user reads the recruiter-wise call report). At 09:00 India time the system also sends each person a reminder for stuck candidates, tomorrow's interviews and missing feedback.
+**Every day (recruiter).** **Calling** → work through the leads one at a time: tap *Call* (on a phone it opens the dialer) or *WhatsApp*, then tap what happened (Connected, Busy, Not connected, ...). The next lead appears at once; *Undo* for five seconds if you tapped the wrong one. After *Connected* choose *Screen now*, *Shortlist* or *Next lead*. Keys 1 to 7 do the same on a laptop. *Call again* holds the leads that were busy, not connected or asked for a call back. Then Dashboard → today's interviews and activity. **Pipeline** → the *Action center*: "Action today", "Stuck" and "Awaiting feedback" say exactly who needs a nudge. **Applications** → set *Call status via app* after every call (this is what the management report counts; an admin or management user reads the recruiter-wise call report). At 09:00 India time the system also sends each person a reminder for stuck candidates, tomorrow's interviews and missing feedback.
 
 **When a vacancy arrives.** Openings → New opening. For a position that needs an ad, use the opening's *Ad request* and send the brief to marketing; the panel later shows leads, cost per lead and cost per hire.
 

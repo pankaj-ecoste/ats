@@ -42,3 +42,8 @@ test('an application whose candidate cannot be read gets a marked placeholder; k
   assert.deepEqual([hidden.skills, hidden.documents, hidden.expSal], [[], [], null]);
   assert.equal(s.candidates.find((c) => c.id === 'C-1').restricted, undefined);
 });
+
+test('only admins and recruiters may open the calling queue: calling logs calls, which only they may do', () => {
+  for (const role of ['admin', 'recruiter']) assert.equal(app.roleCanSee(role, 'calling'), true);
+  for (const role of ['hiring_manager', 'interviewer', 'management']) assert.equal(app.roleCanSee(role, 'calling'), false, role);
+});
