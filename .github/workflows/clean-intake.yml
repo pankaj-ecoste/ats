@@ -2,6 +2,10 @@ name: Clean abandoned uploads
 
 # every day: removes résumé files uploaded on the careers page but never submitted (see scripts/clean-intake.mjs)
 # needs repository secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+# only reads the code; the database key is passed to the one step that needs it
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '0 22 * * *'

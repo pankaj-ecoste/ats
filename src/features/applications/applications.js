@@ -6,13 +6,21 @@ const appCallOf=a=>a.appCall||'NA';   // "Call status via app": NA until a recru
 const customOf=(a,n)=>(a.custom&&a.custom[n])||'';
 // the admin's own columns that at least one application has a value for
 // (plus any question a recruiter asked on a screening call, which is kept the same way)
-const shownColumns=()=>{const seen=new Set(),out=[];const add=n=>{if(!seen.has(n)&&S.applications.some(a=>customOf(a,n))){seen.add(n);out.push(n)}};customColumns().forEach(add);S.applications.forEach(a=>Object.keys(a.custom||{}).sort().forEach(add));return out};
+// one pass over the applications (a search per column per application made this slow down with the square of the list)
+const shownColumns=()=>{
+ const has=new Set(),extra=[];      // names with at least one value, and the unlisted ones in the order they were first met
+ S.applications.forEach(a=>{const c=a.custom;if(!c)return;let fresh;for(const k in c)if(c[k]&&!has.has(k))(fresh=fresh||[]).push(k);if(fresh)fresh.sort().forEach(k=>{has.add(k);extra.push(k)})});
+ const seen=new Set(),out=[];
+ const add=n=>{if(!seen.has(n)&&has.has(n)){seen.add(n);out.push(n)}};
+ customColumns().forEach(add);extra.forEach(add);
+ return out;
+};
 const shortName=n=>n.length>26?n.slice(0,25)+'…':n;
 const valuesOf=n=>[...new Set(S.applications.map(a=>customOf(a,n)).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
 function filteredApps(){
- const f=R.af;
+ const f=R.af,cols=shownColumns();      // asked once: asking per application made filtering slow down with the square of the list
  let l=S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);
-  if(f.op&&a.opId!==f.op)return false;if(f.call&&callOf(a)!==f.call)return false;if(f.acall&&appCallOf(a)!==f.acall)return false;if(shownColumns().some(n=>f['x:'+n]&&customOf(a,n)!==f['x:'+n]))return false;if(f.status&&a.stage!==f.status)return false;if(f.rec&&a.recruiter!==f.rec)return false;
+  if(f.op&&a.opId!==f.op)return false;if(f.call&&callOf(a)!==f.call)return false;if(f.acall&&appCallOf(a)!==f.acall)return false;if(cols.some(n=>f['x:'+n]&&customOf(a,n)!==f['x:'+n]))return false;if(f.status&&a.stage!==f.status)return false;if(f.rec&&a.recruiter!==f.rec)return false;
   if(m.score<f.min)return false;if(f.exp&&c.exp<+f.exp)return false;if(f.loc&&!c.location.toLowerCase().includes(f.loc.toLowerCase()))return false;
   if(f.skill&&!c.skills.join(' ').toLowerCase().includes(f.skill.toLowerCase()))return false;if(f.from&&a.date<f.from)return false;
   if(f.q&&!(c.name+o.title+c.email+a.id).toLowerCase().includes(f.q.toLowerCase()))return false;return true});

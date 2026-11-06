@@ -11,7 +11,7 @@ function offerTable(l){
 async function saveSentLetter(fid){
  if(!CONNECTED)return;
  const f=S.offers.find(x=>x.id===fid),a=getA(f.appId);
- const html=`<!doctype html><html><head><meta charset="utf-8"><title>Offer letter</title><style>body{font:14px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px}</style></head><body>${letterHTML(f)}</body></html>`;
+ const html=`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>Offer letter</title><style>body{font:14px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px}</style></head><body>${letterHTML(f)}</body></html>`;
  try{
   const old=f.letterPath,path=await uploadFile(sb,FILE_BUCKETS.letter,a.id,new File([html],`offer-${f.id}.html`,{type:'text/html'}));
   attachOfferLetter(f.id,path);
@@ -46,7 +46,7 @@ function pickForOffer(){
 function letterHTML(f){
  const a=getA(f.appId),c=getC(a.cid),s=S.settings,b=f.breakup;
  const rows=[['Basic salary',b.basic],['House rent allowance (HRA)',b.hra],['Special allowance',b.special],['Other allowance',b.other],['Performance bonus (variable)',b.bonus]];
- if(f.custom)return f.custom;
+ if(f.custom)return cleanHtml(f.custom);   // text someone typed or pasted: layout survives, anything that could act does not
  return `<div class="lh"><div style="display:flex;gap:12px;align-items:center"><img src="${LOGO_SRC}" alt="" style="height:38px;width:auto"><div><b style="font-size:16px">${esc(s.company)}</b><div style="font-size:11px;color:#667">${esc(s.companyAddr)}</div></div></div><div style="text-align:right;font-size:12px;color:#556">Ref: ${f.id}<br>Date: ${fmtD(f.created)}</div></div>
  <p><b>${esc(c.name)}</b><br>${esc(c.location)}<br>${esc(c.email)}</p>
  <p><b>Subject: Offer of employment — ${esc(f.designation)}</b></p>

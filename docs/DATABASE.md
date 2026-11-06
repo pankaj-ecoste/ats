@@ -72,6 +72,7 @@ Ids are text and keep the app's own style (`OP-1001`, `C-2001`, `APP-3101`). Row
 
 - **Stage bookkeeping.** Changing an application's stage updates the furthest stage reached and the date it entered the stage, and writes a row to `stage_events`.
 - **Files** (migration 0012): three private buckets; the first folder of a file's path is the candidate or application it belongs to, and the access rules read it from there. The app opens a file through a two-minute signed link.
+- **Scale and housekeeping** (migration 0037): `public.data_stamp()` (a fingerprint of the write counters of the tables the app reads, so a tab downloads again only when something changed; callable by signed-in people only), ten indexes on foreign keys plus one for the public doors' counting, and `app.prune_logs()` run nightly at 04:30 India time by pg_cron (intake log 90 days, sheet log 180, notifications 60/180, activity 365; never the audit log or the stage history).
 - **Public intake** (migrations 0013, 0014): the only things open to anonymous visitors are the view `careers_openings`, the function `submit_application` and uploading a file under `resumes/intake/<id>/`. Every try is logged in `intake_batches`.
 - **Names are unique** (migration 0011): the app finds people by name.
 - **Scorecards roll up** (migration 0010): trigger `roll_up` on `interview_scores` updates the interview.

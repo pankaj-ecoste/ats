@@ -12,11 +12,31 @@ const READ_TABLES=[
 // the two logs only ever grow, and only the latest entries are shown, so only those are read (the app itself keeps 300)
 const LOG_TABLES=[['activity','at'],['sheet_log','at'],['intake_batches','received_at']],LOG_KEEP=300;
 
+// One table, page by page. The first page also reports how many rows there are, so the other pages are asked for at the same time
+// (20,000 rows is 20 pages: one after the other that is seconds of waiting, together it is about one round trip). A page that comes back
+// full after that (rows were added meanwhile, or the count was missing) is followed by the usual page-after-page reading.
+const PARALLEL_PAGES=6;
+async function readPage(client,table,orderBy,from,withCount){
+ const {data,error,count}=await client.from(table).select('*',withCount?{count:'exact'}:undefined).order(orderBy).range(from,from+PAGE-1);
+ if(error)throw new Error(`Could not read ${table}: ${error.message}`);
+ return {data,count};
+}
 async function fetchTable(client,table,orderBy){
- const out=[];
- for(let from=0;;from+=PAGE){
-  const {data,error}=await client.from(table).select('*').order(orderBy).range(from,from+PAGE-1);
-  if(error)throw new Error(`Could not read ${table}: ${error.message}`);
+ const first=await readPage(client,table,orderBy,0,true);
+ const out=[...first.data];
+ if(first.data.length<PAGE)return out;
+ let from=PAGE;
+ if(Number.isInteger(first.count)&&first.count>PAGE){
+  const starts=[];for(let f=PAGE;f<first.count;f+=PAGE)starts.push(f);
+  for(let i=0;i<starts.length;i+=PARALLEL_PAGES){
+   const pages=await Promise.all(starts.slice(i,i+PARALLEL_PAGES).map(f=>readPage(client,table,orderBy,f,false)));
+   pages.forEach(p=>out.push(...p.data));
+  }
+  from=starts[starts.length-1]+PAGE;
+  if(out.length<from)return out;      // the last page was short: that is everything
+ }
+ for(;;from+=PAGE){
+  const {data}=await readPage(client,table,orderBy,from,false);
   out.push(...data);
   if(data.length<PAGE)return out;
  }
@@ -39,7 +59,9 @@ let PEOPLE=makePeople([]);   // who is who, refreshed on every load
 
 // Replaces S with what the database holds. `me` is the signed-in person ({fullName}); their name goes into settings.user.
 async function loadFromServer(client,me){
+ const stamp=await readStamp(client);      // asked before reading, so a change made while reading is noticed next time
  const {state,people}=await readState(client,me);
+ STAMP=stamp;STAMP_AT=Date.now();
  PEOPLE=people;
  S=state;
  return state;
@@ -50,12 +72,23 @@ async function readState(client,me){
  state.settings={...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),...state.settings,user:me.fullName,theme:savedTheme()};
  return {state,people};
 }
+// "Has anything been written?": one tiny question (a fingerprint from the database, migration 0037) instead of downloading everything.
+// null when the database cannot answer (the migration is not applied yet, or the network blinked); the caller then reads everything, as it always did.
+let STAMP=null,STAMP_AT=0;
+const FULL_READ_EVERY_MS=10*60000;         // whatever the fingerprint says, read everything at least this often
+async function readStamp(client){
+ try{const {data,error}=await client.rpc('data_stamp');return error||typeof data!=='string'?null:data}
+ catch{return null}
+}
 // Picks up what other people changed. Does nothing while this browser still has changes to save (they would be lost) or when nothing differs.
 // Returns true when the screen's data was replaced.
 async function refreshFromServer(client,me){
  if(writesPending()>0)return false;
+ const stamp=await readStamp(client);
+ if(stamp&&stamp===STAMP&&Date.now()-STAMP_AT<FULL_READ_EVERY_MS)return false;     // nothing was written since the last full read
  const {state,people}=await readState(client,me);
  if(writesPending()>0)return false;       // a change was made while reading
+ STAMP=stamp;STAMP_AT=Date.now();
  if(dataFingerprint(state)===dataFingerprint(S))return false;
  PEOPLE=people;
  S=state;

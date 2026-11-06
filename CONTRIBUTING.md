@@ -21,10 +21,12 @@ Needs Node 20 or newer. For the browser tests run `npx playwright install chromi
 | `npm run dev` | Local server, no build step | while working |
 | `npm run lint` | ESLint over the whole project | before every commit (the hook does it) |
 | `npm test` | Unit tests (about 70), a few seconds | before every commit (the hook does it) |
-| `npm run build` | Writes `dist/Ecoste_Recruit_Tracker.html`, one self-contained file | before a pull request |
+| `npm run build` | Writes `dist/Ecoste_Recruit_Tracker.html` (one self-contained file, for the tests) and `dist/site/` (what is deployed) | before a pull request |
 | `npm run check` | lint + unit tests + build | before a pull request |
 | `npm run test:e2e:all` | Browser tests: every page, extension points, real user flows | when a screen or service changed |
-| `npm run test:e2e:dist` | The same browser tests against the built file (run `npm run build` first) | before a release |
+| `npm run test:e2e:dist` | The same browser tests against the built file, plus the page-policy test on `dist/site` (run `npm run build` first) | before a release |
+| `npm run test:e2e:scale` | Every page with 5,000 and 20,000 leads must open quickly | when a list, lookup or page changed |
+| `npm run test:e2e:csp` | `dist/site` under the real headers: no violations, injected script refused | when `vercel.json`, `index.html` or the build changed |
 
 CI runs all of the above on every pull request. A red CI blocks the merge.
 

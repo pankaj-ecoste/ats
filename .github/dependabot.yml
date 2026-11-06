@@ -1,0 +1,19 @@
+# Keeps the build tools and the CI actions up to date: one grouped pull request a month for each, so security fixes do not wait for a person to remember.
+# (The libraries inside src/vendor are copies made by `npm run vendor`: updating the package here and running that command refreshes them.)
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      all-npm:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      all-actions:
+        patterns: ['*']

@@ -6,7 +6,7 @@ const REPO_ID_KEY={onboarding:'appId'}; // collections not keyed by `id`
 const REPO_LISTENERS=[];
 // listener receives {op:'insert'|'insertMany'|'update'|'remove'|'root', coll, id, record} (insertMany carries `records`)
 function repoOnChange(fn){REPO_LISTENERS.push(fn)}
-function repoNotify(change){REPO_LISTENERS.forEach(f=>f(change))}
+function repoNotify(change){INDEX_EPOCH++;REPO_LISTENERS.forEach(f=>f(change))}   // INDEX_EPOCH: the lookups in selectors.js start again after any change
 const repo={
  find(coll,id){const k=REPO_ID_KEY[coll]||'id';return (S[coll]||[]).find(r=>String(r[k])===String(id))},
  // newest-first collections use the default (add at the start); pass {end:true} for append-only ones
@@ -34,7 +34,7 @@ const repo={
   const [record]=S[coll].splice(i,1);save();repoNotify({op:'remove',coll,id,record});return true;
  },
  // keep only the newest `max` records of a newest-first collection
- trim(coll,max){if(S[coll]&&S[coll].length>max){S[coll].length=max;save()}},
+ trim(coll,max){if(S[coll]&&S[coll].length>max){S[coll].length=max;INDEX_EPOCH++;save()}},
  // a record that belongs in somebody else's list (their notifications). Nothing changes in this browser; listeners such as the database writer still hear of it.
  send(coll,recipient,record){repoNotify({op:'send',coll,id:record.id,recipient,record});return record},
  // replace the whole state (used by 'reset demo data')

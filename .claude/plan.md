@@ -3,12 +3,19 @@
 Single source of truth for **what exists, what was done, what is pending, and how changes are made**.
 Lives at `.claude/plan.md`. Update this file in the same change as the work it describes (see §9).
 
-- **Last updated:** 2026-11-05
-- **Current phase:** Phases 1 to 7 are built as far as they can be without the owner's outside steps (see the log). The app is **live on Vercel from `main`** (ats-gamma.vercel.app), with real accounts and the first real use started. The owner went through the app on 2026-10-24 and has a list of changes and tweaks, to be built **one by one, as they are given**; each one is recorded in section 10 when done. Waiting on the owner: the real lead sheet's headings, pasting the live-lead-sheet script into the Google Sheet, company details, team accounts, consent text, the handover security steps (`docs/SECURITY_CHECKLIST.md`), Brevo email later.
-- **Branch:** `chore/restructure-p1` (off `main`, baseline tag `v0.1.0-prototype`)
-- **Status of the app:** working browser-only prototype. Not production-ready (see §6).
+- **Last updated:** 2026-11-06
+- **Current phase:** **Version 1 is closed (2026-11-06) and ready to hand over to the HR team.** The app is live on Vercel from `main` (ats-gamma.vercel.app) with real accounts. The last step of version 1 was a review of the whole system for security, scale and code form (log entry 2026-11-06; `docs/SECURITY_REVIEW.md`, `docs/SCALING.md`, `docs/HANDOVER.md`, `CHANGELOG.md`). **Every change from now on is version 2** (§12). Waiting on the owner: yes to apply migration 0037 to the live project, push, and tag `v1.0.0` (all three are per-action approvals); the dashboard steps in `docs/SECURITY_CHECKLIST.md` (rotate shared keys, switch off sign-up, backups, protect `main`, Anthropic spending limit); the real lead sheet's script pasted into the Google Sheet; consent text; Brevo email later.
+- **Branch:** `main` (the owner works straight on `main`; Vercel production follows it). Baseline tag `v0.1.0-prototype`; `v1.0.0` is created when the owner says go.
+- **Status of the app:** version 1 complete and in use. Not yet done, and owned by the owner: the dashboard security steps; and by version 2: a separate staging project, CAPTCHA on the careers form, data-deletion requests (§12).
 
 ---
+
+## Version policy (from 2026-11-06)
+
+- **Version 1** = the system as it stands at the `v1.0.0` tag: everything in §4 and the log in §10 up to 2026-11-06, closed by the security, scale and code review. It is what the HR team is handed.
+- **Version 2** = every change made after that tag. Each one is a dated row in §10 starting with **v2**, a line under "Version 2" in `CHANGELOG.md`, and, when it was on the §12 list, ticked there. Bug fixes to version 1 behaviour are also v2 changes (a patch is `v1.0.x`; a new feature or a rule change is v2).
+- The one-by-one working style continues: the owner gives a change, it is built on `main`, tests stay green, the log is updated.
+
 
 ## 1. What this is
 
@@ -16,18 +23,18 @@ An ATS (applicant tracking system) for Ecoste's recruiting team. It was built by
 
 Covers: openings, job posting, applications + AI-style match scoring, candidates + resume parsing, screening calls, group and personal interviews, offers (CTC breakup, letters), onboarding checklists, tasks, pipeline control (SLA), management report, Excel import/export, Google Sheet auto-import, Google Form generator, rule-based assistant, settings.
 
-## 2. Current state (verified 2026-10-06)
+## 2. Current state (verified 2026-11-06)
 
 | Check | Result |
 |---|---|
-| `npm test` (node:test, no deps) | 154/154 pass |
-| `npm run build` | OK. `dist/Ecoste_Recruit_Tracker.html`, 12 stylesheets + 43 scripts inlined, 381 kB |
-| Browser tests (`test:e2e`, `test:e2e:hooks`, `test:e2e:flows`, `test:e2e:auth`, `test:e2e:data`, `test:e2e:writes`) | Pass on source and on `dist`: 14 pages, 13 hook checks, 67 flow checks; against the live project: 27 sign-in, 43 data (admin setup, recruiter, management, interviewer with scorecard, hiring manager with offer approval, refresh), 29 write 24 file and 19 careers checks (run with installed Chrome via `CHROME_PATH`) |
-| Git repository | Pushed to `github.com/pankaj-ecoste/ats`: `main` baseline, branch `chore/restructure-p1`, tag `v0.1.0-prototype` |
-| Linter / CI / hooks | ESLint clean; CI workflow written (first run on next push); pre-commit hook on. No formatter (see P1.4) |
-| Database / backend | Supabase project has the full schema, rules, access policies and username login (16 migrations; 68 database tests pass: 32 access, 11 real sign-in, 16 round trip). In connected mode the app reads from the database after sign-in and saves every change back in the background (a red message appears if a save is refused or fails). Demo mode still uses browser `localStorage` |
-| Deployment | **None.** Runs from `index.html` or the single-file build |
-| Size | ~1.9k dense lines across `src/features/**`; largest: `pipeline.js` (27 kB), `sheets-io.js` (29 kB), `posting.js` (27 kB), `auto-import.js` (23 kB), `report.js` (22 kB) |
+| `npm test` (node:test, no deps) | 259/259 pass |
+| `npm run build` | OK. Two outputs from the same sources: `dist/Ecoste_Recruit_Tracker.html` (96 scripts inline, 14 stylesheets; for tests and sharing) and **`dist/site/`** (the app as 4 script files, the careers page as 1; what Vercel serves) |
+| Browser tests | Demo mode, on source and on `dist`: 14 pages, 15 hook checks, 102 flow checks, 15 routing checks, 6 scale checks (5,000 and 20,000 leads). The page-policy test `test:e2e:csp` runs `dist/site` under the real headers: 17 checks. Against the live project (`auth`, `data`, `writes`, `files`, `careers`, `leads`, `lead-feed`; run with installed Chrome via `CHROME_PATH`), counts are in the log |
+| Git repository | `github.com/pankaj-ecoste/ats`, work straight on `main`; baseline tag `v0.1.0-prototype`; `v1.0.0` waits for the owner's go |
+| Linter / CI / hooks | ESLint clean; CI on every push and pull request: dependency audit, lint, unit tests, both builds, browser tests on source and on the built file; the workflows have read-only rights; Dependabot monthly; pre-commit hook on. No formatter (D21) |
+| Database / backend | 37 migrations (0001 to 0036 applied to the one Supabase project; **0037 is written and proven in a dry run, waiting for the owner's yes**). 108 database tests in `tests/db`. In connected mode the app reads after sign-in and saves every change back in the background (a red message appears if a save is refused or fails); other people's changes arrive through the one-question-a-minute check. Demo mode still uses browser `localStorage` |
+| Deployment | **Live on Vercel from `main`**, serving `dist/site` with HSTS, `X-Frame-Options: DENY`, `script-src 'self'` and `connect-src` limited to our Supabase project. Details: `docs/DEPLOY.md`, `docs/SECURITY_REVIEW.md` |
+| Size | 94 source files, ~5.9k lines under `src/` (without `vendor` and `generated`); 1,039 lines are longer than 160 characters (dense one-line templates; see D21). Capacity: comfortable to ~5,000 leads, workable to ~20,000 (`docs/SCALING.md`) |
 
 ## 3. Architecture in one page
 
@@ -160,7 +167,15 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | `tests/unit/architecture.test.mjs` | Fails if app/feature code writes `S` or calls `save()`, or if a service touches the UI |
 | `tests/unit/store.test.mjs` | Storage key migration, backup of unknown versions, failed-save reporting |
 
-**Not in the tree yet (planned):** `CHANGELOG.md`.
+| `scripts/lib/bundle.mjs`, `scripts/build-site.mjs` | What both builds share (asset inlining, secret guard, strict-mode check); the build of `dist/site/` (scripts as files, one per run of equal strictness; refuses a site whose database address the policy would block) |
+| `tests/e2e/csp.mjs` | Serves `dist/site` with the headers from `vercel.json`: no violations, injected inline script and a connection to another project refused, cleaner and page lock work |
+| `tests/e2e/scale.mjs` | Every page with 5,000 and 20,000 leads within a budget; lookups see removed and added records at once |
+| `tests/unit/selectors-index.test.mjs` | The indexed lookups never show anything but the truth |
+| `tests/db/scale.test.mjs` | Migration 0037: stamp, indexes, log clean-up (`TRY_MIGRATION=1` applies the file inside the test's own transaction first) |
+| `supabase/migrations/0037_scale_and_housekeeping.sql` | `data_stamp()`, foreign-key indexes, `app.prune_logs()` and its nightly schedule |
+| `.github/dependabot.yml` | Monthly grouped update pull requests for the build tools and the CI actions |
+| `CHANGELOG.md` | Versions: 1.0.0 and the open "Version 2" list |
+| `docs/SECURITY_REVIEW.md`, `docs/SCALING.md`, `docs/HANDOVER.md` | What was checked and fixed; measured capacity and limits; how the HR team and the owner run the system |
 
 ## 4. Done (log)
 
@@ -202,12 +217,12 @@ Feature folders were named so each maps 1:1 onto a future `apps/web/src/features
 | ~~4~~ | ~~`STAGES` defined twice~~ — fixed | `core/constants.js:4`, `sheets/sheets-io.js:6` | Will drift; breaks import/export | P1.2 (quick win) |
 | ~~5~~ | ~~`TODAY` frozen at page load~~ — fixed | `core/utils.js` | Tab open overnight shows wrong date | P1.2 |
 | ~~6~~ | ~~`save()` swallows all errors~~ — fixed; still open: `load()` falls back to demo data; `load()` returns demo data if version ≠ 3 | `core/store.js` | Silent data loss | P1.4 / P2 |
-| 7 | 15 inline `onclick="..."` attributes | router, dashboard, openings, candidates, … | Globals dependency; injection risk | P1.3 |
+| ~~7~~ | ~~15 inline `onclick="..."` attributes~~ — removed 2026-10-10 (`data-act`), and the deployed page policy now forbids them | router, dashboard, openings, candidates, … | Globals dependency; injection risk | P1.3 |
 | ~~8~~ | ~~Strict mode only in `core/data/domain`~~ — fixed, all files strict | | | |
-| 9 | Whole-page `innerHTML` render | `app/render.js` | Loses focus/scroll; no pagination | P4 |
+| 9 | Whole-page `innerHTML` render | `app/render.js` | Focus and scroll are restored (`stillness`); long lists now show 100 rows at a time; a full server-side list is the v2 answer when the data passes ~20,000 leads | v2 (§12) |
 | ~~10~~ | ~~Storage key `spectra-ats-v3`~~ — migrated | `core/store.js` | Cosmetic, but migrate carefully | P1.4 |
 | ~~11~~ | ~~`window.claude.use('mcp')` for Sheet auto-import (no fallback)~~ — replaced outside claude.ai by **Import leads** (a downloaded .csv or .xlsx); the live connection is shown only inside claude.ai | `sheets/auto-import.js`, `leads/leads.js` | Did nothing on Vercel (the team met the error on 2026-10-24) | done |
-| 12 | ExcelJS + Figtree font from public CDNs | `index.html`, sheets | Offline/privacy/availability | P5 |
+| ~~12~~ | ~~ExcelJS + Figtree font from public CDNs~~ — own copies in `src/vendor` since 2026-10-21 | `index.html`, sheets | Offline/privacy/availability | P5 |
 
 ## 6. Production blockers (summary of `docs/PRODUCTION_ROADMAP.md`)
 
@@ -535,8 +550,8 @@ Each area was its own commit: writes moved into a service, unit tests added for 
 - ☑ **Self-hosted fonts and ExcelJS; strict Content-Security-Policy (2026-10-21):** Figtree (variable, latin) is a stylesheet with the font inside (`src/vendor/figtree.css`); ExcelJS 4.4.0 is our own copy loaded on first use (`src/vendor/exceljs.min.js`); both come from `npm run vendor`. `vercel.json` sets a CSP (no `eval`, scripts and styles from the app itself, connections only to this site and Supabase, no framing), HSTS, nosniff, referrer and permissions policies. `tests/e2e/csp.mjs` serves the built file with those headers, opens every page, reads a PDF, builds an Excel file and loads the careers page, and fails on any policy violation or any request to another address (8 checks).
 - ☑ **PDF reader hardened:** `npm audit` reported pdf.js 3.11 (bundled) as affected by CVE-2024-4367 (a crafted PDF font can run code), and anyone can upload a résumé on the careers page. PDFs are now opened with `isEvalSupported:false` (the official fix for that release line) and the CSP forbids `eval`; pinned by a unit test. Upgrading pdf.js to 4.2+ needs ES modules, which waits for the module conversion. The other audit findings (`tar`, `uuid`) are only in development tooling; `npm audit --omit=dev` is clean.
 - ☑ **Launch runbook** written: `docs/LAUNCH.md`.
-- ☐ Security review (RLS audit, key handling, dependency scan) and DPDP review (consent, retention, deletion, access requests)
-- ☐ Accessibility pass; load test with realistic volume
+- ☑ **Security review (2026-11-06):** access rules, anonymous door, headers and policy, secrets, dependencies, CI and the summary function checked; 8 findings fixed, accepted risks listed with what closes them (`docs/SECURITY_REVIEW.md`). ☐ The DPDP review (consent text, retention D12, deletion D17) is still open and is the owner's with legal
+- ☑ **Load test (2026-11-06):** every page with 20,000 leads, found and removed three square-law slowdowns (`docs/SCALING.md`, `npm run test:e2e:scale`). ☐ Accessibility pass
 - ☐ User acceptance test with the recruiting team; training notes; go-live and cutover checklist
 
 *Exit criteria:* a written go-live checklist signed off by the owner; a restore has been rehearsed; the team has used staging for real work for at least a week.
@@ -554,8 +569,8 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 - A calling queue that walks the New leads in order (the screening call screen has Save & next candidate; there is no queue view).
 - Per-lead opening from a column (the live lead sheet script already sends `position`; the Import leads screen uses one opening per file).
 - A "new version available" notice, so old browser tabs refresh after a deploy (the team met a stale tab on 2026-10-24).
-- Pipeline board and Applications page speed above about 5,000 leads (1.7 s and 0.7 s measured).
-- A separate Supabase project for tests; per-role one-page guides; handover note; the `v1.0.0` tag after the team walkthrough.
+- ☑ Pipeline board and Applications page speed above about 5,000 leads: done 2026-11-06 (20,000 leads: 0.37 s and 0.19 s).
+- A separate Supabase project for tests (D14, first in §12); per-role one-page guides; ☑ handover note (`docs/HANDOVER.md`); the `v1.0.0` tag when the owner says go.
 
 ### 7.7b Lead intake redesign (agreed in talk 2026-11-05; steps 1 to 4 live)
 
@@ -611,24 +626,29 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 | D16 | Role scoping as built: management sees no candidate names, contact details, salary or offers; interviewers see only their own interviews; hiring managers only their own openings. Right for you? | As built (see `docs/DATABASE.md`) | P2.2 |
 | D17 | Data-deletion requests: `audit_log` keeps copies of changed personal data. Delete or anonymise those rows when a candidate asks to be erased? | Yes, through one logged admin function | P7 |
 | D14 | Staging and prod Supabase projects: same region as dev (Seoul) or Mumbai? | Mumbai for prod if data-residency matters | P7 |
+| D18 | Version split: version 1 is the system at the `v1.0.0` tag; every later change is version 2 | **Decided 2026-11-06 (owner).** Policy at the top of this file | done |
+| D19 | Page policy: no inline script on the deployed site, deploy `dist/site`, `connect-src` names only our Supabase project (moving projects means editing `vercel.json`; the build checks) | **Done 2026-11-06** | done |
+| D20 | What happens past ~20,000 leads in the browser | Archive old closed leads first, then load less at sign-in, then server-side pages (`docs/SCALING.md`) | when the live count passes ~10,000 |
+| D21 | Introduce a code formatter (Prettier)? It would rewrite almost every file (a large, formatting-only commit that hides blame) and would leave the long one-line HTML templates as they are | No formatter in v1. If wanted, do it in v2 as one separate commit with no other change, then turn the pre-commit hook on for it | owner |
 | D15 | Supabase sync style: cache + background write queue (A) or async everywhere (B)? | A (see §7.9) | start of P2 |
 
 ## 9. How every future change is made (update process)
 
-1. **Start from `main`**, create `feat/<short-name>` or `fix/<short-name>`.
+1. **Work on `main`** (the owner's rule since 2026-10-24: Vercel production follows `main`, so a commit that reaches `main` goes live). Keep each commit one concern, and run the checks below before pushing.
 2. **Small change, one concern.** Follow the layer rule and file naming in §7 P1.5.
 3. **Adding a screen:** `src/features/<name>/<name>.js` (+ `.css`) → register `VIEWS.<name>=[view,bind]` → add `NAV` entry → add files to `index.html` after their dependencies, before `src/app/main.js` → add a test → add the page to the smoke test (automatic via `NAV`).
 4. **Editing the Google Form script:** edit `integrations/google-form/setup.template.gs`, run `npm run gen`. Never edit `src/generated/`.
-5. **Before the PR:** `npm test`, `npm run build`, `npm run test:e2e` (once lint/CI exist: `npm run lint`).
-6. **Update `plan.md`:** tick items in §7, add a dated line to §10, adjust §5 if an issue is fixed or found.
-7. **PR → review → squash merge → CI deploys to staging → promote to prod.**
+5. **Before pushing:** `npm run check` (lint, unit tests, both builds), the demo tests (`test:e2e`, `:hooks`, `:flows`, `:routing`, `:scale`) and `npm run test:e2e:csp` when `vercel.json`, `index.html` or the build changed. The live-project tests (`test:db`, `:auth`, `:data`, `:writes`, `:files`, `:careers`, `:leads`, `:lead-feed`) and applying a migration need the owner's yes each time.
+6. **Update `plan.md`:** tick items in §7 and §12, add a dated line to §10 (**v2** at the start for anything after the `v1.0.0` tag) and a line to `CHANGELOG.md`, adjust §5 if an issue is fixed or found.
+7. **Push to `main`; CI runs; Vercel deploys.** A pull request is used only when the owner asks for one. Rollback: Vercel → redeploy the previous deployment.
 8. **Data/schema changes** (after Phase 2): migration file only, never manual edits to prod; every migration reversible and tested on staging first.
-9. **Releases:** tag `vX.Y.Z`, update `CHANGELOG.md`.
+9. **Releases:** tag `vX.Y.Z` when the owner says go, update `CHANGELOG.md`. `v1.0.0` closes version 1; later changes are version 2.
 
 ## 10. Change log
 
 | Date | Change | By |
 |---|---|---|---|
+| 2026-11-06 | **Version 1 closed: security, scale and code review (migration 0037 written and dry-run, NOT yet applied; code not yet committed, waiting for the owner).** The owner: v1 is complete; in this step arrange the code better, check security and fix it, make the system scalable, find loopholes, update the plan; from now on changes count as version 2. **Security (details `docs/SECURITY_REVIEW.md`):** checked the live database (0 tables without row-level security; anonymous can read one view and run 3 functions; every definer function has a fixed `search_path`), the front end (299 `esc()` calls, no eval, inline handler or `javascript:` link), secrets (none in history or `dist`), 0 npm vulnerabilities. Fixed: (1) **no inline script on the deployed site** (`scripts/build-site.mjs` writes `dist/site`, `vercel.json` serves it with `script-src 'self'`); (2) `connect-src` names only our Supabase project (was `*.supabase.co`), and the build refuses a mismatch; (3) offer-letter text goes through `cleanHtml()` and stored letters open locked (they open as a `blob:` page that belongs to the app's address); (4) the summary function is limited to 6 a minute per person; (5) avatar initials escaped; (6) CI workflows get read-only rights, `npm audit` in CI, Dependabot; (7) index for the public doors' counting; (8) nightly `app.prune_logs()` (intake log 90 days, sheet log 180, notifications 60/180, activity 365; audit log untouched). **Scale (`docs/SCALING.md`):** measured 1.9 KB per lead; found that every open tab re-read the whole database every minute (about 1 GB a day at 1,000 leads with 8 tabs) and fixed it with `public.data_stamp()` (the app asks one tiny question and downloads only when something was written, or every 10 minutes; falls back to the old behaviour if the function is missing, so the code is safe to deploy before the migration); parallel paging of big tables; found and removed three square-law slowdowns with 20,000 leads: id lookups (now indexed, rebuilt after every `repo` change and checked against the list), a per-row `shownColumns()` search on Applications, and the Pipeline board and Action center drawing every lead (now 100 at a time). 20,000 leads: Applications 12.3 s to 0.19 s, Pipeline 9.7 s to 0.37 s, Reports 4.4 s to 0.21 s, search 1.5 s to 8 ms; the server side (21,600 row checks in 5 ms) is not the limit. 10 indexes on foreign keys. **Code form:** shared build helpers in `scripts/lib/bundle.mjs`; `ARCHITECTURE.md`, `CONTRIBUTING.md`, `DEPLOY.md`, `DATABASE.md`, `README.md` brought in line (they still said no URLs, no build, public CDNs). **Not done on purpose:** no formatter (D21: it would rewrite most files; owner's call), no CAPTCHA, no staging project (both in §12). **Tests:** unit 245 to 259 (stamp, paging, limiter, selector index), `test:e2e:csp` 13 to 17 checks on `dist/site`, new `test:e2e:scale`, new `tests/db/scale.test.mjs` (5 tests proved against the migration in a rolled-back dry run, plus 1 that needs it applied); lint clean; demo browser tests pass on source and `dist`. Package version 1.0.0; `docs/HANDOVER.md` and `CHANGELOG.md` written | Claude Code |
 | 2026-11-06 | **Management dashboard clean-up, step 3 of 3 (live: migration 0036 applied and pushed 2026-11-06):** checked the live data first: **no sample history** in the live database (0 demo rows in report events, call log, postings), 1 open opening, 72 applications, no management user yet (3 admins, 1 recruiter). Agreed with the owner (answers: keep the Joining backup part, monthly targets stay typed by hand, remove the bar chart keep the line chart). Done: (1) **management sees only the Management report** (the Today tab, the recruiter workbench, stays for admin and recruiters; the role gate only works signed in, so it needs checking live with a management user); (2) **removed** the manual **Log calls** button and window and the `logCalls` and `deleteCallLog` services (the `call_log` table and the demo sample history stay), the bar chart "Interviews to joining: this vs last month" (and `barChart`), and the **Summary** panel (its numbers repeat the Upcoming joiners table and the Backup coverage tile); (3) the report's **call numbers are real**: rows "Calls logged" and "Calls connected", rate "Calls → connected %", weekly table columns Calls logged and Connected count the calls logged with Call status via app (a screening call sets it too, so it counts once); migration 0036 changes `report_counts` (`calls` = call_events in the range, `conn` = status Connected; the old call log and the screenings are no longer read); in the demo a lead counts once, for its latest call, plus the demo's sample history; (4) new **Ads · leads and cost per opening** section (status, started, platform, spend, leads, screened, interviewed, hired, cost per lead and per hire, total line, same counting as the opening's Ad request panel); (5) **ad spend is part of "Actual spend"** and so of cost per hire, counted in the month the ad started (the spend is a running total, not split by month); the Source of hire cost column still counts job-post costs only (an ad's platform text cannot be matched to a source name). Tests: report DB test (now call_events), unit, browser flows. | Claude Code |
 | 2026-11-06 | **Recruiter-wise call report, step 2 of 3 (live: migration 0035 applied and pushed 2026-11-06):** the top panel of the dashboard's **Management report** tab (the default tab; "Today" is the recruiter workbench), shown to admin and management. **Daily, Weekly or Monthly** (Monday to Sunday around the chosen date; the calendar month), a date picker and an opening filter. One line per recruiter, busiest first: **Engaged** (every call logged with a status other than NA) and a column for each of the 12 statuses, plus an "All recruiters" line; the columns add up to Engaged. Migration 0035 `public.call_report(p_from, p_to, p_opening)` counts `call_events` by recruiter and status for Indian days (staff and management only, ranges up to 400 days, totals only, no lead data). Code: `src/domain/call-report.js` (periods and the pivot), `src/services/call-report.js` (fetch, 60 second cache, event `callreport:ready`), `src/features/dashboard/call-report.js` (panel). Needs the live database: in the demo the panel says so. Counts only the app column, as agreed. Tests: unit (`tests/unit/call-report.test.mjs`), DB (in `tests/db/call-events.test.mjs`, times now taken from the database clock because this machine's clock differs by milliseconds and made one test flaky), browser flow. **Next:** step 3, the dashboard clean-up. | Claude Code |
 | 2026-11-06 | **Call status via app, step 1 of 3 of the management dashboard work (migration 0034 applied 2026-11-06; code committed, push waiting for the owner):** the owner: management's main need is a **recruiter-wise report, daily, weekly and monthly, from the call status the recruiters keep**; the sheet already has a call status, but when the same lead must be called again the recruiter needs a column of their own in the app. Agreed in talk: column **Call status via app** on every lead (Applications list, filter "Any call status via app"), a **fixed dropdown that starts at NA** with 13 values from the owner's sheet (NA, Call not connected, Connected, Busy, Switched Off, Wrong Number, Call Back Requested, Not Interested, Number Not Reachable, High Salary, Duplicate, Follow-UP, Not okay with 15 k Salary; the repeated "not interested" merged); **any value but NA = engaged (a call made)**; each change is a dated call, so a lead called Monday and Tuesday counts twice; NA only clears the current value and the calls logged stay; **the report counts only the app column** (the sheet's status has no reliable call date; a separate "from the sheet" block can be added if management asks); saving a **screening call also sets the column** (Connected, Interested and Rejected give Connected; Not Connected gives Call not connected; Not Interested; Call Back gives Call Back Requested). Built: migration 0034 (`applications.app_call_status` default NA checked against the list, `applications.app_call_at`, table `call_events` written only by trigger `app.log_app_call` with the signed-in person, the lead's opening and the **Indian date** from the database clock; a call is logged when `app_call_at` is newer than the stored one and the status is not NA, so choosing the same status again counts and an old screen saving something else does not; a time ahead of the clock is held at now; staff and management read, nobody inserts, changes or deletes by hand). App: `setAppCall` (`src/services/applications.js`), a status button with a menu in the list (choosing even the current value logs a call), `APP_CALL_STATUS` and colours in constants. Tests: unit, DB (`tests/db/call-events.test.mjs`), browser flow. Known limits: a PC with a wrong clock can lose a call only when two people log the same lead within minutes; the column sits at the right of a wide table. **Next:** step 2 the recruiter-wise report (a database function over `call_events` for a day, week or month, by recruiter, with engaged and a count per status, optional opening filter) on the management dashboard, step 3 the dashboard clean-up (hide the recruiter workbench items from management, add hiring progress, ads and upcoming joiners). | Claude Code |
@@ -671,9 +691,34 @@ The owner reviewed the live app and will give changes one by one. Work directly 
 ```bash
 npm run dev          # http://localhost:5173
 npm test             # unit tests (no deps)
-npm run build        # dist/Ecoste_Recruit_Tracker.html (single file)
+npm run build        # dist/Ecoste_Recruit_Tracker.html (single file, for tests) + dist/site/ (deployed)
 npm run gen          # regenerate src/generated/form-script.js
 npm install && npx playwright install chromium && npm run test:e2e
 ```
 
 Requires Node 22+ (tested on 24). Related docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/PRODUCTION_ROADMAP.md`.
+
+## 12. Version 2: backlog (everything here, and anything new, is version 2)
+
+Ordered by value for the HR team handover. Tick when done and add a **v2** row to §10 and a line to `CHANGELOG.md`.
+
+**Safety first**
+- ☐ A separate **staging Supabase project** for `test:db` and the live browser tests, so they never run next to real data (D14). Needs the owner to create the project; then `.env.test` and a CI secret.
+- ☐ A **CAPTCHA** on the careers form (Turnstile or hCaptcha) and per-address limits; today: 200 per 10 minutes overall, 5 per e-mail per hour, 10 MB files, a trap field.
+- ☐ **Data deletion and retention** (D12, D17): one logged admin function that erases or anonymises a person including their audit rows; a retention rule for rejected candidates.
+- ☐ Forced **password change at first sign-in**, a longer minimum, optional MFA for admins.
+- ☐ The summary limit kept in the database instead of the server's memory.
+
+**Scale (when the live count passes ~10,000 leads, D20)**
+- ☐ Archive: leads rejected or closed over 12 months ago move out of the live tables, with a "show archived" switch.
+- ☐ Load less at sign-in (open applications and their people only); search and open-a-record fetch the rest.
+- ☐ Server-side pages for the long lists.
+- ☐ Measure the real sign-in time at 5,000 and 20,000 leads against a staging project.
+
+**Features the owner mentioned and not yet asked for** (also §7.7a): a calling queue over the New leads; per-lead opening from a sheet column; a "new version available" notice; per-role one-page guides; server-sent e-mail through Brevo (D5); a better offer letter (true PDF).
+
+**Code form**
+- ☐ Decide D21 (formatter). If yes: one formatting-only commit.
+- ☐ Split the largest feature files where a clear seam exists (`posting.js`, `sheets-io.js`, `auto-import.js`, `report.js`, `pipeline.js`: 1,000-character lines of template HTML) once a feature is being changed there anyway; never as a standalone refactor.
+- ☐ ES modules and a bundler (Phase 6 gate, D8) only if the team grows.
+

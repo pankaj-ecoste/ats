@@ -30,7 +30,22 @@ export function buildPrompt(row) {
 
 const send = (res, code, body) => res.status(code).json(body);
 
-export function createHandler({ fetchFn = fetch, env = process.env } = {}) {
+// Every summary is a paid call, so one person (or one stolen sign-in) cannot run up the bill: at most `max` per `windowMs` each.
+// The count lives in this server instance's memory, which is a brake and not a guarantee (a new instance starts empty); the real
+// ceiling is the spending limit on the Anthropic account (docs/SECURITY_CHECKLIST.md).
+export function makeLimiter({ max = 6, windowMs = 60000, now = Date.now } = {}) {
+  const hits = new Map();
+  return (key) => {
+    const t = now();
+    const recent = (hits.get(key) || []).filter((x) => t - x < windowMs);
+    if (recent.length >= max) { hits.set(key, recent); return false; }
+    recent.push(t); hits.set(key, recent);
+    if (hits.size > 2000) for (const [k, v] of hits) if (!v.some((x) => t - x < windowMs)) hits.delete(k);   // forget people who stopped
+    return true;
+  };
+}
+
+export function createHandler({ fetchFn = fetch, env = process.env, limit = makeLimiter() } = {}) {
   return async function handler(req, res) {
     if (req.method !== 'POST') return send(res, 405, { error: 'Use POST' });
     if (!env.ANTHROPIC_API_KEY) return send(res, 503, { error: 'Summaries are not set up yet. An admin needs to add the Anthropic key to the hosting settings.' });
@@ -43,6 +58,7 @@ export function createHandler({ fetchFn = fetch, env = process.env } = {}) {
       const who = await sb('/auth/v1/user');
       if (!who.ok) return send(res, 401, { error: 'Please sign in again' });
       const user = await who.json();
+      if (!limit(user.id)) return send(res, 429, { error: 'Too many summaries just now. Wait a minute and try again.' });
       const prof = await (await sb(`/rest/v1/profiles?id=eq.${user.id}&select=role,active`)).json();
       if (!prof[0] || !prof[0].active || !['admin', 'recruiter'].includes(prof[0].role)) return send(res, 403, { error: 'Only admins and recruiters can request a summary' });
       const cfg = await (await sb('/rest/v1/company_settings?select=config')).json();

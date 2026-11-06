@@ -33,7 +33,12 @@ These are the things only the account owner can do, in the dashboards. The code 
 ## 4. Hosting and the live site (Phase 7)
 
 - [x] Security headers and a Content-Security-Policy are set in `vercel.json` (no `eval`, no outside script, font or style sources; connections only to this site and Supabase). `npm run test:e2e:csp` serves the built app with exactly those headers and fails on any violation. Vercel gives HTTPS; the HSTS header is on. *(done 2026-10-21)*
-- [ ] The browser app contains only the project URL and the **anon** key. Confirm the **service-role key and `DATABASE_URL` are not in any file served to the browser** (search the built `dist/` file for `service_role` and `postgresql://`).
+- [x] The browser app contains only the project URL and the **anon** key. Checked 2026-11-06: no `service_role` or `postgresql://` in `dist/`, none in the git history or the tracked files; the build also refuses to output one.
+- [x] No inline script on the deployed site (`script-src 'self'`), `connect-src` names only our Supabase project, offer-letter text is cleaned. *(done 2026-11-06, `docs/SECURITY_REVIEW.md`)*
+- [ ] **Anthropic: set a monthly spending limit** on the account of the key in Vercel (Console → Limits). The per-person limit in `api/summary.js` is only a brake.
+- [ ] Decide on a **CAPTCHA for the careers form** (Cloudflare Turnstile or hCaptcha) if the page is shared widely; today it relies on rate limits and a trap field.
+- [ ] Create a **separate staging Supabase project** for the automated tests, so they never run next to real data (decision D14; the most valuable next step).
+- [ ] GitHub → Settings → turn on **Dependabot alerts** (the monthly update pull requests are already configured in `.github/dependabot.yml`).
 - [x] Fonts and the Excel library are served from the app itself (`npm run vendor`); the CSP test also fails if any request leaves for another address. *(done 2026-10-21)*
 
 ## 5. People and data

@@ -11,7 +11,7 @@ The app has two modes. **Demo mode** (no Supabase configured): no sign-in, data 
 ```bash
 npm run dev        # http://localhost:5173  (or just open index.html; no build step is needed)
 npm test           # unit tests, no dependencies
-npm run build      # dist/Ecoste_Recruit_Tracker.html, one self-contained file
+npm run build      # dist/Ecoste_Recruit_Tracker.html (one file, for tests) and dist/site/ (what is deployed)
 npm install && npx playwright install chromium
 npm run test:e2e   # browser smoke test of every page (add `-- dist` to test the build)
 npm run test:e2e:hooks   # browser check of the extension points

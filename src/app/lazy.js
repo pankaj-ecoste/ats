@@ -17,9 +17,12 @@ async function openStoredFile(bucket,path){
  window.open(url,'_blank','noopener');
 }
 // a stored HTML file opened as a page: the storage service shows HTML as plain text, so it is fetched and shown from the browser's own copy
+// The page is locked first: a stored file is data, so it may show text and pictures but never run anything or reach out, whoever wrote it.
+const LOCKED_PAGE=`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">`;
+const lockPage=html=>/<head[^>]*>/i.test(html)?html.replace(/<head[^>]*>/i,m=>m+LOCKED_PAGE):LOCKED_PAGE+html;
 async function openStoredHtml(bucket,path){
  const text=await (await fetch(await fileLink(sb,bucket,path))).text();
- window.open(URL.createObjectURL(new Blob([text],{type:'text/html'})),'_blank','noopener');
+ window.open(URL.createObjectURL(new Blob([lockPage(text)],{type:'text/html'})),'_blank','noopener');
 }
 // the PDF reader: the library, then its worker (run on the main thread: a résumé is a few pages)
 async function loadPdfReader(){

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHandler, buildPrompt, scrub } from '../../api/summary.js';
+import { createHandler, buildPrompt, scrub, makeLimiter } from '../../api/summary.js';
 
 const ENV = { ANTHROPIC_API_KEY: 'k', SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'anon' };
 const res = () => { const r = { code: 0, body: null, status(c) { r.code = c; return r; }, json(b) { r.body = b; return r; } }; return r; };
@@ -54,4 +54,23 @@ test('refusals: no key, wrong method, no sign-in, bad id, wrong role, switched o
   assert.equal((await run({ cfg: [{ config: {} }] })).code, 403);
   assert.equal((await run({ app: [] })).code, 404);
   assert.equal((await run({ model: json({}, false, 529) })).code, 502);
+});
+
+test('one person cannot run up the bill: the seventh summary in a minute is refused, and a minute later it works again', async () => {
+  let clock = 0;
+  const limit = makeLimiter({ max: 6, windowMs: 60000, now: () => clock });
+  const go = async (who = 'u1') => { const r = res(); await createHandler({ fetchFn: net({ user: json({ id: who }) }).f, env: ENV, limit })(req(), r); return r.code; };
+  for (let i = 0; i < 6; i++) assert.equal(await go(), 200);
+  assert.equal(await go(), 429);
+  assert.equal(await go('someone-else'), 200, 'the limit is per person');
+  clock += 61000;
+  assert.equal(await go(), 200);
+});
+
+test('the limiter forgets people who stopped, so its memory stays small', () => {
+  let clock = 0;
+  const limit = makeLimiter({ max: 1, windowMs: 1000, now: () => clock });
+  for (let i = 0; i < 2100; i++) limit('u' + i);
+  clock += 5000;
+  assert.equal(limit('fresh'), true);
 });
