@@ -10,7 +10,17 @@ function adPanel(o){
  const a=o.ad;
  const rows=[['Status',`<span class="pill ${AD_COLOR[a.status]}">${a.status}</span>`],['Raised',esc(fmtD(a.raisedOn)+(a.raisedBy?' by '+a.raisedBy:''))],['Ad started',esc(fmtD(a.startOn))],['Ad ended',esc(fmtD(a.endOn))],['Platform',esc(a.platform||'—')],['Budget',rupees(a.budget)],['Spend so far',rupees(a.spend)],['Creative or ad link',a.link?`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer">${esc(a.link)}</a>`:'—'],['Notes',esc(a.notes||'—')]];
  return `<section class="panel" style="margin-top:16px"><header><h3>Ad request</h3>${edit?`<div class="row"><button class="btn sm pri" data-act="adBrief" data-a1="${o.id}">${ic('send')}${(a.sent||[]).length?'Send again':'Send to '+esc(marketingName())}</button><button class="btn sm" data-act="adEdit" data-a1="${o.id}">${ic('edit')}Update</button><button class="btn sm" data-act="adDrop" data-a1="${o.id}">No ad needed</button></div>`:''}</header>
-  <div class="pbody"><dl class="kv">${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl>${adSentList(a)}</div></section>`;
+  <div class="pbody">${adResults(o)}<dl class="kv">${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl>${adSentList(a)}</div></section>`;
+}
+// what the ad brought in, counted from this opening's applications (nothing typed in); says plainly what was counted
+function adResults(o){
+ const st=adStats(o,appsOfOp(o.id),appSource);
+ const tile=(label,n,note,col)=>`<div class="kpi"><span><i style="background:${col}"></i>${label}</span><b>${n}</b><em>${note}</em></div>`;
+ const pct=(n,of)=>of?Math.round(n/of*100)+'% of leads':'';
+ return `<div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:0 0 6px">
+  ${tile('Leads',st.leads,'from the ad','var(--ai)')}${tile('Screened',st.screened,pct(st.screened,st.leads),'var(--blue)')}${tile('Interviewed',st.interviewed,pct(st.interviewed,st.leads),'var(--cyan)')}${tile('Hired',st.hired,'offer accepted or later','var(--green)')}
+  ${tile('Cost per lead',st.costPerLead==null?'—':rupees(st.costPerLead),o.ad.spend>0?'spend ÷ leads':'fill in the spend','var(--orange)')}${tile('Cost per hire',st.costPerHire==null?'—':rupees(st.costPerHire),o.ad.spend>0?'spend ÷ hired':'fill in the spend','var(--orange)')}</div>
+  <p class="muted small" style="margin:0 0 14px">Counted: leads from ad sources (a source with "Ad" or "campaign" in its name, like Facebook Ad or Google Ad) that arrived ${st.from?'from '+esc(fmtD(st.from)):'so far'}${st.to?' to '+esc(fmtD(st.to)):''}. ${st.other?st.other+' other application'+(st.other>1?'s':'')+' on this opening (other sources, or before the ad) '+(st.other>1?'are':'is')+' not counted.':''}</p>`;
 }
 // who the brief goes to (a setting); the name is only for button and greeting
 const marketingName=()=>(S.settings.marketing&&S.settings.marketing.name)||'marketing';

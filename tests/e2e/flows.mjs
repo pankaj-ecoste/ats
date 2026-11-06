@@ -71,6 +71,20 @@ await page.click('#abMail');
 await page.waitForSelector('.scrim', { state: 'detached' });
 check('brief: sending by email is recorded on the ad with the exact text', await ev(() => { const x = S.openings[0].ad.sent; return x.length === 1 && x[0].channel === 'Email' && x[0].to === 'shivam@example.com' && x[0].body.startsWith('Hi Shivam,'); }));
 check('brief: the history is shown and the button now says "Send again"', await ev(() => document.querySelector('#content').textContent.includes('Briefs sent') && document.querySelector('[data-act="adBrief"]').textContent.includes('Send again')));
+// ---- ad request: the numbers
+await ev(() => {
+  const o = S.openings[0];
+  saveAdRequest(o.id, { ...o.ad, startOn: today(), spend: 3000 });
+  const mk = (n, source, maxStage, stage) => repo.insert('applications', { id: 'A-AD' + n, cid: S.candidates[0].id, opId: o.id, date: today(), source, stage, maxStage, recruiter: o.recruiter, screening: null, stageSince: today(), matchScore: 50, matchReasons: [] });
+  mk(1, 'Facebook Ad', 0, 'New'); mk(2, 'Google Ad', 3, 'Group Interview'); mk(3, 'Facebook Ad', 7, 'Offer Accepted'); mk(4, 'Referral', 0, 'New');
+  render();
+});
+check('numbers: leads, screened, hired and the costs come from the ad sources only', await ev(() => {
+  const t = [...document.querySelectorAll('.kpis .kpi')].map((k) => k.querySelector('span').textContent + '=' + k.querySelector('b').textContent);
+  return t.join('|') === 'Leads=3|Screened=2|Interviewed=1|Hired=1|Cost per lead=₹1,000|Cost per hire=₹3,000';
+}));
+check('numbers: the panel says what was counted and how many were left out', await ev(() => document.querySelector('#content').textContent.includes('1 other application on this opening')));
+await ev(() => { S.applications = S.applications.filter((a) => !a.id.startsWith('A-AD')); });
 await ev(() => dropAdRequest(S.openings[0].id));
 
 // ---- add candidate from resume
