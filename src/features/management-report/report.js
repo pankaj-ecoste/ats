@@ -24,6 +24,7 @@ function vReport(){
  const sr=sourceRows(mS);const st={cv:0,it:0,j:0,c:0};sr.forEach(r=>{st.cv+=r.cv;st.it+=r.it;st.j+=r.j;st.c+=r.c});
  const kpi=(l,v,s,cls)=>`<div class="${cls||''}"><span>${l}</span><b>${v}</b><em>${s}</em></div>`;
  const body=`<div class="rep">
+ ${callReportPanel()}
  <div class="panel no-print" style="padding:14px 16px"><div class="rep-set">
   <label>Report date<input type="date" class="inp yl" id="rpDate" value="${rd}"></label>
   <label>Week starting (Monday)<input class="inp" value="${fmtD(wk)}" readonly></label><label>Report month<input class="inp" value="${fmtM(mS)}" readonly></label>
@@ -67,6 +68,7 @@ function vReport(){
 }
 function bindReport(root){
  const c=repCfg();const on=(s,f)=>{const x=$(s,root);if(x)f(x)};
+ bindCallReport(root);
  on('#rpDate',x=>x.onchange=()=>{R.rep.date=x.value||today();render()});
  $$('[data-rc]',root).forEach(i=>i.onchange=()=>{setReportThreshold(i.dataset.rc,Math.max(0,+i.value||0));render()});
  on('#rpClearDemo',x=>x.onclick=e=>{e.preventDefault();confirmBox('Clear sample history','Remove the sample weekly history, call logs and demo posting costs? Real activity from the app is kept.','Clear',()=>{clearDemoHistory();render();toast('Sample history cleared')},true)});

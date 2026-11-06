@@ -123,6 +123,27 @@ await page.click('[data-appcall="' + callId + '"]');
 await page.click('#acDD .it[data-s="NA"]');
 check('call via app: NA clears it again', await ev((id) => !getA(id).appCall, callId));
 
+// ---- recruiter-wise call report on the dashboard (the calls themselves live in the database; the demo is given rows)
+await ev(() => go('dashboard'));
+check('call report: the panel is at the top of the management report with Daily, Weekly and Monthly', await ev(() => R.dashTab === 'report') && await ev(() => ['Daily', 'Weekly', 'Monthly'].every((t) => [...document.querySelectorAll('#crPanel [data-crp]')].some((b) => b.textContent === t)) && !!document.querySelector('#crDate') && !!document.querySelector('#crOp')));
+check('call report: with no calls to show it says so', await ev(() => document.querySelector('#crPanel').textContent.includes('No calls to show here')));
+await ev(() => {
+  CALL_REPORT.cache[callReportKey(callReportRange(CALL_REPORT.period, CALL_REPORT.date), CALL_REPORT.opening)] = { at: Date.now(), rows: [
+    { recruiter_id: 'u1', recruiter: 'Asha', status: 'Connected', n: 6 }, { recruiter_id: 'u1', recruiter: 'Asha', status: 'Busy', n: 2 },
+    { recruiter_id: 'u2', recruiter: 'Bina', status: 'Not Interested', n: 3 }] };
+  render();
+});
+check('call report: one line per recruiter, engaged first, a column per status, and a total line', await ev(() => {
+  const rows = [...document.querySelectorAll('#crPanel tbody tr')].map((r) => [...r.children].map((c) => c.textContent.trim()));
+  const head = [...document.querySelectorAll('#crPanel thead th')].map((t) => t.textContent);
+  return head.length === 14 && head[1] === 'Engaged' && head.includes('Not okay with 15 k Salary') && rows.length === 3 && rows[0][0] === 'Asha' && rows[0][1] === '8' && rows[1][0] === 'Bina' && rows[1][1] === '3' && rows[2][0] === 'All recruiters' && rows[2][1] === '11';
+}));
+await page.click('#crPanel [data-crp="week"]');
+check('call report: Weekly shows the Monday to Sunday of the chosen date and asks for that period', await ev(() => { const r = callReportRange('week', CALL_REPORT.date); return CALL_REPORT.period === 'week' && document.querySelector('#crPanel').textContent.includes(fmtD(r.from) + ' to ' + fmtD(r.to)); }));
+await page.click('#crPanel [data-crp="day"]');
+check('call report: going back to Daily shows the rows fetched before', await ev(() => document.querySelectorAll('#crPanel tbody tr').length === 3));
+await ev(() => { CALL_REPORT.cache = {}; });
+
 // ---- add candidate from resume
 const before = await ev(() => ({ c: S.candidates.length, a: S.applications.length }));
 await ev(() => addCandidate());
