@@ -15,6 +15,13 @@ function saveTeam({recruiters,interviewers}){
 function saveSources(list){const clean=[...new Set(list.map(x=>String(x).trim()).filter(Boolean))];repo.root('settings',s=>{if(clean.length)s.sources=clean;else delete s.sources})}
 // the app's own columns for leads (Call status is built in); the names an admin added. An empty list means none.
 function saveColumns(list){const clean=[...new Set(list.map(x=>String(x).trim().replace(/\s+/g,' ')).filter(x=>x&&x.length<=40))].slice(0,12);repo.root('settings',s=>{if(clean.length)s.columns=clean;else delete s.columns})}
+// who gets the ad brief: a name, an email and a WhatsApp number (each may be left empty)
+function saveMarketingContact({name='',email='',phone=''}){
+ const n=String(name).replace(/\s+/g,' ').trim().slice(0,60),e=String(email).trim().slice(0,120),p=String(phone).trim().slice(0,20);
+ if(e&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))throw new Error('That email address does not look right');
+ if(p&&!whatsappNumber(p))throw new Error('That phone number does not look right (use the country code, or a 10-digit Indian number)');
+ repo.root('settings',s=>{if(n||e||p)s.marketing={name:n,email:e,phone:p};else delete s.marketing});
+}
 // rules: {stageKey: days}
 function saveSla(rules){repo.root('settings',s=>{s.sla={...rules}})}
 function resetDemoData(){repo.reset(seed())}

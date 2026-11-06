@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'recordScreening', 'scheduleGroupInterview', 'setInviteStatus', 'sendGroupReminders', 'cancelGroupInterview', 'evaluateGroup',
-    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd'],
+    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd', 'recordAdBrief', 'adBrief', 'saveMarketingContact'],
 });
 
 // three applications of the same opening that are still early in the pipeline
@@ -146,4 +146,39 @@ test('the ad request of an opening is optional: ask, fill in, tidy, remove; othe
   assert.equal(app.hasAd(other), false);
   app.dropAdRequest(o.id);
   assert.equal(app.hasAd(o), false);
+});
+
+test('the brief to marketing carries the opening, leaves the salary out unless ticked, and every handover is kept on the ad', () => {
+  const app = fresh();
+  const o = app.S.openings[0];
+  app.requestAd(o.id);
+  const b = app.adBrief(o, { to: 'Shivam', from: 'Priya' });
+  assert.equal(b.subject, `Ad request: ${o.title} (${o.id})`);
+  assert.match(b.body, /^Hi Shivam,/);
+  assert.ok(b.body.includes('Position: ' + o.title) && b.body.includes('Experience: '));
+  assert.doesNotMatch(b.body, /Salary range/);
+  assert.match(app.adBrief(o, { withSalary: true }).body, /Salary range: /);
+  assert.match(app.adBrief(o, {}).body, /^Hi team,/);
+  app.recordAdBrief(o.id, { channel: 'Email', to: 'shivam@x.test', ...b });
+  app.recordAdBrief(o.id, { channel: 'Copied', ...b });
+  assert.deepEqual(plain(o.ad.sent).map((x) => x.channel), ['Email', 'Copied']);
+  assert.equal(o.ad.sent[0].body, b.body, 'the exact text is kept');
+  assert.match(app.S.activity[0].text, /copied/);
+  const kept = app.saveAdRequest(o.id, { status: 'Running' });
+  assert.equal(kept.sent.length, 2, 'saving the ad details keeps the history');
+  for (let i = 0; i < 25; i++) app.recordAdBrief(o.id, { channel: 'Email', ...b });
+  assert.equal(o.ad.sent.length, 20, 'only the newest 20 are kept');
+  assert.throws(() => app.recordAdBrief(o.id, { channel: 'Pigeon' }), /Unknown way/);
+  assert.throws(() => app.recordAdBrief(app.S.openings[1].id, { channel: 'Email' }), /No ad was asked for/);
+});
+
+test('the marketing contact is tidy, checked, kept in the settings, and emptied when all three are blank', () => {
+  const app = fresh();
+  app.saveMarketingContact({ name: '  Shivam  ', email: ' shivam@x.test ', phone: '98765 43210' });
+  assert.deepEqual(plain(app.S.settings.marketing), { name: 'Shivam', email: 'shivam@x.test', phone: '98765 43210' });
+  assert.throws(() => app.saveMarketingContact({ email: 'not an email' }), /email/);
+  assert.throws(() => app.saveMarketingContact({ phone: '123' }), /phone/);
+  assert.equal(app.S.settings.marketing.email, 'shivam@x.test', 'a refused save changes nothing');
+  app.saveMarketingContact({ name: '', email: '', phone: '' });
+  assert.equal(app.S.settings.marketing, undefined);
 });

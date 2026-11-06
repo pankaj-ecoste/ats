@@ -11,6 +11,11 @@ function sourcesPanel(){
 function columnsPanel(){
  return `<section class="panel" style="margin-top:16px"><header><div><h3>Lead columns</h3><p>Columns of your own for the Applications list, one name per line (up to 12). "Call status" is already there. When you link a sheet tab you match a sheet column to each of these.</p></div></header><div class="pbody fgrid"><label class="f full">Columns<textarea class="inp" id="colList" rows="4" placeholder="Interview status">${esc(customColumns().join('\n'))}</textarea></label><div class="full"><button class="btn pri" id="colSave">Save columns</button></div></div></section>`;
 }
+// who gets the brief when a recruiter asks for an ad
+function marketingPanel(){
+ const m=S.settings.marketing||{};
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Marketing contact</h3><p>Who gets the brief when a recruiter asks for an ad on an opening. Use the email address and the WhatsApp number with country code (or a 10-digit Indian number). Either can be left empty.</p></div></header><div class="pbody fgrid"><label class="f">Name<input class="inp" id="mkName" value="${esc(m.name||'')}" placeholder="Shivam"></label><label class="f">Email<input class="inp" id="mkEmail" value="${esc(m.email||'')}"></label><label class="f">WhatsApp number<input class="inp" id="mkPhone" value="${esc(m.phone||'')}"></label><div class="full"><button class="btn pri" id="mkSave">Save marketing contact</button></div></div></section>`;
+}
 // who applied on the public careers page, and who was turned away and why
 function intakePanel(){
  const rows=(S.intake||[]).filter(x=>x.source==='careers_page').slice(0,15);
@@ -33,7 +38,7 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
- ${sourcesPanel()}${columnsPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
+ ${sourcesPanel()}${columnsPanel()}${marketingPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
 // admin switch for the Claude draft summaries; off until an admin turns it on
@@ -49,6 +54,7 @@ function bindSettings(root){
  const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{setMatchThreshold(+th.value);render()};
  const on=(sel,fn)=>{const e=$(sel,root);if(e)e.onclick=fn};
  on('#srcSave',()=>{saveSources($('#srcList',root).value.split('\n'));toast('Sources saved');render()});
+ on('#mkSave',()=>{try{saveMarketingContact({name:$('#mkName',root).value,email:$('#mkEmail',root).value,phone:$('#mkPhone',root).value})}catch(e){toast(e.message,'var(--red)');return}toast('Marketing contact saved');render()});
  on('#colSave',()=>{saveColumns($('#colList',root).value.split('\n'));toast('Columns saved');render()});
  on('#teamSave',()=>{const lines=id=>$(id,root).value.split('\n');saveTeam({recruiters:lines('#teamRec'),interviewers:lines('#teamInt')});toast('Team saved');render()});
  on('#wReset',()=>{resetMatchWeights();render();toast('Default weights restored')});

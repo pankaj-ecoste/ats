@@ -37,6 +37,14 @@ function saveAdRequest(opId,fields){
  if(ad.status!==before)log(`Ad for ${o.title} is now ${ad.status}`,'opening');
  return ad;
 }
+// A brief to marketing was handed over (email app, WhatsApp, or copied). Kept on the ad, newest 20, with the exact text.
+function recordAdBrief(opId,{channel,to='',subject='',body=''}){
+ const o=getOp(opId);if(!hasAd(o))throw new Error('No ad was asked for on this opening');
+ if(!['Email','WhatsApp','Copied'].includes(channel))throw new Error('Unknown way of sending the brief');
+ const sent=[...(o.ad.sent||[]),{ts:Date.now(),by:S.settings.user,channel,to:String(to).trim().slice(0,120),subject:String(subject).slice(0,200),body:String(body).slice(0,5000)}].slice(-20);
+ repo.update('openings',opId,{ad:{...o.ad,sent}});
+ log(`Ad brief for ${o.title} ${channel==='Copied'?'copied':'sent by '+channel.toLowerCase()}`,'opening');
+}
 // "No ad needed" again: the opening goes back to leads from the sheet only
 function dropAdRequest(opId){
  const o=getOp(opId);if(!hasAd(o))return;

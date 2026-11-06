@@ -7,6 +7,7 @@ registerAction('addCandidate',opId=>addCandidate(opId));
 registerAction('importLeads',()=>leadImportModal());
 registerAction('openingForm',id=>openingForm(id));
 registerAction('adRequest',opId=>{requestAd(opId);toast('Ad requested. Fill in the details as the ad goes live.');adEditor(opId)});
+registerAction('adBrief',opId=>adBriefModal(opId));
 registerAction('adEdit',opId=>adEditor(opId));
 registerAction('adDrop',opId=>confirmBox('No ad needed','The ad details of this opening will be removed. Leads from the sheet stay as they are.','Remove',()=>{dropAdRequest(opId);toast('Ad request removed');refresh()},true));
 registerAction('scheduleGI',opId=>scheduleGI(opId));

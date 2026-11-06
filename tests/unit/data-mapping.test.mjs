@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadApp } from './load-app.mjs';
 
-const app = loadApp({ until: 'services', expose: ['match', 'S', 'makePeople', 'stateFromRows', 'fetchTable', 'fetchAll', 'READ_TABLES', 'TO_ROW', 'rowsFromState'] });
+const app = loadApp({ until: 'services', expose: ['match', 'S', 'makePeople', 'stateFromRows', 'fetchTable', 'fetchAll', 'READ_TABLES', 'TO_ROW', 'rowsFromState', 'settingsRow'] });
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const profiles = [
   { id: 'u1', username: 'priya', full_name: 'Priya Sharma', role: 'recruiter', active: true },
@@ -119,4 +119,13 @@ test('the ad request of an opening goes to the database and comes back; none sta
   const back = (adCol) => plain(app.stateFromRows({ openings: [{ id: 'OP-1', title: 'T', target_on: null, created_at: '2026-01-01', ad: adCol }] }, P).openings[0]);
   assert.deepEqual(back(ad).ad, ad);
   assert.equal('ad' in back({}), false);
+});
+
+test('the marketing contact is kept in the company settings and comes back; none stays off the record', () => {
+  const P = app.makePeople([]);
+  const m = { name: 'Shivam', email: 's@x.test', phone: '9876543210' };
+  assert.deepEqual(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: { marketing: m } }] }, P)).settings.marketing, m);
+  assert.equal(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: {} }] }, P)).settings.marketing, undefined);
+  assert.deepEqual(plain(app.settingsRow({ settings: { marketing: m } }).config.marketing), m);
+  assert.equal(app.settingsRow({ settings: {} }).config.marketing, undefined);
 });

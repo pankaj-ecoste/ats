@@ -51,6 +51,28 @@ await page.click('#cOK');
 await page.waitForSelector('.scrim', { state: 'detached' });
 check('ad: "No ad needed" removes it again', await ev(() => !hasAd(S.openings[0]) && document.querySelector('#content').textContent.includes('No ad asked for')));
 
+// ---- ad request: marketing contact and the brief
+await ev(() => go('settings'));
+await page.fill('#mkName', 'Shivam');
+await page.fill('#mkEmail', 'not an email');
+await page.click('#mkSave');
+check('brief: a wrong email is refused and nothing is saved', await ev(() => !S.settings.marketing));
+await page.fill('#mkEmail', 'shivam@example.com');
+await page.fill('#mkPhone', '9876543210');
+await page.click('#mkSave');
+check('brief: the marketing contact is saved in Settings', await ev(() => S.settings.marketing && S.settings.marketing.email === 'shivam@example.com'));
+await ev(() => { go('opening', S.openings[0].id); requestAd(S.openings[0].id); render(); });
+check('brief: the panel offers "Send to Shivam" and says nothing was sent yet', await ev(() => document.querySelector('[data-act="adBrief"]').textContent.includes('Send to Shivam') && document.querySelector('#content').textContent.includes('has not been sent yet')));
+await page.click('[data-act="adBrief"]');
+check('brief: the brief names the position and leaves the salary out', await ev(() => { const t = document.querySelector('#abB').value; return t.startsWith('Hi Shivam,') && t.includes('Position: ' + S.openings[0].title) && !t.includes('Salary range'); }));
+await page.context().route('mailto:**', (r) => r.abort());
+await page.evaluate(() => { window.open = () => null; });
+await page.click('#abMail');
+await page.waitForSelector('.scrim', { state: 'detached' });
+check('brief: sending by email is recorded on the ad with the exact text', await ev(() => { const x = S.openings[0].ad.sent; return x.length === 1 && x[0].channel === 'Email' && x[0].to === 'shivam@example.com' && x[0].body.startsWith('Hi Shivam,'); }));
+check('brief: the history is shown and the button now says "Send again"', await ev(() => document.querySelector('#content').textContent.includes('Briefs sent') && document.querySelector('[data-act="adBrief"]').textContent.includes('Send again')));
+await ev(() => dropAdRequest(S.openings[0].id));
+
 // ---- add candidate from resume
 const before = await ev(() => ({ c: S.candidates.length, a: S.applications.length }));
 await ev(() => addCandidate());
