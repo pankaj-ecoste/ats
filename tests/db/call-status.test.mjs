@@ -60,3 +60,18 @@ test('a call status column can be chosen, and the status is kept on the applicat
 test('the same column cannot be used for a field and the call status', { skip }, async () => {
   await assert.rejects(rpc(U.admin, 'sheet_link_save', 'OP-CS1', 'cs/1', 'Facebook Ad', JSON.stringify({ name: 'Full Name', phone: 'Mobile', callStatus: 'Mobile' }), '[]'), /already linked|chosen for two fields/);
 });
+
+test('a row sent again refreshes the call status of the person already there, and nothing else', { skip }, async () => {
+  if (!(await q("select 1 from pg_proc where proname = 'ingest_one_lead' and prosrc like '%Call status updated%'")).rows.length) await q(mig('0028_call_status_refresh.sql'));
+  const token = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
+  const rows = (s) => JSON.stringify([{ name: 'Asha', phone: '98765 43210', callStatus: s, answers: {} }]);
+  const r1 = await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows('Not Interested'));
+  assert.equal(r1.duplicates, 1);
+  assert.match(r1.rows[0].why, /Call status updated/);
+  assert.equal((await q("select a.call_status from public.applications a join public.candidates c on c.id = a.candidate_id where c.name = 'Asha'")).rows[0].call_status, 'Not Interested');
+  const r2 = await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows('Not Interested'));
+  assert.doesNotMatch(r2.rows[0].why, /updated/, 'the same status again changes nothing');
+  await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows(''));
+  assert.equal((await q("select a.call_status from public.applications a join public.candidates c on c.id = a.candidate_id where c.name = 'Asha'")).rows[0].call_status, 'Not Interested', 'an empty cell does not clear it');
+  assert.equal((await q("select count(*)::int n from public.applications where opening_id = 'OP-CS1'")).rows[0].n, 3, 'no second application');
+});
