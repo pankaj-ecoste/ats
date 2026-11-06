@@ -299,6 +299,7 @@ export interface Openings {
   status: string;
   form: Json;
   screen_questions: Json;
+  ad: Json;
   created_by: string | null;
   created_at: string;
   updated_at: string;

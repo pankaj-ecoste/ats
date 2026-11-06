@@ -42,6 +42,7 @@ function openingForm(id){
  <label class="f">Status${sel('status',OP_STATUS,o.status)}</label>
  <label class="f">Opening date<input class="inp" type="date" name="opened" value="${o.opened}"></label>
  <label class="f">Target joining date<input class="inp" type="date" name="target" value="${o.target}"></label>
+ ${id?'':`<label class="f" style="grid-column:span 3">Ad needed?<select class="inp" name="adNeeded"><option value="No">No, we already have leads in the sheet</option><option value="Yes">Yes, request an ad for this opening</option></select></label>`}
  </form><div style="margin-top:12px"><button class="btn sm aib" id="genJD">${ic('ai')}Draft description with AI</button></div>`,
  foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="opSave">${id?'Save changes':'Create opening'}</button>`,
  onMount:el=>{
@@ -53,7 +54,7 @@ function openingForm(id){
   $('#opSave',el).onclick=()=>{const f=$('#opF',el);if(!f.title.value.trim()){f.title.focus();toast('Add a job title to continue','var(--red)');return}
    const d=Object.fromEntries(new FormData(f));['positions','expMin','expMax','salMin','salMax'].forEach(k=>d[k]=+d[k]);
    d.mandatory=d.mandatory.split(',').map(s=>s.trim()).filter(Boolean);d.preferred=d.preferred.split(',').map(s=>s.trim()).filter(Boolean);
-   saveOpening(d,id);closeModal();toast(id?'Opening saved':'Opening created');id?refresh():go('opening',d.id)}}});
+   const wantAd=d.adNeeded==='Yes';delete d.adNeeded;saveOpening(d,id);if(wantAd&&!id)requestAd(d.id);closeModal();toast(id?'Opening saved':wantAd?'Opening created. Add the ad details on its Overview.':'Opening created');id?refresh():go('opening',d.id)}}});
 }
 function vOpening(){
  const o=getOp(R.param);if(!o)return '<div class="empty">Opening not found.</div>';
@@ -62,7 +63,7 @@ function vOpening(){
  if(R.tab==='overview')body=`<div class="grid g2"><section class="panel"><header><h3>Details</h3><button class="btn sm" data-act="openingForm" data-a1="${o.id}">${ic('edit')}Edit</button></header><div class="pbody"><dl class="kv">
   ${[['Department',o.dept],['Positions',o.positions],['Location',o.location+' ('+o.mode+')'],['Employment type',o.type],['Experience',o.expMin+'–'+o.expMax+' years'],['Salary range',lpa(o.salMin)+' – '+lpa(o.salMax)],['Education',o.education],['Recruiter',o.recruiter],['Reporting manager',o.manager],['Opened',fmtD(o.opened)],['Target joining',fmtD(o.target)],['Priority',o.priority]].map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}
   </dl><div style="margin-top:14px"><div class="small muted" style="margin-bottom:4px">Mandatory skills</div>${o.mandatory.map(s=>`<span class="tag">${esc(s)}</span>`).join('')}<div class="small muted" style="margin:10px 0 4px">Preferred skills</div>${o.preferred.map(s=>`<span class="tag">${esc(s)}</span>`).join('')}</div></div></section>
-  <section class="panel"><header><h3>Job description</h3></header><div class="pbody"><p style="margin-top:0">${esc(o.desc)}</p><h4 style="margin:14px 0 4px">Responsibilities</h4><p style="white-space:pre-line;margin:0">${esc(o.resp)}</p><h4 style="margin:14px 0 4px">Requirements</h4><p style="white-space:pre-line;margin:0">${esc(o.req)}</p></div></section></div>`;
+  <section class="panel"><header><h3>Job description</h3></header><div class="pbody"><p style="margin-top:0">${esc(o.desc)}</p><h4 style="margin:14px 0 4px">Responsibilities</h4><p style="white-space:pre-line;margin:0">${esc(o.resp)}</p><h4 style="margin:14px 0 4px">Requirements</h4><p style="white-space:pre-line;margin:0">${esc(o.req)}</p></div></section></div>${adPanel(o)}`;
  else if(R.tab==='applications'||R.tab==='shortlisted'){const l=R.tab==='shortlisted'?ap.filter(a=>a.maxStage>=1&&a.stage!=='Rejected'):ap;body=`<section class="panel">${appTable(l,true)}</section>`}
  else if(R.tab==='interviews'){const l=S.interviews.filter(i=>ap.some(a=>a.id===i.appId));body=`<section class="panel">${intTable(l)}</section>`}
  else if(R.tab==='offers'){const l=S.offers.filter(f=>ap.some(a=>a.id===f.appId));body=`<section class="panel">${offerTable(l)}</section>`}

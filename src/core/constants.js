@@ -10,6 +10,9 @@ const stageToJourney=i=>i===0?1:i+1;
 const STAGE_COLOR={'New':'ai','Shortlisted':'blue','Screening':'blue','Group Interview':'cyan','Personal Interview':'cyan','Selected':'green','Offer':'orange','Offer Accepted':'green','Joining':'green','Onboarding':'green','Employee Ready':'green','Rejected':'red','On Hold':'orange'};
 const OP_STATUS=['Draft','Open','Screening','Interviewing','Offer','Filled','On Hold','Closed'];
 const OP_COLOR={Draft:'',Open:'blue',Screening:'ai',Interviewing:'cyan',Offer:'orange',Filled:'green','On Hold':'orange',Closed:'red'};
+// the ad asked for an opening (optional, one per opening): Requested -> Running -> Paused -> Closed
+const AD_STATUS=['Requested','Running','Paused','Closed'];
+const AD_COLOR={Requested:'orange',Running:'green',Paused:'',Closed:'red'};
 const OFFER_STATUS=['Draft','Generated','Sent','Accepted','Declined','Negotiation','Withdrawn'];
 const OFFER_COLOR={Draft:'',Generated:'ai',Sent:'blue',Accepted:'green',Declined:'red',Negotiation:'orange',Withdrawn:'red'};
 const INT_COLOR={Scheduled:'blue',Completed:'green','Pending Feedback':'orange',Cancelled:'red','No-show':'red'};

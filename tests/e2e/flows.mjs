@@ -31,6 +31,26 @@ await page.click('#opSave');
 await page.waitForSelector('.scrim', { state: 'detached' });
 check('openings: edit updates in place', await ev(() => S.openings[0].title === 'Flow Test Role 2' && S.openings.filter((o) => o.title.startsWith('Flow Test')).length === 1));
 
+// ---- ad request: optional, one per opening
+check('ad: a new opening has no ad request and the panel says so', await ev(() => !hasAd(S.openings[0])) && (await ev(() => { go('opening', S.openings[0].id); return document.querySelector('#content').textContent.includes('No ad asked for'); })));
+await ev(() => openingForm());
+await page.fill('#opF [name="title"]', 'Ad Flow Role');
+await page.selectOption('#opF [name="adNeeded"]', 'Yes');
+await page.click('#opSave');
+await page.waitForSelector('.scrim', { state: 'detached' });
+check('ad: choosing "Yes" on a new opening creates a Requested ad', await ev(() => S.openings[0].title === 'Ad Flow Role' && S.openings[0].ad.status === 'Requested' && !('adNeeded' in S.openings[0])));
+await page.click('[data-act="adEdit"]');
+await page.selectOption('#adF [name="status"]', 'Running');
+await page.fill('#adF [name="platform"]', 'Meta');
+await page.fill('#adF [name="budget"]', '15000');
+await page.click('#adSave');
+await page.waitForSelector('.scrim', { state: 'detached' });
+check('ad: the update is saved and shown in the panel', await ev(() => S.openings[0].ad.status === 'Running' && S.openings[0].ad.budget === 15000 && document.querySelector('#content').textContent.includes('15,000')));
+await page.click('[data-act="adDrop"]');
+await page.click('#cOK');
+await page.waitForSelector('.scrim', { state: 'detached' });
+check('ad: "No ad needed" removes it again', await ev(() => !hasAd(S.openings[0]) && document.querySelector('#content').textContent.includes('No ad asked for')));
+
 // ---- add candidate from resume
 const before = await ev(() => ({ c: S.candidates.length, a: S.applications.length }));
 await ev(() => addCandidate());

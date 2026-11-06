@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'recordScreening', 'scheduleGroupInterview', 'setInviteStatus', 'sendGroupReminders', 'cancelGroupInterview', 'evaluateGroup',
-    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions'],
+    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd'],
 });
 
 // three applications of the same opening that are still early in the pipeline
@@ -124,4 +124,26 @@ test('recordScorecard completes the interview with the decision; no-show and can
   app.cancelInterview(c.id);
   assert.equal(c.status, 'Cancelled');
   assert.match(app.S.activity[0].text, /Interview cancelled for/);
+});
+
+test('the ad request of an opening is optional: ask, fill in, tidy, remove; other openings are untouched', () => {
+  const app = fresh();
+  const [o, other] = app.S.openings;
+  assert.equal(app.hasAd(o), false, 'no ad unless asked for');
+  const ad = app.requestAd(o.id);
+  assert.deepEqual(plain(ad), { status: 'Requested', raisedOn: app.today(), raisedBy: app.S.settings.user, withSalary: false });
+  assert.equal(app.requestAd(o.id), o.ad, 'asking again keeps the first request');
+  assert.match(app.S.activity[0].text, /Ad requested for /);
+  const saved = app.saveAdRequest(o.id, { status: 'Running', startOn: '2026-11-08', endOn: '', platform: '  Meta   Ads ', budget: '20000', spend: '', link: '', notes: ' hello ', withSalary: true });
+  assert.deepEqual(plain(saved), { status: 'Running', raisedOn: ad.raisedOn, raisedBy: ad.raisedBy, startOn: '2026-11-08', endOn: '', platform: 'Meta Ads', link: '', notes: 'hello', withSalary: true, budget: 20000 });
+  assert.match(app.S.activity[0].text, /is now Running/);
+  assert.throws(() => app.saveAdRequest(o.id, { status: 'Live' }), /Choose a status/);
+  assert.throws(() => app.saveAdRequest(o.id, { status: 'Running', budget: '-5' }), /Budget/);
+  assert.throws(() => app.saveAdRequest(o.id, { status: 'Running', startOn: 'soon' }), /not a date/);
+  assert.throws(() => app.saveAdRequest(o.id, { status: 'Closed', startOn: '2026-11-09', endOn: '2026-11-08' }), /end date is before/);
+  assert.equal(o.ad.status, 'Running', 'a refused save changes nothing');
+  assert.throws(() => app.saveAdRequest(other.id, { status: 'Running' }), /No ad was asked for/);
+  assert.equal(app.hasAd(other), false);
+  app.dropAdRequest(o.id);
+  assert.equal(app.hasAd(o), false);
 });
