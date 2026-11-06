@@ -9,7 +9,7 @@ function load({ rpc = { data: null, error: null }, rows = { data: [], error: nul
   const table = new Proxy({}, { get: (_, k) => (k === 'then' ? (res) => res(rows) : (...a) => { ops.push([k, ...a]); return table; }) });
   const fake = { rpc: async (name, args) => { ops.push(['rpc', name, args]); return rpc; }, from: (t) => { ops.push(['from', t]); return table; } };
   const app = loadApp({ until: 'services', globals: { fake }, after: 'sb = fake',
-    expose: ['leadFeedStatus', 'leadFeedConnect', 'leadFeedBatches', 'leadFeedScriptFor', 'APP_SETTINGS', 'sheetTabs', 'sheetLinks', 'sheetLinkSave', 'sheetLinkUpdate', 'sheetLinkRemove', 'leadFeedToken',
+    expose: ['leadFeedStatus', 'leadFeedConnect', 'leadFeedBatches', 'leadFeedScriptFor', 'APP_SETTINGS', 'sheetTabs', 'sheetLinks', 'sheetLinkSave', 'sheetLinkUpdate', 'sheetLinkRemove', 'leadFeedToken', 'leadFeedUnlock', 'leadFeedSetPassword',
       'guessLink', 'linkProblem', 'newHeadings', 'missingHeadings', 'isNoiseHeading', 'LINK_FIELDS', 'linkFields', 'guessCustom', 'saveColumns', 'customColumns'] });
   return { app, ops };
 }
@@ -17,22 +17,22 @@ function load({ rpc = { data: null, error: null }, rows = { data: [], error: nul
 /* ---------- the connection (Settings) ---------- */
 test('the connection status comes back in plain fields, with times as numbers', async () => {
   const { app, ops } = load({ rpc: { data: { set_up: true, enabled: true, token_made_at: '2026-10-24T09:30:00Z', last_received_at: null, tabs_seen: 46, last_seen_at: '2026-10-24T10:00:00Z' }, error: null } });
-  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: true, enabled: true, tokenMadeAt: Date.parse('2026-10-24T09:30:00Z'), lastReceivedAt: null, tabsSeen: 46, lastSeenAt: Date.parse('2026-10-24T10:00:00Z'), workbooks: [], refusedRecently: 0, canShowScript: false });
+  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: true, enabled: true, tokenMadeAt: Date.parse('2026-10-24T09:30:00Z'), lastReceivedAt: null, tabsSeen: 46, lastSeenAt: Date.parse('2026-10-24T10:00:00Z'), workbooks: [], refusedRecently: 0, canShowScript: false, passwordSet: false });
   assert.deepEqual(ops[0].slice(0, 2), ['rpc', 'lead_feed_status']);
 });
 
 test('nothing set up yet reads as off', async () => {
   const { app } = load({ rpc: { data: { set_up: false, enabled: false }, error: null } });
-  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: false, enabled: false, tokenMadeAt: null, lastReceivedAt: null, tabsSeen: 0, lastSeenAt: null, workbooks: [], refusedRecently: 0, canShowScript: false });
+  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: false, enabled: false, tokenMadeAt: null, lastReceivedAt: null, tabsSeen: 0, lastSeenAt: null, workbooks: [], refusedRecently: 0, canShowScript: false, passwordSet: false });
 });
 
 test('switching the connection sends the switch and returns the token only when a new one was made', async () => {
-  const a = load({ rpc: { data: { token: 'abc123' }, error: null } });
-  assert.equal(await a.app.leadFeedConnect({ enabled: true, newToken: true }), 'abc123');
-  assert.deepEqual(plain(a.ops[0]), ['rpc', 'lead_feed_connect', { p_enabled: true, p_new_token: true }]);
-  const b = load({ rpc: { data: { token: null }, error: null } });
-  assert.equal(await b.app.leadFeedConnect({ enabled: false }), null);
-  assert.deepEqual(plain(b.ops[0])[2], { p_enabled: false, p_new_token: false });
+  const a = load({ rpc: { data: { ok: true, token: 'abc123' }, error: null } });
+  assert.equal(await a.app.leadFeedConnect({ enabled: true, newToken: true, password: 'pw-1' }), 'abc123');
+  assert.deepEqual(plain(a.ops[0]), ['rpc', 'lead_feed_connect', { p_enabled: true, p_new_token: true, p_password: 'pw-1' }]);
+  const b = load({ rpc: { data: { ok: true, token: null }, error: null } });
+  assert.equal(await b.app.leadFeedConnect({ enabled: false, password: 'pw-1' }), null);
+  assert.deepEqual(plain(b.ops[0])[2], { p_enabled: false, p_new_token: false, p_password: 'pw-1' });
 });
 
 test('a refusal reaches the admin in its own words', async () => {
@@ -159,8 +159,19 @@ test('the status tells the workbooks seen and whether the workbook was refused; 
   assert.deepEqual(s.workbooks, [{ id: 'B1', name: 'Leads A', tabs: 2, lastSeenAt: Date.parse('2026-11-06T10:00:00Z') }, { id: 'B2', name: 'Workbook', tabs: 1, lastSeenAt: null }]);
   assert.equal(s.refusedRecently, 4);
   assert.equal(s.canShowScript, true);
-  const tk = load({ rpc: { data: 'abc123', error: null } });
-  assert.equal(await tk.app.leadFeedToken(), 'abc123');
-  assert.deepEqual(plain(tk.ops[0]), ['rpc', 'lead_feed_token', null]);
-  assert.equal(await load({ rpc: { data: null, error: null } }).app.leadFeedToken(), null, 'a key made before it was kept is not known');
+  const tk = load({ rpc: { data: { ok: true, token: 'abc123' }, error: null } });
+  assert.equal(await tk.app.leadFeedToken('pw-1'), 'abc123');
+  assert.deepEqual(plain(tk.ops[0]), ['rpc', 'lead_feed_token', { p_password: 'pw-1' }]);
+  assert.equal(await load({ rpc: { data: { ok: true, token: null }, error: null } }).app.leadFeedToken('pw-1'), null, 'a key made before it was kept is not known');
+});
+
+test('the connection password: a right one opens, a wrong one is a plain sentence, and setting or changing it sends both', async () => {
+  assert.equal(await load({ rpc: { data: { ok: true }, error: null } }).app.leadFeedUnlock('pw-1'), true);
+  await assert.rejects(load({ rpc: { data: { ok: false, message: 'Wrong password' }, error: null } }).app.leadFeedUnlock('nope'), /Wrong password/);
+  await assert.rejects(load({ rpc: { data: { ok: false, message: 'Too many wrong passwords. Try again in 9 minute(s)' }, error: null } }).app.leadFeedToken('x'), /Too many wrong passwords/);
+  await assert.rejects(load({ rpc: { data: null, error: { message: 'Only an admin can see the lead sheet script' } } }).app.leadFeedToken('x'), /Only an admin/);
+  const set = load({ rpc: { data: { ok: true }, error: null } });
+  assert.equal(await set.app.leadFeedSetPassword('', 'a-new-pass'), true);
+  assert.deepEqual(plain(set.ops[0]), ['rpc', 'lead_feed_set_password', { p_old: '', p_new: 'a-new-pass' }]);
+  await assert.rejects(load({ rpc: { data: { ok: false, message: 'The password needs at least 8 characters' }, error: null } }).app.leadFeedSetPassword('', 'short'), /at least 8/);
 });

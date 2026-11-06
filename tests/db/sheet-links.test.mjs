@@ -12,6 +12,8 @@ loadEnv();
 const skip = process.env.DATABASE_URL ? false : 'DATABASE_URL is not set';
 const app = loadApp({ until: 'services', expose: ['cleanLeadPhone', 'toLPA', 'toNotice', 'leadDate'] });
 let c;
+const PW = 'test-pass-1';
+const mig = (f) => readFileSync(new URL('../../supabase/migrations/' + f, import.meta.url), 'utf8');
 const q = (sql, params) => c.query(sql, params);
 const U = { admin: randomUUID(), rec: randomUUID() };
 
@@ -24,7 +26,10 @@ before(async () => {
   if (!(await q("select has_table_privilege('authenticated', 'public.sheet_links', 'select') as g")).rows[0].g) await q(readFileSync(new URL('../../supabase/migrations/0024_sheet_links_read_grant.sql', import.meta.url), 'utf8'));
   await q('delete from public.sheet_links');   // the real workbook's tabs and links may be in the project too; the test starts from nothing
   await q('delete from public.sheet_tabs');
-  await q('delete from public.lead_feed');   // the real project may already be set up; the test starts from nothing, and the transaction is rolled back
+  if (!(await q("select 1 from information_schema.columns where table_name = 'sheet_tabs' and column_name = 'book_name'")).rows.length) await q(mig('0038_workbooks_and_script.sql'));
+  if (!(await q("select 1 from information_schema.columns where table_name = 'lead_feed' and column_name = 'panel_pass_hash'")).rows.length) await q(mig('0039_lead_feed_password.sql'));
+  await q('delete from public.lead_feed');
+  await q("insert into public.lead_feed (singleton, panel_pass_hash) values (true, extensions.crypt('test-pass-1', extensions.gen_salt('bf')))");   // the connection password of the test
   await q("select set_config('app.allow_user_create', 'on', true)");
   for (const [n, id] of Object.entries(U)) await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `lf${n}@ats.ecoste.in`, JSON.stringify({ full_name: 'Feed ' + n })]);
   await q("select set_config('app.allow_user_create', 'off', true)");
@@ -82,14 +87,14 @@ const link = (who, op, key, source = 'Facebook Ad', map = MAP, extra = EXTRA) =>
 
 test('only an admin sees or changes the connection; nobody can read the table', { skip }, async () => {
   await assert.rejects(as(U.rec, 'select public.lead_feed_status()'), /Only an admin/);
-  await assert.rejects(as(U.rec, 'select public.lead_feed_connect(true)'), /Only an admin/);
+  await assert.rejects(as(U.rec, 'select public.lead_feed_connect(true, false, $$x$$)'), /Only an admin/);
   await assert.rejects(as(null, 'select public.lead_feed_status()'), /permission denied/);
   await assert.rejects(as(U.admin, 'select * from public.lead_feed'), /permission denied/, 'the table is closed even to an admin; only the functions open it');
 });
 
 test('setting it up makes a token once, keeps only its hash, and a new token ends the old one', { skip }, async () => {
   assert.equal((await rpc(U.admin, 'lead_feed_status')).set_up, false);
-  TOKEN = (await rpc(U.admin, 'lead_feed_connect', true)).token;
+  TOKEN = (await rpc(U.admin, 'lead_feed_connect', true, false, PW)).token;
   assert.match(TOKEN, /^[0-9a-f]{64}$/);
   const row = await one('select token_hash, enabled from public.lead_feed');
   assert.notEqual(row.token_hash, TOKEN);
@@ -97,9 +102,9 @@ test('setting it up makes a token once, keeps only its hash, and a new token end
   const st = await rpc(U.admin, 'lead_feed_status');
   assert.deepEqual({ set_up: st.set_up, enabled: st.enabled, tabs_seen: st.tabs_seen }, { set_up: true, enabled: true, tabs_seen: 0 });
   assert.equal(JSON.stringify(st).includes(TOKEN), false);
-  assert.equal((await rpc(U.admin, 'lead_feed_connect', true)).token, null, 'changing the switch does not change the token');
+  assert.equal((await rpc(U.admin, 'lead_feed_connect', true, false, PW)).token, null, 'changing the switch does not change the token');
   assert.equal((await sync(TOKEN, [])).ok, true);
-  const t2 = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
+  const t2 = (await rpc(U.admin, 'lead_feed_connect', true, true, PW)).token;
   assert.notEqual(t2, TOKEN);
   assert.equal((await sync(TOKEN, [])).ok, false);
   TOKEN = t2;
@@ -114,10 +119,11 @@ test('a wrong token, a missing token or a switched-off connection is refused and
   assert.equal((await send('nope', 'k', [{ name: 'Sneaky', phone: '98765 43210' }])).ok, false);
   assert.equal((await one("select count(*)::int n from public.sheet_tabs where tab_name = 'T'")).n, 0, 'a refused call saves nothing');
   for (let i = 0; i < 10; i++) await sync('nope' + i, []);
-  assert.ok((await one("select count(*)::int n from public.intake_batches where source = 'sheet' and error like 'Refused%'")).n <= 5);
-  await rpc(U.admin, 'lead_feed_connect', false);
+  // only the refusals made inside this test (it runs in one transaction, so they all carry its start time): a live project also holds the real script's own refusals
+  assert.ok((await one("select count(*)::int n from public.intake_batches where source = 'sheet' and error like 'Refused%' and received_at >= now()")).n <= 5);
+  await rpc(U.admin, 'lead_feed_connect', false, false, PW);
   assert.equal((await sync(TOKEN, [])).ok, false);
-  await rpc(U.admin, 'lead_feed_connect', true);
+  await rpc(U.admin, 'lead_feed_connect', true, false, PW);
   assert.equal((await sync(TOKEN, [])).ok, true);
 });
 

@@ -32,6 +32,7 @@ await db.connect();
 const real = (await db.query('select * from public.lead_feed')).rows[0] || null;
 if (real) await db.query('delete from public.lead_feed');
 const startedAt = new Date();
+const E2E_PW = 'e2e-pass-1234';   // the connection password of this test only: the real row (and its password) is put back at the end
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 
 // a pretend tab, and a pretend workbook that runs the generated script; its HTTP calls go to the real project (a child process, because Apps Script calls are synchronous)
@@ -47,7 +48,7 @@ function tab(id, name, grid) {
 }
 function workbookRun(script, tabs) {
   const ctx = vm.createContext({
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => `zzbook${tag}`, getSheets: () => tabs.map((t) => t.sheet), getSpreadsheetTimeZone: () => 'Asia/Kolkata' }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => `zzbook${tag}`, getName: () => `zz workbook ${tag}`, getSheets: () => tabs.map((t) => t.sheet), getSpreadsheetTimeZone: () => 'Asia/Kolkata' }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     ScriptApp: { getProjectTriggers: () => [], deleteTrigger: () => {}, newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create: () => {} }) }) }) },
     Utilities: { formatDate: (d, tz, f) => (f === 'yyyy-MM-dd' ? d.toISOString().slice(0, 10) : 'now') },
@@ -92,7 +93,7 @@ async function cleanup() {
   await db.query('delete from public.sheet_links where tab_key like $1', [`zzbook${tag}/%`]);
   await db.query('delete from public.sheet_tabs where tab_key like $1', [`zzbook${tag}/%`]);
   await db.query('delete from public.lead_feed');
-  if (real) await db.query('insert into public.lead_feed (singleton, token_hash, token_made_at, enabled, last_received_at) values (true, $1, $2, $3, $4)', [real.token_hash, real.token_made_at, real.enabled, real.last_received_at]);
+  if (real) { const cols = Object.keys(real); await db.query(`insert into public.lead_feed (${cols.join(', ')}) values (${cols.map((_, i) => '$' + (i + 1)).join(', ')})`, cols.map((k) => real[k])); }   // every column, the password hash and the kept key too
   await db.query("delete from public.intake_batches where source = 'sheet' and received_at >= $1", [startedAt]);
   await db.query("delete from public.activity where at >= $1 and (text like $2 or text like $3 or text like 'The lead sheet connection%' or text like 'A new lead sheet token%')", [startedAt, `%${TITLE}%`, `%${TAB_A}%`]).catch(() => {});
   await db.query('alter table public.audit_log disable trigger no_delete');
@@ -113,6 +114,11 @@ try {
   await page.waitForSelector('#lfSetup', { timeout: 15000 });
   check('Settings has the Lead sheet connection panel for an admin', (await text('#content')).includes('Lead sheet connection'));
   await page.click('#lfSetup');
+  // there is no password yet: it is chosen first (at least 8 characters, typed twice), then the setup goes on
+  await page.waitForSelector('#lfNewPw', { timeout: 15000 });
+  await page.fill('#lfNewPw', 'short'); await page.fill('#lfNewPw2', 'short'); await page.click('#lfSetGo');
+  check('a short password is turned back in words', (await text('#lfSetErr')).includes('at least 8'));
+  await page.fill('#lfNewPw', E2E_PW); await page.fill('#lfNewPw2', E2E_PW); await page.click('#lfSetGo');
   await page.waitForSelector('#lfScript', { timeout: 15000 });
   const script1 = await page.inputValue('#lfScript');
   const token1 = (script1.match(/var APP_TOKEN = "([0-9a-f]{64})"/) || [])[1];
@@ -140,8 +146,10 @@ try {
   // ---- link a tab to an opening from the opening's page
   await page.evaluate(() => go('settings')); await page.waitForSelector('#lfRefresh', { timeout: 15000 });
   await page.click('#lfRefresh');   // what a person does after the script has run
-  await page.waitForFunction(() => /2 tabs reported/.test(document.getElementById('content').textContent), null, { timeout: 15000 }).catch(() => {});
-  check('Settings now counts the tabs the workbook reported', /2 tabs reported/.test(await text('#content')));
+  await page.waitForFunction(() => /\d+ tabs reported/.test(document.getElementById('content').textContent), null, { timeout: 15000 }).catch(() => {});
+  // the live project may also hold the real workbook's tabs, so the count is at least the two this test reported
+  const reported = Number((((await text('#content')).match(/(\d+) tabs reported/)) || [])[1] || 0);
+  check('Settings now counts the tabs the workbook reported (at least the two of this test)', reported >= 2);
   await page.evaluate((id) => go('opening', id, 'leads'), OP);
   await page.waitForSelector('#lsLink', { timeout: 15000 });
   await page.waitForFunction(() => !document.getElementById('content').textContent.includes('Loading…'), null, { timeout: 15000 });
@@ -219,7 +227,9 @@ try {
   const wrong = script1.replace(token1, '0'.repeat(64));
   assert(() => workbookRun(wrong, [tab(9, TAB_A, [['Name', 'Phone'], [`${tag} Sneaky`, '98000 11111']])])(), /not valid|switched off/, 'a wrong token is refused with a plain message');
   check('a wrong token adds nothing, and the refusal is noted', (await db.query('select count(*)::int n from public.candidates where name like $1', [`${tag} Sneaky`])).rows[0].n === 0
-    && (await db.query("select count(*)::int n from public.intake_batches where source = 'sheet' and error like 'Refused%' and received_at >= $1", [startedAt])).rows[0].n >= 1);
+    // the log keeps at most five refusals in ten minutes, and the real workbook's own script is refused while this test runs, so the test's try may find the budget used up:
+    // a refusal in the last ten minutes is the proof either way
+    && (await db.query("select count(*)::int n from public.intake_batches where source = 'sheet' and error like 'Refused%' and received_at > now() - interval '10 minutes'")).rows[0].n >= 1);
 
   // ---- a new script ends the old one
   await page.evaluate(() => go('settings'));
@@ -233,6 +243,18 @@ try {
   await closeModals();
   assert(() => workbookRun(script1, tabs)(), /not valid|switched off/, 'the old script stops working');
   workbookRun(script2, tabs)();
+  // the protected buttons ask for the password again once it is locked
+  await page.waitForSelector('#lfLock', { timeout: 15000 });
+  await page.click('#lfLock');
+  await page.click('#lfShow');
+  await page.waitForSelector('#lfPw', { timeout: 15000 });
+  await page.fill('#lfPw', 'wrong-password'); await page.click('#lfPwGo');
+  await page.waitForFunction(() => /Wrong password/.test((document.getElementById('lfPwErr') || {}).textContent || ''), null, { timeout: 15000 });
+  check('a wrong password is turned back in words, and no script is shown', (await page.$('#lfScript')) === null);
+  await page.fill('#lfPw', E2E_PW); await page.click('#lfPwGo');
+  await page.waitForSelector('#lfScript', { timeout: 15000 });
+  check('Show my script gives the same script again, with the same key', (await page.inputValue('#lfScript')) === script2);
+  await closeModals();
   check('the new script reports tabs again', (await db.query('select count(*)::int n from public.sheet_tabs where tab_key like $1', [`zzbook${tag}/%`])).rows[0].n === 2);
 
   // ---- switching it off

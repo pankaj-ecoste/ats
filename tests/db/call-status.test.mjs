@@ -9,6 +9,7 @@ import { connect, loadEnv } from '../../scripts/db.mjs';
 loadEnv();
 const skip = process.env.DATABASE_URL ? false : 'DATABASE_URL is not set';
 let c;
+const PW = 'test-pass-1';
 const q = (sql, params) => c.query(sql, params);
 const U = { admin: randomUUID() };
 const mig = (f) => readFileSync(new URL('../../supabase/migrations/' + f, import.meta.url), 'utf8');
@@ -23,7 +24,10 @@ before(async () => {
   if (!(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'call_status'")).rows.length) await q(mig('0027_call_status.sql'));
   if (!(await q("select 1 from pg_proc where proname = 'ingest_one_lead' and prosrc like '%Call status updated%'")).rows.length && !(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'custom'")).rows.length) await q(mig('0028_call_status_refresh.sql'));
   if (!(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'custom'")).rows.length) await q(mig('0029_custom_columns.sql'));
+  if (!(await q("select 1 from information_schema.columns where table_name = 'sheet_tabs' and column_name = 'book_name'")).rows.length) await q(mig('0038_workbooks_and_script.sql'));
+  if (!(await q("select 1 from information_schema.columns where table_name = 'lead_feed' and column_name = 'panel_pass_hash'")).rows.length) await q(mig('0039_lead_feed_password.sql'));
   await q('delete from public.lead_feed');
+  await q("insert into public.lead_feed (singleton, panel_pass_hash) values (true, extensions.crypt('test-pass-1', extensions.gen_salt('bf')))");   // the connection password of the test
   await q("select set_config('app.allow_user_create', 'on', true)");
   await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, 'cs-admin@ats.ecoste.in', 'authenticated', 'authenticated', $2)", [U.admin, JSON.stringify({ full_name: 'Call admin' })]);
   await q("select set_config('app.allow_user_create', 'off', true)");
@@ -47,7 +51,7 @@ const rpc = (who, fn, ...args) => as(who, `select public.${fn}(${args.map((_, i)
 const HEAD = ['Full Name', 'Mobile', 'Call staus'];
 
 test('a call status column can be chosen, and the status is kept on the application', { skip }, async () => {
-  const token = (await rpc(U.admin, 'lead_feed_connect', true)).token;
+  const token = (await rpc(U.admin, 'lead_feed_connect', true, false, PW)).token;
   await rpc(null, 'sheet_sync_plan', token, JSON.stringify([{ key: 'cs/1', name: 'Tab', headings: HEAD }]));
   await rpc(U.admin, 'sheet_link_save', 'OP-CS1', 'cs/1', 'Facebook Ad', JSON.stringify({ name: 'Full Name', phone: 'Mobile', callStatus: 'Call staus' }), '[]');
   const res = await rpc(null, 'ingest_tab_leads', token, 'cs/1', JSON.stringify([
@@ -64,7 +68,7 @@ test('the same column cannot be used for a field and the call status', { skip },
 });
 
 test('a row sent again refreshes the call status of the person already there, and nothing else', { skip }, async () => {
-  const token = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
+  const token = (await rpc(U.admin, 'lead_feed_connect', true, true, PW)).token;
   const rows = (s) => JSON.stringify([{ name: 'Asha', phone: '98765 43210', callStatus: s, answers: {} }]);
   const r1 = await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows('Not Interested'));
   assert.equal(r1.duplicates, 1);
@@ -78,7 +82,7 @@ test('a row sent again refreshes the call status of the person already there, an
 });
 
 test('your own columns: matched from a tab, kept on the application, refreshed when sent again, and checked', { skip }, async () => {
-  const token = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
+  const token = (await rpc(U.admin, 'lead_feed_connect', true, true, PW)).token;
   await rpc(null, 'sheet_sync_plan', token, JSON.stringify([{ key: 'cs/2', name: 'Tab two', headings: ['Full Name', 'Mobile', 'VI DOne or not'] }]));
   await q("insert into public.openings (id, title, positions, recruiter_id, status) values ('OP-CS2', 'Second role', 1, $1, 'Open')", [U.admin]);
   await rpc(U.admin, 'sheet_link_save', 'OP-CS2', 'cs/2', 'Facebook Ad', JSON.stringify({ name: 'Full Name', phone: 'Mobile', 'x:VI done': 'VI DOne or not' }), '[]');

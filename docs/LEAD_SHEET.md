@@ -22,6 +22,15 @@ The connection has **one key**. Paste the **same script** into every workbook yo
 - **Make a new script** renews the key and stops the script in **every** workbook until the new one is pasted in each. Use it only if the key was lost or leaked. A key made before this option existed cannot be shown: make a new script once, and it can be shown from then on.
 - An opening's **Lead sheets** tab shows a red notice when no workbook has reported for 10 minutes.
 
+## The connection password
+
+The connection part of Settings is protected by a **password** that an admin chooses. **Show my script**, **Make a new script**, **Save** (the on/off switch) and **Change password** ask for it. After it is typed, the buttons work for 5 minutes, or until **Lock** is pressed. Reading the status (workbooks, last report) needs no password.
+
+- Only an **admin** can set or change it (at least 8 characters). Changing it needs the old one.
+- The check is made in the database: a signed-in admin who bypasses the screen is stopped too. Only a salted bcrypt hash is kept.
+- Five wrong passwords in a row lock it for 10 minutes. The lock is noted in the activity log.
+- The password is never written in the code, the docs or the tests. If it is forgotten, a person with the database console can set a new one (`lead_feed.panel_pass_hash`, made with `crypt(<password>, gen_salt('bf'))`).
+
 ## The rules
 
 - **One tab belongs to one opening.** A tab already linked is shown as taken ("linked to …") and cannot be chosen for another opening.

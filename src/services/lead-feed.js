@@ -8,19 +8,34 @@ async function leadFeedStatus(){
  if(r.error)throw authError(r.error);
  const s=r.data||{};
  return {setUp:!!s.set_up,enabled:!!s.enabled,tokenMadeAt:msOf(s.token_made_at),lastReceivedAt:msOf(s.last_received_at),tabsSeen:s.tabs_seen||0,lastSeenAt:msOf(s.last_seen_at),
-  workbooks:(s.workbooks||[]).map(w=>({id:w.id,name:w.name||'Workbook',tabs:w.tabs||0,lastSeenAt:msOf(w.last_seen_at)})),refusedRecently:s.refused_recently||0,canShowScript:!!s.can_show_script};
+  workbooks:(s.workbooks||[]).map(w=>({id:w.id,name:w.name||'Workbook',tabs:w.tabs||0,lastSeenAt:msOf(w.last_seen_at)})),refusedRecently:s.refused_recently||0,canShowScript:!!s.can_show_script,passwordSet:!!s.password_set};
+}
+// An answer of the protected functions: a wrong password is an answer ({ok:false,message}), not an error, so the count of wrong tries is kept
+function protectedAnswer(r){
+ if(r.error)throw authError(r.error);
+ const d=r.data||{};
+ if(d.ok===false)throw new Error(d.message||'Wrong password');
+ return d;
+}
+// true when the password is right
+async function leadFeedUnlock(password){
+ protectedAnswer(await sb.rpc('lead_feed_unlock',{p_password:password||''}));
+ return true;
+}
+// sets the password (the first time, oldPassword is empty) or changes it
+async function leadFeedSetPassword(oldPassword,newPassword){
+ protectedAnswer(await sb.rpc('lead_feed_set_password',{p_old:oldPassword||'',p_new:newPassword||''}));
+ return true;
 }
 // Switches the connection on or off. Returns the secret token when a new one was made (the first time, or when asked); otherwise null. The token is shown once: only its hash is kept.
-async function leadFeedConnect({enabled,newToken=false}){
- const r=await sb.rpc('lead_feed_connect',{p_enabled:!!enabled,p_new_token:!!newToken});
- if(r.error)throw authError(r.error);
- return (r.data&&r.data.token)||null;
+async function leadFeedConnect({enabled,newToken=false,password}){
+ const d=protectedAnswer(await sb.rpc('lead_feed_connect',{p_enabled:!!enabled,p_new_token:!!newToken,p_password:password||''}));
+ return d.token||null;
 }
 // the secret of the connection, so the same script can be shown again (admin). null when it was made before the key was kept: make a new script once.
-async function leadFeedToken(){
- const r=await sb.rpc('lead_feed_token');
- if(r.error)throw authError(r.error);
- return r.data||null;
+async function leadFeedToken(password){
+ const d=protectedAnswer(await sb.rpc('lead_feed_token',{p_password:password||''}));
+ return d.token||null;
 }
 // the latest batches the workbook sent (or was refused), newest first
 async function leadFeedBatches(limit=8){
