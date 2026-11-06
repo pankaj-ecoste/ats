@@ -12,7 +12,7 @@ function renderTop(){
  $('#top').innerHTML=`<button class="tbtn menu-btn" id="menuBtn" aria-label="Open menu">${ic('menu')}</button>
  <div class="search">${ic('search')}<input id="gsearch" placeholder="Search candidates, applications, openings, interviews, offers" autocomplete="off" aria-label="Global search"><div class="dd hide" id="gres" style="left:0;right:0"></div></div>
  <div class="grow"></div>
- ${CONNECTED?`<span id="saveState" class="save-state" role="status"></span>`:''}
+ ${CONNECTED?`<span id="saveState" class="save-state" role="status" aria-live="polite"></span>`:''}
  <div style="position:relative"${canEdit()?'':' hidden'}><button class="tbtn" id="qaBtn" aria-label="Quick add" title="Quick add">${ic('plus')}</button><div class="dd hide" id="qaDD" style="right:0;min-width:220px"></div></div>
  <div style="position:relative"><button class="tbtn" id="nBtn" aria-label="Notifications">${ic('bell')}${un?`<span class="dot">${un}</span>`:''}</button><div class="dd hide" id="nDD" style="right:0;width:340px"></div></div>
  <button class="tbtn" id="helpBtn" aria-label="Help">${ic('help')}</button>

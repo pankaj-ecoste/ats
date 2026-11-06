@@ -26,6 +26,7 @@ Needs Node 20 or newer. For the browser tests run `npx playwright install chromi
 | `npm run test:e2e:all` | Browser tests: every page, extension points, real user flows | when a screen or service changed |
 | `npm run test:e2e:dist` | The same browser tests against the built file, plus the page-policy test on `dist/site` (run `npm run build` first) | before a release |
 | `npm run test:e2e:scale` | Every page with 5,000 and 20,000 leads must open quickly | when a list, lookup or page changed |
+| `npm run test:e2e:startup` | Live, read-only: how long the start takes over a realistic connection (a temporary admin, removed afterwards) | when the start-up, the loading or the data load changed; needs the owner's yes |
 | `npm run test:e2e:csp` | `dist/site` under the real headers: no violations, injected script refused | when `vercel.json`, `index.html` or the build changed |
 
 CI runs all of the above on every pull request. A red CI blocks the merge.

@@ -4,7 +4,12 @@ Format: newest first. **Version 1** is the system handed to the HR team. **Every
 
 ## Version 2 (after v1.0.0, unreleased)
 
-Nothing yet (tag v1.0.0 was created 2026-11-06). Candidates are listed in `.claude/plan.md` §12 (a separate staging database comes first).
+Candidates are listed in `.claude/plan.md` §12 (a separate staging database comes first).
+
+**Speed and smoothness (2026-11-06)**
+- Faster start: the data download begins as soon as a session exists, in parallel with the profile lookup and the change check; the connection to the database is opened while the scripts download; hashed scripts are kept by the browser for a year; the first paint is a loading screen and then an app-shaped skeleton instead of a blank frame. Measured live over a 150 ms connection: sign in to a ready app 1.41 s to about 0.9 s, reload while signed in 1.32 s to 0.5 s (`npm run test:e2e:startup`).
+- The top bar's save word now has four states (All saved, Saving…, Offline with the number of waiting changes, Not saved), explains itself on hover, does not flicker for quick saves and follows the browser going offline and online.
+- Fixed two colour names in the sign-in card and the save word that did not exist in the theme.
 
 ## Version 1.0.0 — 2026-11-06
 

@@ -41,6 +41,18 @@ About **1.9 KB** per lead (the person, their salary fields, their résumé recor
 
 Sign-in times are estimates from the download size, not yet measured against the live project with that much data (the page times above are measured). The database side is not the limit: the access rules for 21,600 rows are checked in about 5 ms on the server. It is the download and the browser.
 
+## Start-up time (version 2, 2026-11-06)
+
+Measured against the live project with `npm run test:e2e:startup` (a temporary admin, the deployed folder, 150 ms latency and 20 Mbit/s, median of three, 72 people in the project):
+
+| | Before | After |
+|---|---|---|
+| First visit, to the sign-in screen | 0.59 s | 0.59 s |
+| Sign in, to a ready app | 1.41 s | about 0.8 to 1.1 s |
+| Reload while signed in (the usual morning start), to a ready app | 1.32 s | **0.50 s** |
+
+What changed: the data, the change stamp and the profile are asked for together instead of one after another (three round trips became one), the connection to the database is opened while the scripts are still downloading, and the script files are kept by the browser. The screen is no longer blank meanwhile: a spinner from the first moment, then the shape of the app. Inside the browser every action already took under 100 ms at 5,000 leads (typing in a search 17 ms, a filter 64 ms, opening a record 15 ms).
+
 ## Comfortable limits (version 1)
 
 | | Comfortable | Works but slower | Needs version 2 |

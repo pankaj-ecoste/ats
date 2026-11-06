@@ -5,7 +5,7 @@ import { loadApp } from './load-app.mjs';
 
 const app = loadApp({
   until: 'services',
-  expose: ['getS', 'refreshFromServer', 'loadFromServer', 'dataFingerprint', 'fetchAll', 'LOG_TABLES', 'LOG_KEEP', 'READ_TABLES', 'createWriter', 'startWriting', 'writesPending', 'repo', 'addTask', 'fetchTable', 'ageStamp'],
+  expose: ['getS', 'refreshFromServer', 'loadFromServer', 'dataFingerprint', 'fetchAll', 'LOG_TABLES', 'LOG_KEEP', 'READ_TABLES', 'createWriter', 'startWriting', 'writesPending', 'repo', 'addTask', 'fetchTable', 'ageStamp', 'beginEarlyLoad', 'dropEarlyLoad'],
   after: 'var getS=()=>S; var ageStamp=(ms)=>{STAMP_AT-=ms}',
 });
 const me = { id: 'u1', fullName: 'Priya Sharma', role: 'admin' };
@@ -131,4 +131,39 @@ test('rows added while reading, or a missing count, still give everything', asyn
   assert.equal((await app.fetchTable(fakeClient(db, [], { countRows: false }), 'big', 'id')).length, 3000, 'no count: page after page');
   assert.equal((await app.fetchTable(fakeClient({ big: rows(1000) }), 'big', 'id')).length, 1000, 'exactly one full page');
   assert.equal((await app.fetchTable(fakeClient({ big: [] }), 'big', 'id')).length, 0);
+});
+
+test('the stamp and every table are asked for together, the stamp first, so the start costs one round trip and not three', async () => {
+  const db = { profiles, tasks: [task('T-1', 'First')] }, seen = [];
+  const client = fakeClient(db, seen, { stamp: () => 's1' });
+  await app.loadFromServer(client, me);
+  const firstRead = seen.findIndex((s) => s[0] === 'range');
+  assert.equal(seen[0][0], 'rpc', 'the stamp is requested first');
+  assert.ok(firstRead >= 1 && seen.slice(0, 5).every((s) => s[0] === 'rpc' || s[0] === 'range'), 'the tables follow without waiting for it');
+});
+
+test('a load begun early is the one that is used: nothing is read twice', async () => {
+  const db = { profiles, tasks: [task('T-1', 'Early')] }, seen = [];
+  const client = fakeClient(db, seen, { stamp: () => 's1' });
+  app.beginEarlyLoad(client);
+  const started = seen.length;
+  assert.ok(started > 0, 'the requests went out at once');
+  await app.loadFromServer(client, me);
+  assert.equal(seen.length, started, 'loading used the early result');
+  assert.equal(app.getS().tasks[0].title, 'Early');
+  seen.length = 0;
+  await app.loadFromServer(client, me);
+  assert.ok(seen.length > 0, 'the early result is used once; the next load reads again');
+});
+
+test('a dropped early load is not used, and a failed one is reported only when it is needed', async () => {
+  const db = { profiles, tasks: [task('T-1', 'Fresh')] }, seen = [];
+  app.beginEarlyLoad(fakeClient({ profiles, tasks: [task('T-9', 'Stale')] }, [], { stamp: () => 'old' }));
+  app.dropEarlyLoad();
+  await app.loadFromServer(fakeClient(db, seen, { stamp: () => 'new' }), me);
+  assert.equal(app.getS().tasks[0].title, 'Fresh');
+  const broken = { rpc: async () => ({ data: null, error: { message: 'x' } }), from: () => { throw new Error('network down'); } };
+  app.beginEarlyLoad(broken);                       // must not crash the page by itself
+  await new Promise((r) => setTimeout(r, 5));
+  await assert.rejects(() => app.loadFromServer(fakeClient(db, [], {}), me), /network down/);
 });

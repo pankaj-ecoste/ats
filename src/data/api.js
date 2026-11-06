@@ -57,20 +57,34 @@ async function fetchAll(client){
 
 let PEOPLE=makePeople([]);   // who is who, refreshed on every load
 
+// Everything the first screen needs, asked for at once: the change stamp and every table. They do not depend on each other, and one after
+// another they cost a round trip each (about 150 ms from India to the project). The stamp is sent first, so it is no newer than the data.
+function startLoad(client){
+ return Promise.all([readStamp(client),fetchAll(client)]).then(([stamp,all])=>({stamp,rows:all.rows,people:all.people}));
+}
+// The app starts this the moment it knows a session exists, in parallel with finding out who the person is (profile, role, switched off or not),
+// and loadFromServer picks the result up. If the person turns out not to be allowed in, the data is simply thrown away.
+let EARLY=null;
+function beginEarlyLoad(client){EARLY=startLoad(client);EARLY.catch(()=>{})}     // the failure is reported when it is used
+function dropEarlyLoad(){EARLY=null}
 // Replaces S with what the database holds. `me` is the signed-in person ({fullName}); their name goes into settings.user.
 async function loadFromServer(client,me){
- const stamp=await readStamp(client);      // asked before reading, so a change made while reading is noticed next time
- const {state,people}=await readState(client,me);
+ const early=EARLY;EARLY=null;
+ const {stamp,rows,people}=await (early||startLoad(client));
+ const state=buildState(rows,people,me);
  STAMP=stamp;STAMP_AT=Date.now();
  PEOPLE=people;
  S=state;
  return state;
 }
-async function readState(client,me){
- const {rows,people}=await fetchAll(client);
+function buildState(rows,people,me){
  const state=stateFromRows(rows,people);
  state.settings={...JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),...state.settings,user:me.fullName,theme:savedTheme()};
- return {state,people};
+ return state;
+}
+async function readState(client,me){
+ const {rows,people}=await fetchAll(client);
+ return {state:buildState(rows,people,me),people};
 }
 // "Has anything been written?": one tiny question (a fingerprint from the database, migration 0037) instead of downloading everything.
 // null when the database cannot answer (the migration is not applied yet, or the network blinked); the caller then reads everything, as it always did.

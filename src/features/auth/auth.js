@@ -8,6 +8,10 @@ function authRoot(){
  if(!el){el=document.createElement('div');el.id='auth';el.className='auth';document.body.appendChild(el)}
  return el;
 }
+// the shape of the app, greyed and shimmering, shown while the data arrives: the screen is not blank and nothing jumps when the real one replaces it
+const appSkeleton=()=>`<div class="skel-app" aria-busy="true"><span class="skel-say" role="status">Loading your data…</span>
+ <aside class="skel-side">${'<i></i>'.repeat(9)}</aside>
+ <div class="skel-main"><div class="skel-top"><i></i></div><div class="skel-body"><i class="skel-h"></i><div class="skel-kpis">${'<i></i>'.repeat(4)}</div><i class="skel-panel"></i></div></div></div>`;
 function hideAuth(){
  document.body.classList.remove('signed-out');
  const el=$('#auth');if(el)el.innerHTML='';
@@ -43,13 +47,21 @@ function showHold(message){
 // saving runs in the background; tell the person when it fails, and when it works again
 let saveFailing=false;
 // the small word in the top bar: Saving…, All saved, or Not saved
-function showSaveState(){
+// A save that finishes within a third of a second is not announced (the word would only flicker); a longer one, and every other state, is shown at once.
+let busyTimer=null;
+function showSaveState(force){
  const el=document.getElementById('saveState');if(!el)return;
- const n=writesPending();
- el.textContent=saveFailing?'Not saved':n>0?'Saving…':'All saved';
- el.className='save-state'+(saveFailing?' bad':n>0?' busy':'');
+ const s=saveStateOf({failing:saveFailing,pending:writesPending(),online:navigator.onLine!==false});
+ if(s.key==='busy'&&force!==true&&el.dataset.key==='ok'){
+  if(!busyTimer)busyTimer=setTimeout(()=>{busyTimer=null;showSaveState(true)},350);
+  return;
+ }
+ if(s.key!=='busy'&&busyTimer){clearTimeout(busyTimer);busyTimer=null}
+ el.dataset.key=s.key;el.textContent=s.text;el.title=s.hint;el.className='save-state '+s.key;
 }
-onEvent('data:pending',showSaveState);
+window.addEventListener('online',()=>showSaveState());
+window.addEventListener('offline',()=>showSaveState());
+onEvent('data:pending',()=>showSaveState());
 onEvent('data:error',({message})=>{saveFailing=true;showSaveState();toast(message+' Your screen may now differ from what is saved: reload to see the saved version.','var(--red)')});
 onEvent('data:ok',()=>{saveFailing=false;showSaveState();toast('Saving works again','var(--green)')});
 window.addEventListener('beforeunload',e=>{if(CONNECTED&&writesPending()>0){e.preventDefault();e.returnValue=''}});
@@ -58,7 +70,7 @@ async function enterApp(me){
  if(!me)return showLogin();
  if(!me.active)return showHold('This account is switched off. Ask an admin.');
  if(me.role==='pending')return showHold('Your account is waiting for an admin to give it a role. Ask an admin, then sign in again.');
- authRoot().innerHTML=`<div class="auth-card"><div class="auth-logo"><img src="${LOGO_SRC}" alt="Ecoste"></div><p class="muted" role="status">Loading your data…</p></div>`;
+ authRoot().innerHTML=appSkeleton();
  try{await loadFromServer(sb,me)}
  catch(e){return showHold('The data could not be loaded. Reload the page to try again. ('+e.message+')')}
  startWriting(sb,me);
@@ -101,12 +113,16 @@ async function bootAuth(){
  sb.auth.onAuthStateChange(ev=>{
   if(ev==='SIGNED_OUT'&&!signingOut&&!document.body.classList.contains('signed-out')){ME=null;showLogin('You were signed out. Please sign in again.')}
  });
- try{enterApp(await currentUser())}
- catch(e){showLogin(e.message)}
+ try{
+  const {data:{session}}=await sb.auth.getSession();       // read from this browser, no network
+  if(session)beginEarlyLoad(sb);                           // the data is on its way while the profile is looked up
+  enterApp(await currentUser());
+ }catch(e){showLogin(e.message)}
 }
 
 async function doSignOut(){
  signingOut=true;
+ dropEarlyLoad();
  stopAutoRefresh();
  try{await stopWriting();await signOut()}catch(e){/* the screen changes either way */}
  signingOut=false;

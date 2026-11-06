@@ -75,6 +75,13 @@ check('the letter cleaner removes scripts, handlers, frames, outside pictures an
 check('the letter cleaner keeps layout and an embedded picture', /text-align:right/.test(cleaned.keeps) && /colspan="2"/.test(cleaned.keeps) && /src="data:image\/png/.test(cleaned.keeps));
 check('the letter cleaner drops style that fetches', cleaned.css === '<p>t</p>');
 check('a stored page is locked: the policy comes first', /<head><meta http-equiv="Content-Security-Policy"/.test(cleaned.locked) && cleaned.lockedBare.startsWith('<meta http-equiv="Content-Security-Policy"'));
+// script files are kept by the browser for a year (vercel.json), which is only safe because their names change with their content
+const pages = ['index.html', 'careers.html'].map((f) => readFileSync(resolve(SITE, f), 'utf8'));
+const srcs = pages.flatMap((h) => [...h.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]));
+const jsRule = JSON.parse(readFileSync(resolve(root, 'vercel.json'), 'utf8')).headers.find((h) => h.source === '/js/(.*)');
+check('script files carry a hash of their content in the name, and the host may keep them for a year', srcs.length > 0 && srcs.every((s) => /^js\/[\w-]+\.[0-9a-f]{10}\.js$/.test(s)) && /immutable/.test(JSON.stringify(jsRule)));
+check('the database connection is opened early (preconnect)', /<link rel="preconnect" href="https:\/\/[\w.-]+\.supabase\.co" crossorigin>/.test(pages[0]) || !/"supabaseUrl":"https/.test(readFileSync(resolve(root, 'src/generated/config.js'), 'utf8')));
+check('the first paint is a loading screen, not an empty app frame', /<body class="signed-out">/.test(pages[0]) && /class="boot"/.test(pages[0]));
 const scriptSrc = (headers['Content-Security-Policy'].match(/script-src ([^;]*)/) || [])[1] || '';
 check("script-src allows only this site's files (no 'unsafe-inline', no 'unsafe-eval')", scriptSrc.trim() === "'self'");
 check('connect-src names the database project, not a wildcard', !/\*/.test((headers['Content-Security-Policy'].match(/connect-src ([^;]*)/) || [])[1] || '*'));

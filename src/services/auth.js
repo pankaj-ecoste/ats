@@ -52,6 +52,7 @@ async function signIn(username,password){
  if(!String(username||'').trim()||!password)throw new Error('Enter your username and password.');
  const r=await sb.auth.signInWithPassword({email:loginEmail(username),password});
  if(r.error)throw authError(r.error);
+ beginEarlyLoad(sb);        // the data is on its way while the profile is looked up
  return currentUser();
 }
 async function signOut(){

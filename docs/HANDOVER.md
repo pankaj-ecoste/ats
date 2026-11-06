@@ -54,6 +54,7 @@ The rules are enforced by the database, not only by what the screen shows.
 
 | You see | Likely cause | Do this |
 |---|---|---|
+| The small word in the top bar says **Not saved** or **Offline** (green dot = All saved, orange = Saving…) | Offline: no connection, your changes stay in the window and are saved when it returns, so do not close the tab. Not saved: a change was refused | Offline: wait, or check the connection. Not saved: reload to see what is saved and tell the developer what you did |
 | A red message "could not save" | Network blip or an action the role may not do | Wait a minute; changes are retried. If it stays, copy the message and tell the developer. Do not close the tab while it shows. |
 | "The data could not be loaded" at sign-in | The database or the network is down | Reload; check `status.supabase.com`. |
 | Someone sees an empty app | Role is *pending*, or the account is switched off | Users page. |

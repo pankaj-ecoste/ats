@@ -21,7 +21,10 @@
 <link rel="stylesheet" href="src/features/management-report/report.css">
 <link rel="stylesheet" href="src/features/auth/auth.css">
 </head>
-<body>
+<body class="signed-out">
+<!-- what is on screen from the first moment, before any script has run: the app frame stays hidden and a quiet spinner shows. The scripts replace it
+     with the sign-in form or the app (src/app/main.js, src/features/auth/auth.js). -->
+<div id="auth" class="auth"><div class="boot" role="status" aria-label="Loading"><span class="boot-ring"></span><span>Ecoste Recruit Tracker</span></div></div>
 <div class="app">
  <aside class="side" id="side"></aside>
  <div class="main">
@@ -68,6 +71,7 @@
 <script src="src/domain/sheet-link.js"></script>
 <script src="src/domain/apply-link.js"></script>
 <script src="src/domain/apply-form.js"></script>
+<script src="src/domain/save-state.js"></script>
 <script src="src/domain/lead-feed-script.js"></script>
 <script src="src/services/activity.js"></script>
 <script src="src/services/tasks.js"></script>

@@ -16,6 +16,7 @@ const OUT = resolve(root, 'dist/site');
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(resolve(OUT, 'js'), { recursive: true });
 
+const DB_URL = (read('src/generated/config.js').match(/"supabaseUrl":"([^"]*)"/) || [])[1] || '';
 const SCRIPT = /<script src="(src\/[^"]+)"><\/script>/g;
 const LAZY = /<script type="text\/x-lazy" data-lazy="(src\/[^"]+)"><\/script>/g;
 const written = [];
@@ -59,6 +60,9 @@ function buildPage(inFile, name) {
 
   const left = html.match(/(?:href|src)="src\/(?!vendor\/)[^"]+"/);
   if (left) throw new Error(`Not built: ${left[0]}`);
+  // open the connection to the database while the scripts are still downloading: DNS, TCP and TLS are about three round trips, and the first
+  // request would otherwise pay for them after everything is parsed. The address is public (it is in the policy and in the app anyway).
+  if (name === 'index' && DB_URL) html = html.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n<link rel="preconnect" href="${new URL(DB_URL).origin}" crossorigin>`);
   html = html.replace(/\n{3,}/g, '\n\n');
   assertNoSecrets(html);
   writeFileSync(resolve(OUT, name + '.html'), html);
@@ -71,8 +75,7 @@ written.forEach(([, body]) => assertNoSecrets(body));
 
 // The policy lets the page talk to one database address only. If the project moves, vercel.json has to change with it:
 // refuse to build a site whose own address the policy would block.
-const cfg = read('src/generated/config.js').match(/"supabaseUrl":"([^"]*)"/);
-const url = cfg ? cfg[1] : '';
+const url = DB_URL;
 if (url) {
   const csp = JSON.parse(read('vercel.json')).headers[0].headers.find((h) => h.key === 'Content-Security-Policy').value;
   const connect = (csp.match(/connect-src ([^;]*)/) || [])[1] || '';

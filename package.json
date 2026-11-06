@@ -17,6 +17,7 @@
     "test:e2e:flows": "node tests/e2e/flows.mjs",
     "test:e2e:routing": "node tests/e2e/routing.mjs",
     "test:e2e:scale": "node tests/e2e/scale.mjs",
+    "test:e2e:startup": "node tests/e2e/startup.mjs",
     "test:e2e:csp": "node tests/e2e/csp.mjs",
     "lint": "eslint .",
     "check": "npm run lint && npm test && npm run build",
