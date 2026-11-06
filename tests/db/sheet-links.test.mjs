@@ -22,6 +22,8 @@ before(async () => {
   await q('begin');
   if (!(await q("select to_regproc('public.sheet_sync_plan') as f")).rows[0].f) await q(readFileSync(new URL('../../supabase/migrations/0023_sheet_links.sql', import.meta.url), 'utf8'));
   if (!(await q("select has_table_privilege('authenticated', 'public.sheet_links', 'select') as g")).rows[0].g) await q(readFileSync(new URL('../../supabase/migrations/0024_sheet_links_read_grant.sql', import.meta.url), 'utf8'));
+  await q('delete from public.sheet_links');   // the real workbook's tabs and links may be in the project too; the test starts from nothing
+  await q('delete from public.sheet_tabs');
   await q('delete from public.lead_feed');   // the real project may already be set up; the test starts from nothing, and the transaction is rolled back
   await q("select set_config('app.allow_user_create', 'on', true)");
   for (const [n, id] of Object.entries(U)) await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, $2, 'authenticated', 'authenticated', $3)", [id, `lf${n}@ats.ecoste.in`, JSON.stringify({ full_name: 'Feed ' + n })]);
