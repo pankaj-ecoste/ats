@@ -7,13 +7,20 @@ async function leadFeedStatus(){
  const r=await sb.rpc('lead_feed_status');
  if(r.error)throw authError(r.error);
  const s=r.data||{};
- return {setUp:!!s.set_up,enabled:!!s.enabled,tokenMadeAt:msOf(s.token_made_at),lastReceivedAt:msOf(s.last_received_at),tabsSeen:s.tabs_seen||0,lastSeenAt:msOf(s.last_seen_at)};
+ return {setUp:!!s.set_up,enabled:!!s.enabled,tokenMadeAt:msOf(s.token_made_at),lastReceivedAt:msOf(s.last_received_at),tabsSeen:s.tabs_seen||0,lastSeenAt:msOf(s.last_seen_at),
+  workbooks:(s.workbooks||[]).map(w=>({id:w.id,name:w.name||'Workbook',tabs:w.tabs||0,lastSeenAt:msOf(w.last_seen_at)})),refusedRecently:s.refused_recently||0,canShowScript:!!s.can_show_script};
 }
 // Switches the connection on or off. Returns the secret token when a new one was made (the first time, or when asked); otherwise null. The token is shown once: only its hash is kept.
 async function leadFeedConnect({enabled,newToken=false}){
  const r=await sb.rpc('lead_feed_connect',{p_enabled:!!enabled,p_new_token:!!newToken});
  if(r.error)throw authError(r.error);
  return (r.data&&r.data.token)||null;
+}
+// the secret of the connection, so the same script can be shown again (admin). null when it was made before the key was kept: make a new script once.
+async function leadFeedToken(){
+ const r=await sb.rpc('lead_feed_token');
+ if(r.error)throw authError(r.error);
+ return r.data||null;
 }
 // the latest batches the workbook sent (or was refused), newest first
 async function leadFeedBatches(limit=8){

@@ -17,6 +17,10 @@ function guessSourceFor(tabName,list){
  return list.find(s=>{const w=String(s).toLowerCase().split(/[\s-]+/)[0];return w.length>=5&&t.includes(w)})||(list.includes('Ad campaign')?'Ad campaign':list[0]);
 }
 const tabOfLink=l=>(LS.tabs||[]).find(t=>t.key===l.tabKey);
+// the workbooks the script reported (names), and how a tab is shown: "Workbook › Tab" once there is more than one workbook
+const booksOf=()=>[...new Set((LS.tabs||[]).map(t=>t.book).filter(Boolean))];
+const tabLabel=t=>booksOf().length>1&&t.book?`${t.book} › ${t.name}`:t.name;
+const LS_LIVE_MS=10*60*1000;
 const headingsOfLink=l=>{const t=tabOfLink(l);return t?t.headings:(l.known||[])};
 
 function linkRow(l){
@@ -27,7 +31,7 @@ function linkRow(l){
   !t?'<span class="pill orange" title="The script has not reported this tab for a few days">Tab not seen lately</span>':'',
   fresh.length?`<span class="pill orange" title="${esc(fresh.join(', '))}">${fresh.length} new column${fresh.length>1?'s':''}</span>`:'',
   gone.length?`<span class="pill red" title="${esc(gone.join(', '))}">${gone.length} column${gone.length>1?'s':''} missing</span>`:''].filter(Boolean).join(' ');
- return `<tr><td><b>${esc(l.tabName)}</b></td><td>${esc(l.source)}</td><td class="muted small">${Object.keys(l.map).length} fields, ${l.extra.length} kept as answers</td><td class="muted small">${l.lastReceivedAt?timeAgo(l.lastReceivedAt):'nothing yet'}</td><td>${flags}</td>
+ return `<tr><td>${t&&booksOf().length>1&&t.book?`<div class="muted small">${esc(t.book)}</div>`:''}<b>${esc(l.tabName)}</b></td><td>${esc(l.source)}</td><td class="muted small">${Object.keys(l.map).length} fields, ${l.extra.length} kept as answers</td><td class="muted small">${l.lastReceivedAt?timeAgo(l.lastReceivedAt):'nothing yet'}</td><td>${flags}</td>
   <td class="num" style="white-space:nowrap"><button class="btn sm" data-ls-edit="${esc(l.id)}">Edit</button> <button class="btn sm" data-ls-off="${esc(l.id)}">Unlink</button></td></tr>`;
 }
 
@@ -40,7 +44,10 @@ function leadSheetsTab(o){
  const bySrc={};appsOfOp(o.id).forEach(a=>{const s=appSource(a);bySrc[s]=(bySrc[s]||0)+1});
  const srcLine=Object.keys(bySrc).length?`<div class="small" style="margin:0 0 12px"><b>Leads by source:</b> ${Object.entries(bySrc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} ${v}`).join(' · ')}</div>`:'';
  const none=!LS.tabs.length?`<p class="small muted" style="margin:0 0 12px">No tab has been reported yet. An admin sets up the connection in <b>Settings</b> and pastes the script into the workbook; the tabs then appear here within a minute.</p>`:'';
- return `<section class="panel">${head}<div class="pbody">${srcLine}${none}${mine.length?`<div class="tbl-wrap"><table><thead><tr><th>Tab</th><th>Source</th><th>Columns</th><th>Last lead</th><th>Status</th><th></th></tr></thead><tbody>${mine.map(linkRow).join('')}</tbody></table></div>`:`<p class="muted" style="margin:0">No sheet is linked to this opening yet.</p>`}</div></section>`;
+ // nothing has reported for a while: the script may have stopped, or its key was replaced
+ const lastSeen=LS.tabs.reduce((m,t)=>Math.max(m,t.seenAt||0),0);
+ const stale=LS.tabs.length&&Date.now()-lastSeen>LS_LIVE_MS?`<div class="small" style="padding:10px 12px;background:var(--red2);border-radius:8px;margin:0 0 12px"><b>No workbook has reported for ${timeAgo(lastSeen).replace(' ago','')}.</b> New leads will not arrive until it does. The script may have stopped, or its key was replaced. An admin can check <b>Settings → Lead sheet connection</b> (Show my script).</div>`:'';
+ return `<section class="panel">${head}<div class="pbody">${stale}${srcLine}${none}${mine.length?`<div class="tbl-wrap"><table><thead><tr><th>Tab</th><th>Source</th><th>Columns</th><th>Last lead</th><th>Status</th><th></th></tr></thead><tbody>${mine.map(linkRow).join('')}</tbody></table></div>`:`<p class="muted" style="margin:0">No sheet is linked to this opening yet.</p>`}</div></section>`;
 }
 
 // the window to link a new tab (link null) or change a link
@@ -57,7 +64,7 @@ function linkModal(o,link){
  reset();
  const opt=(v,l,sel,dis)=>`<option value="${esc(v)}" ${sel?'selected':''} ${dis?'disabled':''}>${esc(l)}</option>`;
  const tabSel=edit?`<div class="f"><div class="small muted">Tab</div><div><b>${esc(link.tabName)}</b></div></div>`
-  :`<label class="f full">Tab of the workbook <span class="muted small">(${open.length} free of ${LS.tabs.length}) · click the one that holds this opening's leads</span><input class="inp" id="lkFilter" placeholder="Type to find a tab" style="margin-bottom:6px"><select class="inp" id="lkTab" size="6">${LS.tabs.map(t=>{const b=takenBy(t);const ob=b&&getOp(b.opening);return opt(t.key,b?`${t.name}  (linked to ${ob?ob.title:'another opening'})`:t.name,t.key===d.tabKey,!!b)}).join('')}</select></label>`;
+  :`<label class="f full">Tab of the workbook <span class="muted small">(${open.length} free of ${LS.tabs.length}) · click the one that holds this opening's leads</span>${booksOf().length>1?`<select class="inp" id="lkBook" style="margin-bottom:6px"><option value="">All workbooks (${booksOf().length})</option>${booksOf().map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('')}</select>`:''}<input class="inp" id="lkFilter" placeholder="Type to find a tab" style="margin-bottom:6px"><select class="inp" id="lkTab" size="6">${LS.tabs.map(t=>{const b=takenBy(t);const ob=b&&getOp(b.opening);return opt(t.key,b?`${tabLabel(t)}  (linked to ${ob?ob.title:'another opening'})`:tabLabel(t),t.key===d.tabKey,!!b)}).join('')}</select></label>`;
  const grid=()=>{
   const fresh=edit?newHeadings(link,d.hs):[];
   const used=new Set(Object.values(d.map).filter(Boolean));
@@ -96,7 +103,10 @@ function linkModal(o,link){
    const tsel=$('#lkTab',el);
    if(tsel){
     tsel.onchange=()=>{d.tabKey=tsel.value;const sb=$('#lkSave',el);delete sb.dataset.sure;sb.textContent='Link this sheet';$('#lkSure',el).hidden=true;reset();$('#lkSrc',el).innerHTML=[...new Set([...list,d.source])].map(s=>opt(s,s,s===d.source)).join('');paint()};
-    $('#lkFilter',el).oninput=e=>{const q=e.target.value.trim().toLowerCase();[...tsel.options].forEach(op=>{op.hidden=!!q&&!op.textContent.toLowerCase().includes(q)})};
+    const applyFilter=()=>{const q=$('#lkFilter',el).value.trim().toLowerCase();const bk=$('#lkBook',el)?$('#lkBook',el).value:'';
+     [...tsel.options].forEach(op=>{const t=LS.tabs.find(x=>x.key===op.value);op.hidden=(!!q&&!op.textContent.toLowerCase().includes(q))||(!!bk&&!!t&&t.book!==bk)})};
+    $('#lkFilter',el).oninput=applyFilter;
+    if($('#lkBook',el))$('#lkBook',el).onchange=applyFilter;
    }
    $('#lkSave',el).onclick=async()=>{
     if(!d.tabKey){toast('Choose the tab first','var(--red)');return}

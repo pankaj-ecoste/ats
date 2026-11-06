@@ -48,7 +48,7 @@ function world(tabs, { links = [], server } = {}) {
     }) };
   });
   const ctx = vm.createContext({
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => 'BOOK', getSheets: () => tabs.map((t) => t.sheet), getSpreadsheetTimeZone: () => 'Asia/Kolkata' }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => 'BOOK', getName: () => 'Leads workbook', getSheets: () => tabs.map((t) => t.sheet), getSpreadsheetTimeZone: () => 'Asia/Kolkata' }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     ScriptApp: {
       getProjectTriggers: () => [{ getHandlerFunction: () => 'syncLeads' }, { getHandlerFunction: () => 'other' }],
@@ -100,8 +100,8 @@ test('every tab with headings is reported with a stable key, its name and its he
   assert.equal(b.opts.headers.apikey, KEY);
   assert.equal(b.body.p_token, TOKEN);
   assert.deepEqual(plain(b.body.p_tabs), [
-    { key: 'BOOK/2', name: 'Sales Jammu', headings: HEAD },
-    { key: 'BOOK/3', name: 'CRM Delhi', headings: ['Name', 'Phone'] },
+    { key: 'BOOK/2', name: 'Sales Jammu', book: 'Leads workbook', headings: HEAD },
+    { key: 'BOOK/3', name: 'CRM Delhi', book: 'Leads workbook', headings: ['Name', 'Phone'] },
   ]);
 });
 

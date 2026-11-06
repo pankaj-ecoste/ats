@@ -92,7 +92,7 @@ function run_() {
   tabs.forEach(function (t) { byKey[t.key] = t; });
   var plan = call_('sheet_sync_plan', {
     p_token: APP_TOKEN,
-    p_tabs: tabs.filter(function (t) { return t.headings.length > 0; }).map(function (t) { return { key: t.key, name: t.name, headings: t.headings }; })
+    p_tabs: tabs.filter(function (t) { return t.headings.length > 0; }).map(function (t) { return { key: t.key, name: t.name, book: ss.getName(), headings: t.headings }; })
   });
   var problems = [];
   (plan.links || []).forEach(function (link) {

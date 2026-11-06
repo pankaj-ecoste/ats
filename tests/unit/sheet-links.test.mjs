@@ -9,7 +9,7 @@ function load({ rpc = { data: null, error: null }, rows = { data: [], error: nul
   const table = new Proxy({}, { get: (_, k) => (k === 'then' ? (res) => res(rows) : (...a) => { ops.push([k, ...a]); return table; }) });
   const fake = { rpc: async (name, args) => { ops.push(['rpc', name, args]); return rpc; }, from: (t) => { ops.push(['from', t]); return table; } };
   const app = loadApp({ until: 'services', globals: { fake }, after: 'sb = fake',
-    expose: ['leadFeedStatus', 'leadFeedConnect', 'leadFeedBatches', 'leadFeedScriptFor', 'APP_SETTINGS', 'sheetTabs', 'sheetLinks', 'sheetLinkSave', 'sheetLinkUpdate', 'sheetLinkRemove',
+    expose: ['leadFeedStatus', 'leadFeedConnect', 'leadFeedBatches', 'leadFeedScriptFor', 'APP_SETTINGS', 'sheetTabs', 'sheetLinks', 'sheetLinkSave', 'sheetLinkUpdate', 'sheetLinkRemove', 'leadFeedToken',
       'guessLink', 'linkProblem', 'newHeadings', 'missingHeadings', 'isNoiseHeading', 'LINK_FIELDS', 'linkFields', 'guessCustom', 'saveColumns', 'customColumns'] });
   return { app, ops };
 }
@@ -17,13 +17,13 @@ function load({ rpc = { data: null, error: null }, rows = { data: [], error: nul
 /* ---------- the connection (Settings) ---------- */
 test('the connection status comes back in plain fields, with times as numbers', async () => {
   const { app, ops } = load({ rpc: { data: { set_up: true, enabled: true, token_made_at: '2026-10-24T09:30:00Z', last_received_at: null, tabs_seen: 46, last_seen_at: '2026-10-24T10:00:00Z' }, error: null } });
-  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: true, enabled: true, tokenMadeAt: Date.parse('2026-10-24T09:30:00Z'), lastReceivedAt: null, tabsSeen: 46, lastSeenAt: Date.parse('2026-10-24T10:00:00Z') });
+  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: true, enabled: true, tokenMadeAt: Date.parse('2026-10-24T09:30:00Z'), lastReceivedAt: null, tabsSeen: 46, lastSeenAt: Date.parse('2026-10-24T10:00:00Z'), workbooks: [], refusedRecently: 0, canShowScript: false });
   assert.deepEqual(ops[0].slice(0, 2), ['rpc', 'lead_feed_status']);
 });
 
 test('nothing set up yet reads as off', async () => {
   const { app } = load({ rpc: { data: { set_up: false, enabled: false }, error: null } });
-  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: false, enabled: false, tokenMadeAt: null, lastReceivedAt: null, tabsSeen: 0, lastSeenAt: null });
+  assert.deepEqual(plain(await app.leadFeedStatus()), { setUp: false, enabled: false, tokenMadeAt: null, lastReceivedAt: null, tabsSeen: 0, lastSeenAt: null, workbooks: [], refusedRecently: 0, canShowScript: false });
 });
 
 test('switching the connection sends the switch and returns the token only when a new one was made', async () => {
@@ -64,11 +64,11 @@ test('the script for the workbook carries this app address and public key, and t
 
 /* ---------- tabs and links ---------- */
 test('the tabs seen lately come back by name, with their headings', async () => {
-  const { app, ops } = load({ rows: { data: [{ tab_key: 'B/1', tab_name: 'CRM Delhi', headings: ['Name', 'Phone'], seen_at: '2026-11-05T10:00:00Z' }], error: null } });
-  assert.deepEqual(plain(await app.sheetTabs()), [{ key: 'B/1', name: 'CRM Delhi', headings: ['Name', 'Phone'], seenAt: Date.parse('2026-11-05T10:00:00Z') }]);
+  const { app, ops } = load({ rows: { data: [{ tab_key: 'B/1', tab_name: 'CRM Delhi', book_name: 'Leads workbook', headings: ['Name', 'Phone'], seen_at: '2026-11-05T10:00:00Z' }], error: null } });
+  assert.deepEqual(plain(await app.sheetTabs()), [{ key: 'B/1', name: 'CRM Delhi', book: 'Leads workbook', headings: ['Name', 'Phone'], seenAt: Date.parse('2026-11-05T10:00:00Z') }]);
   assert.deepEqual(plain(ops[0]), ['from', 'sheet_tabs']);
   assert.equal(plain(ops.find((o) => o[0] === 'gte'))[1], 'seen_at');
-  assert.deepEqual(plain(ops.find((o) => o[0] === 'order')), ['order', 'tab_name']);
+  assert.deepEqual(plain(ops.filter((o) => o[0] === 'order').map((o) => o[1])), ['book_name', 'tab_name']);
 });
 
 test('the links come back as plain records', async () => {
@@ -150,4 +150,17 @@ test('your own columns: guessed by the same words, listed with the standard fiel
   assert.ok(keys.includes('callStatus') && keys.includes('x:Interview status') && keys[keys.length - 1] === 'x:Interview status');
   assert.equal(app.linkProblem({ name: 'A', phone: 'B', 'x:Interview status': 'B' }), 'The column "B" is chosen for two fields');
   assert.equal(app.linkProblem({ name: 'A', phone: 'B', 'x:Interview status': 'C' }), '');
+});
+
+test('the status tells the workbooks seen and whether the workbook was refused; the script key can be read again by an admin', async () => {
+  const st = load({ rpc: { data: { set_up: true, enabled: true, token_made_at: null, last_received_at: null, tabs_seen: 3, last_seen_at: '2026-11-06T10:00:00Z',
+    workbooks: [{ id: 'B1', name: 'Leads A', tabs: 2, last_seen_at: '2026-11-06T10:00:00Z' }, { id: 'B2', name: null, tabs: 1, last_seen_at: null }], refused_recently: 4, can_show_script: true }, error: null } });
+  const s = plain(await st.app.leadFeedStatus());
+  assert.deepEqual(s.workbooks, [{ id: 'B1', name: 'Leads A', tabs: 2, lastSeenAt: Date.parse('2026-11-06T10:00:00Z') }, { id: 'B2', name: 'Workbook', tabs: 1, lastSeenAt: null }]);
+  assert.equal(s.refusedRecently, 4);
+  assert.equal(s.canShowScript, true);
+  const tk = load({ rpc: { data: 'abc123', error: null } });
+  assert.equal(await tk.app.leadFeedToken(), 'abc123');
+  assert.deepEqual(plain(tk.ops[0]), ['rpc', 'lead_feed_token', null]);
+  assert.equal(await load({ rpc: { data: null, error: null } }).app.leadFeedToken(), null, 'a key made before it was kept is not known');
 });

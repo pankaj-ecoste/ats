@@ -12,6 +12,16 @@ The ad leads land in a Google workbook with many tabs, one per ad or opening, an
 4. From then on the script sends the new rows of that tab, with the opening, source and columns you chose. It writes the result in a **Synced to ATS** column (added to linked tabs only): *Added*, *Added to the opening (already in the app)*, *Duplicate: …* or *Skipped: …*.
 5. The database checks the secret, tidies phone numbers, finds repeats (same email, or same last 10 digits of the phone) and adds the people as **New** in the opening. The opening's recruiter gets a notification.
 
+## More than one workbook
+
+The connection has **one key**. Paste the **same script** into every workbook you want to connect (Extensions → Apps Script → paste → run `installLeadSync`). Each workbook tells the app its own name, and every tab is known by its workbook and tab together, so two tabs both called "Sales" never clash.
+
+- **Settings → Lead sheet connection → Show my script** shows the same script again (admin), so a second workbook, or the first one again, can be connected without making a new key.
+- The same panel lists the **workbooks**: name, number of tabs, last report, and *Connected* (reported in the last 10 minutes) or *Not reporting*. A red notice says so when the workbook's script is being refused.
+- In the link window, with more than one workbook, tabs read "Workbook › Tab" and a **workbook filter** narrows the list.
+- **Make a new script** renews the key and stops the script in **every** workbook until the new one is pasted in each. Use it only if the key was lost or leaked. A key made before this option existed cannot be shown: make a new script once, and it can be shown from then on.
+- An opening's **Lead sheets** tab shows a red notice when no workbook has reported for 10 minutes.
+
 ## The rules
 
 - **One tab belongs to one opening.** A tab already linked is shown as taken ("linked to …") and cannot be chosen for another opening.

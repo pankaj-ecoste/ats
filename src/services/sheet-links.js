@@ -6,9 +6,9 @@ const TABS_FRESH_DAYS=3;   // a tab the script has not reported for this long is
 // the tabs the script reported lately, by name
 async function sheetTabs(){
  const since=new Date(Date.now()-TABS_FRESH_DAYS*864e5).toISOString();
- const {data,error}=await sb.from('sheet_tabs').select('tab_key,tab_name,headings,seen_at').gte('seen_at',since).order('tab_name');
+ const {data,error}=await sb.from('sheet_tabs').select('tab_key,tab_name,book_name,headings,seen_at').gte('seen_at',since).order('book_name').order('tab_name');
  if(error)throw authError(error);
- return (data||[]).map(t=>({key:t.tab_key,name:t.tab_name,headings:t.headings||[],seenAt:msOf(t.seen_at)}));
+ return (data||[]).map(t=>({key:t.tab_key,name:t.tab_name,book:t.book_name||'',headings:t.headings||[],seenAt:msOf(t.seen_at)}));
 }
 // every link (so a tab that belongs to another opening can be shown as taken)
 async function sheetLinks(){
