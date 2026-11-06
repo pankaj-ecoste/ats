@@ -20,6 +20,10 @@ function tidyAd(f,prev){
  const ad={status,raisedOn:prev.raisedOn,raisedBy:prev.raisedBy,startOn,endOn,platform:txt(f.platform,80),link:txt(f.link,500),notes:String(f.notes||'').trim().slice(0,2000),withSalary:!!f.withSalary};
  const budget=num(f.budget,'Budget'),spend=num(f.spend,'Spend');
  if(budget!==undefined)ad.budget=budget;if(spend!==undefined)ad.spend=spend;
+ // the fields of their own: what was typed replaces them (blank values dropped); nothing passed keeps what was there
+ let custom=prev.custom||{};
+ if(f.custom){custom={};Object.entries(f.custom).forEach(([k,v])=>{const key=txt(k,40),val=txt(v,200);if(key&&val)custom[key]=val});if(Object.keys(custom).length>20)throw new Error('At most 20 fields of your own on one ad')}
+ if(Object.keys(custom).length)ad.custom=custom;
  if(prev.sent)ad.sent=prev.sent;   // the briefs already sent to marketing stay on the record
  return ad;
 }

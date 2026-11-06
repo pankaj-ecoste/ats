@@ -129,3 +129,12 @@ test('the marketing contact is kept in the company settings and comes back; none
   assert.deepEqual(plain(app.settingsRow({ settings: { marketing: m } }).config.marketing), m);
   assert.equal(app.settingsRow({ settings: {} }).config.marketing, undefined);
 });
+
+test('the ad fields are kept in the company settings and come back; none stays off the record', () => {
+  const P = app.makePeople([]);
+  const f = ['Creative link', 'Target CPL'];
+  assert.deepEqual(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: { adFields: f } }] }, P)).settings.adFields, f);
+  assert.equal(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: {} }] }, P)).settings.adFields, undefined);
+  assert.deepEqual(plain(app.settingsRow({ settings: { adFields: f } }).config.adFields), f);
+  assert.equal(app.settingsRow({ settings: {} }).config.adFields, undefined);
+});

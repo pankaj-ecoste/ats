@@ -7,6 +7,7 @@ const recruiters=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter']);co
 const interviewers=()=>{if(CONNECTED)return PEOPLE.names(['admin','recruiter','hiring_manager','interviewer']);const t=S.settings.team;return t&&t.interviewers&&t.interviewers.length?t.interviewers:DEFAULT_INTERVIEWERS};
 // the list of places a lead can come from: the one an admin saved in Settings, else the built-in list
 const customColumns=()=>S.settings.columns||[];
+const adFieldList=()=>S.settings.adFields||[];   // the fields of their own an admin or recruiter added to every ad request
 const sourceList=()=>{const s=S.settings.sources;return s&&s.length?s:SOURCES};
 // where an application came from: its own source, else the person's first source
 const appSource=a=>a.source||(getC(a.cid)||{}).source||'Unknown';

@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'recordScreening', 'scheduleGroupInterview', 'setInviteStatus', 'sendGroupReminders', 'cancelGroupInterview', 'evaluateGroup',
-    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd', 'recordAdBrief', 'adBrief', 'saveMarketingContact'],
+    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions', 'requestAd', 'saveAdRequest', 'dropAdRequest', 'hasAd', 'recordAdBrief', 'adBrief', 'saveMarketingContact', 'saveAdFields', 'adFieldList'],
 });
 
 // three applications of the same opening that are still early in the pipeline
@@ -181,4 +181,24 @@ test('the marketing contact is tidy, checked, kept in the settings, and emptied 
   assert.equal(app.S.settings.marketing.email, 'shivam@x.test', 'a refused save changes nothing');
   app.saveMarketingContact({ name: '', email: '', phone: '' });
   assert.equal(app.S.settings.marketing, undefined);
+});
+
+test('fields of their own on the ad: the names are tidy and at most 12; the values are kept, tidied, and survive other edits', () => {
+  const app = fresh();
+  app.saveAdFields(['  Creative   link ', 'creative link', '', 'Target CPL', 'x'.repeat(41)]);
+  assert.deepEqual(plain(app.adFieldList()), ['Creative link', 'Target CPL'], 'tidy, no repeat in any case, nothing over 40 characters');
+  app.saveAdFields(Array.from({ length: 15 }, (_, i) => 'F' + i));
+  assert.equal(app.adFieldList().length, 12);
+  app.saveAdFields([]);
+  assert.deepEqual(plain(app.adFieldList()), []);
+  const o = app.S.openings[0];
+  app.requestAd(o.id);
+  app.saveAdRequest(o.id, { status: 'Running', custom: { ' Creative link ': '  https://x.test/a  ', 'Target CPL': '', '': 'no name' } });
+  assert.deepEqual(plain(o.ad.custom), { 'Creative link': 'https://x.test/a' }, 'blank values and nameless fields are dropped');
+  app.saveAdRequest(o.id, { status: 'Paused' });
+  assert.deepEqual(plain(o.ad.custom), { 'Creative link': 'https://x.test/a' }, 'an edit that does not touch the fields keeps them');
+  app.saveAdRequest(o.id, { status: 'Paused', custom: {} });
+  assert.equal(o.ad.custom, undefined, 'emptied fields leave no trace');
+  const many = Object.fromEntries(Array.from({ length: 21 }, (_, i) => ['F' + i, 'v']));
+  assert.throws(() => app.saveAdRequest(o.id, { status: 'Paused', custom: many }), /At most 20/);
 });

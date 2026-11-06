@@ -94,7 +94,7 @@ function stateFromRows(rows,people){
  const s=rows.company_settings&&rows.company_settings[0];
  const cfg=(s&&s.config)||{};
  const settings=s?{company:s.company,companyAddr:s.address,signatory:s.signatory,signTitle:s.sign_title,threshold:s.match_threshold,weights:s.match_weights,
-  ...(cfg.sla?{sla:cfg.sla}:{}),...(cfg.report?{report:cfg.report}:{}),...(cfg.team?{team:cfg.team}:{}),...(cfg.sources?{sources:cfg.sources}:{}),...(cfg.columns?{columns:cfg.columns}:{}),...(cfg.marketing?{marketing:cfg.marketing}:{}),...(cfg.modelSummary?{modelSummary:true}:{})}:{};
+  ...(cfg.sla?{sla:cfg.sla}:{}),...(cfg.report?{report:cfg.report}:{}),...(cfg.team?{team:cfg.team}:{}),...(cfg.sources?{sources:cfg.sources}:{}),...(cfg.columns?{columns:cfg.columns}:{}),...(cfg.marketing?{marketing:cfg.marketing}:{}),...(cfg.adFields?{adFields:cfg.adFields}:{}),...(cfg.modelSummary?{modelSummary:true}:{})}:{};
  const monthly={};(rows.monthly_targets||[]).forEach(m=>{monthly[m.month]={target:m.target,budget:m.budget,other:m.other}});
  const state={v:3,
   settings,
@@ -182,7 +182,7 @@ const TO_ROW={
 function settingsRow(state){
  const s=state.settings||{};
  return {company:s.company||'',address:s.companyAddr||'',signatory:s.signatory||'',sign_title:s.signTitle||'',match_threshold:s.threshold??65,match_weights:s.weights,
-  config:{...(s.sla?{sla:s.sla}:{}),...(s.report?{report:s.report}:{}),...(s.team?{team:s.team}:{}),...(s.sources?{sources:s.sources}:{}),...(s.columns?{columns:s.columns}:{}),...(s.marketing?{marketing:s.marketing}:{}),...(s.modelSummary?{modelSummary:true}:{}),...(state.postCfg?{postCfg:state.postCfg}:{}),...(state.autoSync?{autoSync:state.autoSync}:{})}};
+  config:{...(s.sla?{sla:s.sla}:{}),...(s.report?{report:s.report}:{}),...(s.team?{team:s.team}:{}),...(s.sources?{sources:s.sources}:{}),...(s.columns?{columns:s.columns}:{}),...(s.marketing?{marketing:s.marketing}:{}),...(s.adFields?{adFields:s.adFields}:{}),...(s.modelSummary?{modelSummary:true}:{}),...(state.postCfg?{postCfg:state.postCfg}:{}),...(state.autoSync?{autoSync:state.autoSync}:{})}};
 }
 // one interviewer's own scorecard (null until every criterion has a score)
 const scoreRow=(i,interviewerId)=>i.scores&&interviewerId?{interview_id:i.id,interviewer_id:interviewerId,scores:i.scores,recommendation:i.rec||null,decision:i.decision||null,feedback:i.feedback||''}:null;

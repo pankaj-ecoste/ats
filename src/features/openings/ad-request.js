@@ -8,10 +8,12 @@ function adPanel(o){
  if(!hasAd(o))return `<section class="panel" style="margin-top:16px"><header><h3>Ad request</h3>${edit?`<button class="btn sm" data-act="adRequest" data-a1="${o.id}">${ic('plus')}Request an ad</button>`:''}</header>
   <div class="pbody"><p class="muted" style="margin:0">No ad asked for. Leads for this opening come from the linked sheet. Request an ad when you need new leads for an upcoming position.</p></div></section>`;
  const a=o.ad;
- const rows=[['Status',`<span class="pill ${AD_COLOR[a.status]}">${a.status}</span>`],['Raised',esc(fmtD(a.raisedOn)+(a.raisedBy?' by '+a.raisedBy:''))],['Ad started',esc(fmtD(a.startOn))],['Ad ended',esc(fmtD(a.endOn))],['Platform',esc(a.platform||'—')],['Budget',rupees(a.budget)],['Spend so far',rupees(a.spend)],['Creative or ad link',a.link?`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer">${esc(a.link)}</a>`:'—'],['Notes',esc(a.notes||'—')]];
+ const rows=[['Status',`<span class="pill ${AD_COLOR[a.status]}">${a.status}</span>`],['Raised',esc(fmtD(a.raisedOn)+(a.raisedBy?' by '+a.raisedBy:''))],['Ad started',esc(fmtD(a.startOn))],['Ad ended',esc(fmtD(a.endOn))],['Platform',esc(a.platform||'—')],['Budget',rupees(a.budget)],['Spend so far',rupees(a.spend)],['Creative or ad link',a.link?`<a href="${esc(a.link)}" target="_blank" rel="noopener noreferrer">${esc(a.link)}</a>`:'—'],['Notes',esc(a.notes||'—')],...adOwnFields(a).map(n=>[esc(n),esc((a.custom||{})[n]||'—')])];
  return `<section class="panel" style="margin-top:16px"><header><h3>Ad request</h3>${edit?`<div class="row"><button class="btn sm pri" data-act="adBrief" data-a1="${o.id}">${ic('send')}${(a.sent||[]).length?'Send again':'Send to '+esc(marketingName())}</button><button class="btn sm" data-act="adEdit" data-a1="${o.id}">${ic('edit')}Update</button><button class="btn sm" data-act="adDrop" data-a1="${o.id}">No ad needed</button></div>`:''}</header>
   <div class="pbody">${adResults(o)}<dl class="kv">${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl>${adSentList(a)}</div></section>`;
 }
+// the fields of their own: the names set up for every ad, then any name an older ad still holds a value for
+const adOwnFields=a=>{const l=adFieldList();return [...l,...Object.keys(a.custom||{}).filter(k=>!l.includes(k))]};
 // what the ad brought in, counted from this opening's applications (nothing typed in); says plainly what was counted
 function adResults(o){
  const st=adStats(o,appsOfOp(o.id),appSource);
@@ -63,11 +65,24 @@ function adEditor(opId){
   <label class="f" style="grid-column:span 3">Creative or ad link<input class="inp" name="link" value="${esc(a.link||'')}" placeholder="https://"></label>
   <label class="f" style="grid-column:span 3">Notes<textarea class="inp" name="notes" rows="3">${esc(a.notes||'')}</textarea></label>
   <label class="f" style="grid-column:span 3;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="withSalary" ${a.withSalary?'checked':''}>Include the salary range when the brief is sent to marketing</label>
+  <div style="grid-column:span 3"><h4 style="margin:6px 0 8px">Your own fields</h4><div id="adCust" class="fgrid"></div>
+   <div class="row" style="margin-top:10px"><input class="inp" id="adNewF" maxlength="40" placeholder="New field, e.g. Creative link" style="max-width:280px"><button type="button" class="btn sm" id="adAddF">${ic('plus')}Add field</button></div></div>
   </form>`,
   foot:`<button class="btn" data-close>Cancel</button><button class="btn pri" id="adSave">Save</button>`,
   onMount:el=>{
    $('#adF',el).onsubmit=e=>e.preventDefault();
-   $('#adSave',el).onclick=()=>{const f=$('#adF',el);const d=Object.fromEntries(new FormData(f));d.withSalary=f.withSalary.checked;
+   // one box per field of their own; a new name is added for every ad (kept in the settings), what was typed so far stays
+   const have={...(a.custom||{})};
+   const typed=()=>{$$('[data-cf]',el).forEach(i=>{have[i.dataset.cf]=i.value})};
+   const drawCust=()=>{$('#adCust',el).innerHTML=adOwnFields({custom:have}).map(n=>`<label class="f">${esc(n)}<input class="inp" data-cf="${esc(n)}" maxlength="200" value="${esc(have[n]||'')}"></label>`).join('')||'<p class="muted small" style="margin:0">None yet. Add a field to keep something of your own on every ad.</p>'};
+   drawCust();
+   const addField=()=>{const inp=$('#adNewF',el);const name=inp.value.replace(/\s+/g,' ').trim();if(!name)return;
+    if(adOwnFields({custom:have}).some(x=>x.toLowerCase()===name.toLowerCase())){toast('That field is already there','var(--red)');return}
+    if(adFieldList().length>=12){toast('At most 12 fields of your own','var(--red)');return}
+    typed();saveAdFields([...adFieldList(),name]);inp.value='';drawCust();toast('Field added to every ad request')};
+   $('#adAddF',el).onclick=addField;
+   $('#adNewF',el).onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addField()}};
+   $('#adSave',el).onclick=()=>{typed();const f=$('#adF',el);const d=Object.fromEntries(new FormData(f));d.withSalary=f.withSalary.checked;d.custom=have;
     try{saveAdRequest(opId,d)}catch(e){toast(e.message,'var(--red)');return}
     closeModal();toast('Ad request saved');refresh()}}});
 }

@@ -11,6 +11,10 @@ function sourcesPanel(){
 function columnsPanel(){
  return `<section class="panel" style="margin-top:16px"><header><div><h3>Lead columns</h3><p>Columns of your own for the Applications list, one name per line (up to 12). "Call status" is already there. When you link a sheet tab you match a sheet column to each of these.</p></div></header><div class="pbody fgrid"><label class="f full">Columns<textarea class="inp" id="colList" rows="4" placeholder="Interview status">${esc(customColumns().join('\n'))}</textarea></label><div class="full"><button class="btn pri" id="colSave">Save columns</button></div></div></section>`;
 }
+// the fields of their own on every ad request
+function adFieldsPanel(){
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Ad request fields</h3><p>Fields of your own on every ad request, one name per line (up to 12), for example "Creative link" or "Target cost per lead". They appear in the ad's Update window and in its panel. A recruiter can also add one from the Update window.</p></div></header><div class="pbody fgrid"><label class="f full">Fields<textarea class="inp" id="afList" rows="4" placeholder="Creative link">${esc(adFieldList().join('\n'))}</textarea></label><div class="full"><button class="btn pri" id="afSave">Save ad fields</button></div></div></section>`;
+}
 // who gets the brief when a recruiter asks for an ad
 function marketingPanel(){
  const m=S.settings.marketing||{};
@@ -38,7 +42,7 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
- ${sourcesPanel()}${columnsPanel()}${marketingPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
+ ${sourcesPanel()}${columnsPanel()}${adFieldsPanel()}${marketingPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
 // admin switch for the Claude draft summaries; off until an admin turns it on
@@ -54,6 +58,7 @@ function bindSettings(root){
  const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{setMatchThreshold(+th.value);render()};
  const on=(sel,fn)=>{const e=$(sel,root);if(e)e.onclick=fn};
  on('#srcSave',()=>{saveSources($('#srcList',root).value.split('\n'));toast('Sources saved');render()});
+ on('#afSave',()=>{saveAdFields($('#afList',root).value.split('\n'));toast('Ad fields saved');render()});
  on('#mkSave',()=>{try{saveMarketingContact({name:$('#mkName',root).value,email:$('#mkEmail',root).value,phone:$('#mkPhone',root).value})}catch(e){toast(e.message,'var(--red)');return}toast('Marketing contact saved');render()});
  on('#colSave',()=>{saveColumns($('#colList',root).value.split('\n'));toast('Columns saved');render()});
  on('#teamSave',()=>{const lines=id=>$(id,root).value.split('\n');saveTeam({recruiters:lines('#teamRec'),interviewers:lines('#teamInt')});toast('Team saved');render()});

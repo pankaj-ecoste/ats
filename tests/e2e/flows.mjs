@@ -84,6 +84,22 @@ check('numbers: leads, screened, hired and the costs come from the ad sources on
   return t.join('|') === 'Leads=3|Screened=2|Interviewed=1|Hired=1|Cost per lead=₹1,000|Cost per hire=₹3,000';
 }));
 check('numbers: the panel says what was counted and how many were left out', await ev(() => document.querySelector('#content').textContent.includes('1 other application on this opening')));
+// ---- ad request: fields of their own
+await page.click('[data-act="adEdit"]');
+await page.fill('#adNewF', 'Creative link');
+await page.click('#adAddF');
+check('fields: a new field is added to every ad request from the Update window', await ev(() => adFieldList().join() === 'Creative link' && !!document.querySelector('[data-cf="Creative link"]')));
+await page.fill('[data-cf="Creative link"]', 'https://example.com/ad1');
+await page.fill('#adNewF', 'creative LINK');
+await page.click('#adAddF');
+check('fields: the same name in other letters is refused', await ev(() => adFieldList().length === 1));
+await page.fill('#adNewF', 'Target CPL');
+await page.click('#adAddF');
+check('fields: what was typed stays when another field is added', await ev(() => document.querySelector('[data-cf="Creative link"]').value === 'https://example.com/ad1'));
+await page.click('#adSave');
+await page.waitForSelector('.scrim', { state: 'detached' });
+check('fields: the value is saved on the ad and shown in the panel, the empty one as a dash', await ev(() => { const t = document.querySelector('#content').textContent; return S.openings[0].ad.custom['Creative link'] === 'https://example.com/ad1' && !('Target CPL' in S.openings[0].ad.custom) && t.includes('Creative link') && t.includes('Target CPL'); }));
+await ev(() => { saveAdFields([]); });
 await ev(() => { S.applications = S.applications.filter((a) => !a.id.startsWith('A-AD')); });
 await ev(() => dropAdRequest(S.openings[0].id));
 

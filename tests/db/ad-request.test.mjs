@@ -18,6 +18,7 @@ before(async () => {
   await q('begin');
   if (!(await q("select 1 from information_schema.columns where table_name = 'openings' and column_name = 'ad'")).rows.length) await q(mig('0031_ad_request.sql'));
   if (!(await q("select 1 from pg_proc where proname = 'valid_ad_request' and prosrc like '%WhatsApp%'")).rows.length) await q(mig('0032_ad_brief_history.sql'));
+  if (!(await q("select 1 from pg_proc where proname = 'valid_ad_request' and prosrc like '%custom%'")).rows.length) await q(mig('0033_ad_own_fields.sql'));
   await q("insert into public.openings (id, title, positions, status) values ('OP-AD1', 'Ad request role', 1, 'Open')");
 });
 after(async () => {
@@ -62,4 +63,21 @@ test('the briefs sent to marketing: a list of at most 20 with a known channel, a
   assert.match(await bad({ ...ok, sent: [{ ...one, subject: 'x'.repeat(201) }] }), /valid|check/i);
   assert.match(await bad({ ...ok, sent: 'no' }), /valid|check/i);
   assert.match(await bad({ ...ok, sent: ['text'] }), /valid|check/i);
+});
+
+test('fields of their own on an ad: an object of at most 20 fields, names 1 to 40 characters, values texts up to 200', { skip }, async () => {
+  const ok = { status: 'Requested', raisedOn: '2026-11-06' };
+  const set = (v) => q("update public.openings set ad = $1 where id = 'OP-AD1'", [JSON.stringify(v)]);
+  const bad = async (v) => { await q('savepoint s'); try { await set(v); } catch (e) { await q('rollback to savepoint s'); await q('release savepoint s'); return e.message; } await q('release savepoint s'); return ''; };
+  const fields = (n) => Object.fromEntries(Array.from({ length: n }, (_, i) => ['F' + i, 'v']));
+  assert.equal(await bad({ ...ok, custom: { 'Creative link': 'https://x.test' } }), '');
+  assert.equal(await bad({ ...ok, custom: fields(20) }), '');
+  assert.match(await bad({ ...ok, custom: fields(21) }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: { a: 1 } }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: { a: null } }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: { a: 'x'.repeat(201) } }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: { ['k'.repeat(41)]: 'v' } }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: { '': 'v' } }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: ['a'] }), /valid|check/i);
+  assert.match(await bad({ ...ok, custom: 'a' }), /valid|check/i);
 });
