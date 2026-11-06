@@ -13,6 +13,8 @@ function saveTeam({recruiters,interviewers}){
 }
 // the places a lead can come from; an empty list goes back to the built-in one
 function saveSources(list){const clean=[...new Set(list.map(x=>String(x).trim()).filter(Boolean))];repo.root('settings',s=>{if(clean.length)s.sources=clean;else delete s.sources})}
+// the app's own columns for leads (Call status is built in); the names an admin added. An empty list means none.
+function saveColumns(list){const clean=[...new Set(list.map(x=>String(x).trim().replace(/\s+/g,' ')).filter(x=>x&&x.length<=40))].slice(0,12);repo.root('settings',s=>{if(clean.length)s.columns=clean;else delete s.columns})}
 // rules: {stageKey: days}
 function saveSla(rules){repo.root('settings',s=>{s.sla={...rules}})}
 function resetDemoData(){repo.reset(seed())}

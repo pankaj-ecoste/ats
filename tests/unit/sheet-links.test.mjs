@@ -10,7 +10,7 @@ function load({ rpc = { data: null, error: null }, rows = { data: [], error: nul
   const fake = { rpc: async (name, args) => { ops.push(['rpc', name, args]); return rpc; }, from: (t) => { ops.push(['from', t]); return table; } };
   const app = loadApp({ until: 'services', globals: { fake }, after: 'sb = fake',
     expose: ['leadFeedStatus', 'leadFeedConnect', 'leadFeedBatches', 'leadFeedScriptFor', 'APP_SETTINGS', 'sheetTabs', 'sheetLinks', 'sheetLinkSave', 'sheetLinkUpdate', 'sheetLinkRemove',
-      'guessLink', 'linkProblem', 'newHeadings', 'missingHeadings', 'isNoiseHeading', 'LINK_FIELDS'] });
+      'guessLink', 'linkProblem', 'newHeadings', 'missingHeadings', 'isNoiseHeading', 'LINK_FIELDS', 'linkFields', 'guessCustom', 'saveColumns', 'customColumns'] });
   return { app, ops };
 }
 
@@ -139,4 +139,15 @@ test('a call status column is guessed from the heading, and lead_status is not m
   assert.equal(g(['Full Name', 'Mobile', 'lead_status', 'Remark']).map.callStatus, undefined);
   assert.ok(app.LINK_FIELDS.some((f) => f.key === 'callStatus'));
   assert.equal(app.linkProblem({ name: 'A', phone: 'B', callStatus: 'B' }), 'The column "B" is chosen for two fields');
+});
+
+test('your own columns: guessed by the same words, listed with the standard fields, and never shared between two fields', () => {
+  const { app } = load();
+  assert.deepEqual(plain(app.guessLink(['Full Name', 'Mobile', 'VI DOne or not', 'TA '], ['VI done', 'Interview status']).map),
+    { name: 'Full Name', phone: 'Mobile', 'x:VI done': 'VI DOne or not' });
+  assert.deepEqual(plain(app.guessCustom(['Status of interview'], ['Interview status'], [])), {}, 'no guess when the words differ');
+  const keys = app.linkFields(['Interview status']).map((f) => f.key);
+  assert.ok(keys.includes('callStatus') && keys.includes('x:Interview status') && keys[keys.length - 1] === 'x:Interview status');
+  assert.equal(app.linkProblem({ name: 'A', phone: 'B', 'x:Interview status': 'B' }), 'The column "B" is chosen for two fields');
+  assert.equal(app.linkProblem({ name: 'A', phone: 'B', 'x:Interview status': 'C' }), '');
 });

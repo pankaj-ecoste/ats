@@ -53,7 +53,7 @@ function linkModal(o,link){
  const d={tabKey:edit?link.tabKey:'',source:edit?link.source:'',map:edit?{...link.map}:{},extra:new Set(edit?link.extra:[]),enabled:edit?link.enabled:true,hs:[]};
  const tabNow=()=>LS.tabs.find(t=>t.key===d.tabKey);
  const reset=()=>{const t=tabNow();d.hs=t?t.headings:(edit?link.known:[]);
-  if(!edit){const g=guessLink(d.hs);d.map=g.map;d.extra=new Set(g.extra);d.source=guessSourceFor(t&&t.name,list)}};
+  if(!edit){const g=guessLink(d.hs,customColumns());d.map=g.map;d.extra=new Set(g.extra);d.source=guessSourceFor(t&&t.name,list)}};
  reset();
  const opt=(v,l,sel,dis)=>`<option value="${esc(v)}" ${sel?'selected':''} ${dis?'disabled':''}>${esc(l)}</option>`;
  const tabSel=edit?`<div class="f"><div class="small muted">Tab</div><div><b>${esc(link.tabName)}</b></div></div>`
@@ -64,8 +64,9 @@ function linkModal(o,link){
   const optsFor=k=>[opt('','— not in the sheet —',!d.map[k])].concat(d.hs.map(h=>opt(h,h,d.map[k]===h))).join('');
   const extras=d.hs.filter(h=>!used.has(h));
   if(!d.tabKey)return '<p class="muted" style="margin:14px 0 0">Choose the tab above first. Its columns will show here.</p>';
-  return `<h4 style="margin:14px 0 6px">Which column is what</h4><div class="fgrid">${LINK_FIELDS.map(f=>`<label class="f">${esc(f.label)}${f.need?' <span class="muted small">(needed)</span>':''}<select class="inp" data-lk="${f.key}">${optsFor(f.key)}</select></label>`).join('')}</div>
+  return `<h4 style="margin:14px 0 6px">Which column is what</h4><div class="fgrid">${linkFields(customColumns()).map(f=>`<label class="f">${esc(f.label)}${f.need?' <span class="muted small">(needed)</span>':''}${f.custom?' <span class="muted small">(your column)</span>':''}<select class="inp" data-lk="${f.key}">${optsFor(f.key)}</select></label>`).join('')}</div>
   <p class="small muted" style="margin:6px 0 0">Name, and a phone or an email, are needed. The rest are optional.</p>
+  ${isAdmin()?`<div class="row" style="margin-top:10px;gap:8px;flex-wrap:nowrap"><input class="inp" id="lkNewCol" maxlength="40" placeholder="Need another column in the app? Name it, e.g. Interview status"><button class="btn" id="lkAddCol">Add column</button></div><p class="small muted" style="margin:4px 0 0">It is added to the app (Applications list and filters) and you can match a sheet column to it above.</p>`:''}
   <h4 style="margin:14px 0 6px">Other columns to keep with the lead</h4>
   ${extras.length?`<div class="fgrid" style="gap:4px 16px">${extras.map(h=>{const i=d.hs.indexOf(h);return `<label class="checkl"><input type="checkbox" data-lx="${i}" ${d.extra.has(h)?'checked':''}> ${esc(h)}${fresh.includes(h)?' <span class="pill orange">new</span>':''}</label>`}).join('')}</div><p class="small muted" style="margin:6px 0 0">These are shown on the candidate as "form answers", like the answer to "Do you have a bike?". Columns the platform adds for itself (ids, form names) are left unticked.</p>`:'<p class="small muted" style="margin:0">Every column is used for a field above.</p>'}`;
  };
@@ -77,6 +78,16 @@ function linkModal(o,link){
   onMount:el=>{
    const paint=()=>{$('#lkCols',el).innerHTML=grid();bindCols()};
    const bindCols=()=>{
+    const add=$('#lkAddCol',el);
+    if(add)add.onclick=()=>{
+     const name=$('#lkNewCol',el).value.trim().replace(/\s+/g,' ');
+     if(!name){toast('Type the name of the column','var(--red)');return}
+     const have=[...customColumns(),'Call status','Name','Phone','Email'].map(x=>x.toLowerCase());
+     if(have.includes(name.toLowerCase())){toast('The app already has a column with that name','var(--red)');return}
+     if(customColumns().length>=12){toast('At most 12 columns of your own','var(--red)');return}
+     saveColumns([...customColumns(),name]);
+     const guess=guessCustom(d.hs,[name],Object.values(d.map));Object.assign(d.map,guess);
+     toast('Column added: '+name);paint()};
     $$('[data-lk]',el).forEach(s=>s.onchange=()=>{if(s.value)d.map[s.dataset.lk]=s.value;else delete d.map[s.dataset.lk];paint()});
     $$('[data-lx]',el).forEach(c=>c.onchange=()=>{const h=d.hs[+c.dataset.lx];if(c.checked)d.extra.add(h);else d.extra.delete(h)});
    };

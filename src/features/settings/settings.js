@@ -7,6 +7,10 @@ const demoOnly=html=>CONNECTED?'':html;
 function sourcesPanel(){
  return `<section class="panel" style="margin-top:16px"><header><div><h3>Lead sources</h3><p>One name per line. These fill every "Where they came from" list. Leave it empty to use the built-in list.</p></div></header><div class="pbody fgrid"><label class="f full">Sources<textarea class="inp" id="srcList" rows="8">${esc(sourceList().join('\n'))}</textarea></label><div class="full"><button class="btn pri" id="srcSave">Save sources</button></div></div></section>`;
 }
+// the app's own columns for leads, shown in the Applications list; a sheet column is matched to each when a tab is linked
+function columnsPanel(){
+ return `<section class="panel" style="margin-top:16px"><header><div><h3>Lead columns</h3><p>Columns of your own for the Applications list, one name per line (up to 12). "Call status" is already there. When you link a sheet tab you match a sheet column to each of these.</p></div></header><div class="pbody fgrid"><label class="f full">Columns<textarea class="inp" id="colList" rows="4" placeholder="Interview status">${esc(customColumns().join('\n'))}</textarea></label><div class="full"><button class="btn pri" id="colSave">Save columns</button></div></div></section>`;
+}
 // who applied on the public careers page, and who was turned away and why
 function intakePanel(){
  const rows=(S.intake||[]).filter(x=>x.source==='careers_page').slice(0,15);
@@ -29,7 +33,7 @@ function vSettings(){
   <label class="f">Recruiters<textarea class="inp" id="teamRec" rows="5">${esc(recruiters().join('\n'))}</textarea></label>
   <label class="f">Interviewers and hiring managers<textarea class="inp" id="teamInt" rows="5">${esc(interviewers().join('\n'))}</textarea></label>
   <div class="full"><button class="btn pri" id="teamSave">Save team</button></div></div></section>`)}
- ${sourcesPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
+ ${sourcesPanel()}${columnsPanel()}${CONNECTED?intakePanel():''}${summaryPanel()}${slotHTML('settings.bottom')}
  ${demoOnly(`<section class="panel" style="margin-top:16px"><header><div><h3>Demo data</h3><p>Your changes are saved in this browser. Reset to start the demo again.</p></div><button class="btn bad" id="resetAll">Reset demo data</button></header></section>`)}`;
 }
 // admin switch for the Claude draft summaries; off until an admin turns it on
@@ -45,6 +49,7 @@ function bindSettings(root){
  const th=$('[data-th]',root);th.oninput=()=>th.nextElementSibling.textContent=th.value+'%';th.onchange=()=>{setMatchThreshold(+th.value);render()};
  const on=(sel,fn)=>{const e=$(sel,root);if(e)e.onclick=fn};
  on('#srcSave',()=>{saveSources($('#srcList',root).value.split('\n'));toast('Sources saved');render()});
+ on('#colSave',()=>{saveColumns($('#colList',root).value.split('\n'));toast('Columns saved');render()});
  on('#teamSave',()=>{const lines=id=>$(id,root).value.split('\n');saveTeam({recruiters:lines('#teamRec'),interviewers:lines('#teamInt')});toast('Team saved');render()});
  on('#wReset',()=>{resetMatchWeights();render();toast('Default weights restored')});
  on('#resetAll',()=>confirmBox('Reset demo data','This replaces everything with the original sample data.','Reset',()=>{resetDemoData();R.chat=null;go('dashboard');toast('Demo data restored')},true));

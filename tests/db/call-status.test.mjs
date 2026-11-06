@@ -21,6 +21,8 @@ before(async () => {
   if (!(await q("select to_regproc('public.sheet_sync_plan') as f")).rows[0].f) await q(mig('0023_sheet_links.sql'));
   if (!(await q("select has_table_privilege('authenticated', 'public.sheet_links', 'select') as g")).rows[0].g) await q(mig('0024_sheet_links_read_grant.sql'));
   if (!(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'call_status'")).rows.length) await q(mig('0027_call_status.sql'));
+  if (!(await q("select 1 from pg_proc where proname = 'ingest_one_lead' and prosrc like '%Call status updated%'")).rows.length && !(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'custom'")).rows.length) await q(mig('0028_call_status_refresh.sql'));
+  if (!(await q("select 1 from information_schema.columns where table_name = 'applications' and column_name = 'custom'")).rows.length) await q(mig('0029_custom_columns.sql'));
   await q('delete from public.lead_feed');
   await q("select set_config('app.allow_user_create', 'on', true)");
   await q("insert into auth.users (id, email, aud, role, raw_user_meta_data) values ($1, 'cs-admin@ats.ecoste.in', 'authenticated', 'authenticated', $2)", [U.admin, JSON.stringify({ full_name: 'Call admin' })]);
@@ -62,16 +64,36 @@ test('the same column cannot be used for a field and the call status', { skip },
 });
 
 test('a row sent again refreshes the call status of the person already there, and nothing else', { skip }, async () => {
-  if (!(await q("select 1 from pg_proc where proname = 'ingest_one_lead' and prosrc like '%Call status updated%'")).rows.length) await q(mig('0028_call_status_refresh.sql'));
   const token = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
   const rows = (s) => JSON.stringify([{ name: 'Asha', phone: '98765 43210', callStatus: s, answers: {} }]);
   const r1 = await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows('Not Interested'));
   assert.equal(r1.duplicates, 1);
-  assert.match(r1.rows[0].why, /Call status updated/);
+  assert.match(r1.rows[0].why, /Updated from the sheet/);
   assert.equal((await q("select a.call_status from public.applications a join public.candidates c on c.id = a.candidate_id where c.name = 'Asha'")).rows[0].call_status, 'Not Interested');
   const r2 = await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows('Not Interested'));
   assert.doesNotMatch(r2.rows[0].why, /updated/, 'the same status again changes nothing');
   await rpc(null, 'ingest_tab_leads', token, 'cs/1', rows(''));
   assert.equal((await q("select a.call_status from public.applications a join public.candidates c on c.id = a.candidate_id where c.name = 'Asha'")).rows[0].call_status, 'Not Interested', 'an empty cell does not clear it');
   assert.equal((await q("select count(*)::int n from public.applications where opening_id = 'OP-CS1'")).rows[0].n, 3, 'no second application');
+});
+
+test('your own columns: matched from a tab, kept on the application, refreshed when sent again, and checked', { skip }, async () => {
+  const token = (await rpc(U.admin, 'lead_feed_connect', true, true)).token;
+  await rpc(null, 'sheet_sync_plan', token, JSON.stringify([{ key: 'cs/2', name: 'Tab two', headings: ['Full Name', 'Mobile', 'VI DOne or not'] }]));
+  await q("insert into public.openings (id, title, positions, recruiter_id, status) values ('OP-CS2', 'Second role', 1, $1, 'Open')", [U.admin]);
+  await rpc(U.admin, 'sheet_link_save', 'OP-CS2', 'cs/2', 'Facebook Ad', JSON.stringify({ name: 'Full Name', phone: 'Mobile', 'x:VI done': 'VI DOne or not' }), '[]');
+  await assert.rejects(rpc(U.admin, 'sheet_link_save', 'OP-CS2', 'cs/2', 'Facebook Ad', JSON.stringify({ name: 'Full Name', phone: 'Mobile', 'x:': 'Mobile' }), '[]'), /not a field|already linked/);
+  const send = (v, extra = {}) => rpc(null, 'ingest_tab_leads', token, 'cs/2', JSON.stringify([{ name: 'Dev', phone: '98000 11122', 'x:VI done': v, 'x:Other': 'z'.repeat(300), ...extra, answers: {} }]));
+  const r1 = await send('Done');
+  assert.equal(r1.added, 1);
+  const get = async () => (await q("select a.custom from public.applications a join public.candidates c on c.id = a.candidate_id where c.name = 'Dev'")).rows[0].custom;
+  const c1 = await get();
+  assert.equal(c1['VI done'], 'Done');
+  assert.equal(c1.Other.length, 120, 'a value is cut at 120 characters');
+  const r2 = await send('Pending');
+  assert.match(r2.rows[0].why, /Updated from the sheet/);
+  assert.equal((await get())['VI done'], 'Pending');
+  await send('');
+  assert.equal((await get())['VI done'], 'Pending', 'an empty cell does not clear it');
+  assert.equal((await q("select count(*)::int n from public.applications where opening_id = 'OP-CS2'")).rows[0].n, 1);
 });

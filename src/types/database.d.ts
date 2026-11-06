@@ -35,6 +35,7 @@ export interface Applications {
   campaign: string;
   answers: Json;
   call_status: string;
+  custom: Json;
 }
 
 export interface AuditLog {

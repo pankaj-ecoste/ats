@@ -13,22 +13,36 @@ const isNoiseHeading=h=>NOISE_HEADING.test(String(h||'').trim());
 
 // the first guess for a tab: {map: {field: heading}, extra: [headings kept as form answers]}
 // Every heading not used for a field is kept as an answer, except the platform's bookkeeping columns.
-function guessLink(headings){
+function guessLink(headings,columns=[]){
  const hs=headings.filter(h=>String(h||'').trim());
  const g=guessLeadMap(hs);
  const map={};LINK_FIELDS.forEach(f=>{if(g[f.key])map[f.key]=g[f.key]});
  const call=hs.find(h=>isCallHeading(h)&&!Object.values(map).includes(h));if(call)map.callStatus=call;
+ Object.assign(map,guessCustom(hs,columns,Object.values(map)));
  const used=new Set(Object.values(map));
  return {map,extra:hs.filter(h=>!used.has(h)&&!isNoiseHeading(h))};
 }
 
+// the key of one of the app's own columns in a link's map
+const customKey=name=>'x:'+name;
+const isCustomKey=k=>/^x:/.test(String(k));
+const customName=k=>String(k).slice(2);
+// every field a link can fill: the standard ones, the call status, and the admin's own columns
+const linkFields=(columns=[])=>[...LINK_FIELDS,...columns.map(n=>({key:customKey(n),label:n,need:false,custom:true}))];
+// the first guess for the own columns: a heading that says the same (ignoring case, spaces and marks)
+const plainWords=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+function guessCustom(headings,columns,taken){
+ const out={};const used=new Set(taken);
+ columns.forEach(n=>{const w=plainWords(n);if(!w)return;const h=headings.find(x=>!used.has(x)&&plainWords(x)===w)||headings.find(x=>!used.has(x)&&plainWords(x).includes(w));if(h){out[customKey(n)]=h;used.add(h)}});
+ return out;
+}
 // what is wrong with the chosen columns, in words; '' when it is fine (the database checks the same again)
 function linkProblem(map){
  const v=k=>String((map&&map[k])||'').trim();
  if(!v('name'))return 'Choose the Name column';
  if(!v('phone')&&!v('email'))return 'Choose the Phone column or the Email column';
  const seen=new Set();
- for(const f of LINK_FIELDS){const h=v(f.key);if(!h)continue;if(seen.has(h))return `The column "${h}" is chosen for two fields`;seen.add(h)}
+ for(const k of Object.keys(map||{})){const h=v(k);if(!h)continue;if(seen.has(h))return `The column "${h}" is chosen for two fields`;seen.add(h)}
  return '';
 }
 
