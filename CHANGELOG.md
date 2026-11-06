@@ -6,6 +6,9 @@ Format: newest first. **Version 1** is the system handed to the HR team. **Every
 
 Candidates are listed in `.claude/plan.md` §12 (a separate staging database comes first).
 
+**Tests repaired (2026-11-06)**
+- The five live tests that were already failing at v1.0.0 now pass against the live project with the real data untouched (they had not kept up with the app: a prefix that matched real ids, a stale JSON-column list, the old call totals, an exact tab count, a field that became a dropdown).
+
 **Calling queue (2026-11-06)**
 - A new **Calling** page for admins and recruiters: one lead at a time, a big tap-to-call link and a WhatsApp link, the facts needed for the call, a note box, seven big status buttons (keys 1 to 7) with *More* for the rest. One tap logs the call and shows the next lead. *To call* (never called, oldest application first) and *Call again* (busy, not connected, call back, follow-up), only my leads by default, filter by opening, and a called-today count.
 - Undo that writes nothing: the status is held for 5 seconds and recorded afterwards, because calls are a permanent record. A connected call asks what next (screen now, shortlist, next lead). Works on a phone.
@@ -34,6 +37,6 @@ The whole hiring case in one shared system. Built from the intern's browser-only
 
 **Tests at the tag:** 259 unit tests; browser tests in demo mode and against the live project; 108 database tests; policy test `test:e2e:csp` (17 checks); scale test `test:e2e:scale`.
 
-**Known test debt at the tag:** five older live tests were already failing and are listed in plan §12.
+**Known test debt at the tag:** five older live tests were already failing; repaired in version 2 on 2026-11-06 (plan §10).
 
 **Known open items** (all in `docs/SECURITY_REVIEW.md` §3 and `docs/SECURITY_CHECKLIST.md`): the owner's dashboard steps, CAPTCHA on the careers form, a separate staging project, data-deletion requests (D17), server-sent e-mail (D5).
