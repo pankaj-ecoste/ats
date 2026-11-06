@@ -4,7 +4,9 @@
 const callOf=a=>a.callStatus||'';
 const customOf=(a,n)=>(a.custom&&a.custom[n])||'';
 // the admin's own columns that at least one application has a value for
-const shownColumns=()=>customColumns().filter(n=>S.applications.some(a=>customOf(a,n)));
+// (plus any question a recruiter asked on a screening call, which is kept the same way)
+const shownColumns=()=>{const seen=new Set(),out=[];const add=n=>{if(!seen.has(n)&&S.applications.some(a=>customOf(a,n))){seen.add(n);out.push(n)}};customColumns().forEach(add);S.applications.forEach(a=>Object.keys(a.custom||{}).sort().forEach(add));return out};
+const shortName=n=>n.length>26?n.slice(0,25)+'…':n;
 const valuesOf=n=>[...new Set(S.applications.map(a=>customOf(a,n)).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
 function filteredApps(){
  const f=R.af;
@@ -21,7 +23,7 @@ const callList=()=>[...new Set(S.applications.map(callOf).filter(Boolean))].sort
 function appTable(list,compact){
  const th=(k,l)=>`<th class="sort" data-sort="${k}">${l}${R.af.sort===k?(R.af.dir>0?' ▲':' ▼'):''}</th>`;
  if(!list.length)return '<div class="empty"><b>No applications here</b>Adjust filters or add a candidate.</div>';
- return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','Match score')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Call status</th>${shownColumns().map(n=>`<th>${esc(n)}</th>`).join('')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
+ return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','Match score')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Call status</th>${shownColumns().map(n=>`<th title="${esc(n)}">${esc(shortName(n))}</th>`).join('')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
  ${(compact?list:pageRows(list,'apps')).map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
   return `<tr class="click ${R.sel.has(a.id)?'sel':''}" data-cand="${c.id}">${compact?'':`<td><input type="checkbox" class="chk" data-sel="${a.id}" ${R.sel.has(a.id)?'checked':''} aria-label="Select ${esc(c.name)}"></td>`}
   <td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td>${compact?'':`<td>${esc(o.title)}</td>`}
@@ -53,7 +55,7 @@ function vApplications(){
   <select class="inp" data-f="op">${opt(S.openings.map(o=>[o.id,o.title]),f.op,'All openings')}</select>
   <select class="inp" data-f="status">${opt(STAGES.concat(['On Hold','Rejected']).map(s=>[s,s]),f.status,'All statuses')}</select>
   ${callList().length?`<select class="inp" data-f="call">${opt(callList().map(s=>[s,s]),f.call,'Any call status')}</select>`:''}
-  ${shownColumns().map(n=>`<select class="inp" data-f="x:${esc(n)}">${opt(valuesOf(n).map(s=>[s,s]),f['x:'+n]||'','Any '+n.toLowerCase())}</select>`).join('')}
+  ${shownColumns().map(n=>`<select class="inp" data-f="x:${esc(n)}">${opt(valuesOf(n).map(s=>[s,s]),f['x:'+n]||'','Any '+shortName(n).toLowerCase())}</select>`).join('')}
   <select class="inp" data-f="rec">${opt(recruiters().map(s=>[s,s]),f.rec,'All recruiters')}</select>
   <input class="inp" data-f="skill" placeholder="Skill" value="${esc(f.skill)}" style="width:100px">
   <input class="inp" data-f="loc" placeholder="Location" value="${esc(f.loc)}" style="width:100px">

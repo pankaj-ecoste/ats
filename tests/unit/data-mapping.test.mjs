@@ -102,3 +102,10 @@ test('the draft-summary switch is kept in the company settings and comes back', 
   assert.equal(s.settings.modelSummary, true);
   assert.equal(plain(app.stateFromRows({ company_settings: [{ company: 'X', config: {} }] }, P)).settings.modelSummary, undefined);
 });
+
+test('the screening questions of an opening go to the database and come back; none stays off the record', () => {
+  const P = app.makePeople([]);
+  const o = { id: 'OP-1', title: 'T', mode: 'Remote', type: 'Full-time', status: 'Open', opened: '2026-01-01', priority: 'P3' };
+  assert.deepEqual(JSON.parse(JSON.stringify(app.TO_ROW.opening(o, P).openings.screen_questions)), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(app.TO_ROW.opening({ ...o, screenQ: ['Own bike?'] }, P).openings.screen_questions)), ['Own bike?']);
+});

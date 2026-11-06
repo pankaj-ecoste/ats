@@ -298,6 +298,7 @@ export interface Openings {
   priority: string;
   status: string;
   form: Json;
+  screen_questions: Json;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -6,7 +6,7 @@ const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
   expose: ['S', 'recordScreening', 'scheduleGroupInterview', 'setInviteStatus', 'sendGroupReminders', 'cancelGroupInterview', 'evaluateGroup',
-    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today'],
+    'schedulePersonalInterview', 'recordScorecard', 'markNoShow', 'cancelInterview', 'getA', 'getC', 'getOp', 'appsOfOp', 'repo', 'today', 'setScreenQuestions'],
 });
 
 // three applications of the same opening that are still early in the pipeline
@@ -27,6 +27,19 @@ test('recordScreening stores the outcome with today and the duration, and logs i
   app.recordScreening(a.id, { outcome: 'Connected', answers: ['Yes'], notes: 'ok', duration: 125 });
   assert.deepEqual(plain(a.screening), { outcome: 'Connected', answers: ['Yes'], notes: 'ok', date: app.today(), duration: 125 });
   assert.match(app.S.activity[0].text, /Screening call completed with .* \(Connected\)/);
+});
+
+test('the questions of an opening are tidy, at most 10, and the answers are kept on the application by question', () => {
+  const app = fresh();
+  const a = app.S.applications[0];
+  const o = app.getOp(a.opId);
+  app.setScreenQuestions(o.id, ['  Can you join   in 15 days? ', 'can you join in 15 days?', '', 'Own bike?']);
+  assert.deepEqual(plain(o.screenQ), ['Can you join in 15 days?', 'Own bike?']);
+  assert.throws(() => app.setScreenQuestions(o.id, Array.from({ length: 11 }, (_, i) => 'Q' + i)), /At most 10/);
+  app.recordScreening(a.id, { outcome: 'Connected', answers: [], notes: '', duration: 1, custom: { 'Own bike?': ' Yes ', 'Can you join in 15 days?': '' } });
+  assert.deepEqual(plain(a.custom), { 'Own bike?': 'Yes' });
+  app.recordScreening(a.id, { outcome: 'Connected', answers: [], notes: '', duration: 1, custom: { 'Own bike?': '' } });
+  assert.deepEqual(plain(a.custom), {}, 'an emptied answer is removed');
 });
 
 test('scheduleGroupInterview creates the group, one interview per candidate, moves them to Group Interview and notifies', () => {

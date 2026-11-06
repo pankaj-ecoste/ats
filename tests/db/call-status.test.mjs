@@ -97,3 +97,16 @@ test('your own columns: matched from a tab, kept on the application, refreshed w
   assert.equal((await get())['VI done'], 'Pending', 'an empty cell does not clear it');
   assert.equal((await q("select count(*)::int n from public.applications where opening_id = 'OP-CS2'")).rows[0].n, 1);
 });
+
+test('screening questions of an opening: a list of up to 10 distinct texts, nothing else', { skip }, async () => {
+  if (!(await q("select 1 from information_schema.columns where table_name = 'openings' and column_name = 'screen_questions'")).rows.length) await q(mig('0030_screening_questions.sql'));
+  const set = (v) => q("update public.openings set screen_questions = $1 where id = 'OP-CS1'", [JSON.stringify(v)]);
+  const bad = async (v) => { await q('savepoint s'); try { await set(v); } catch (e) { await q('rollback to savepoint s'); await q('release savepoint s'); return e.message; } await q('release savepoint s'); return ''; };
+  assert.equal(await bad(['Own bike?', 'Join in 15 days?']), '');
+  assert.match(await bad(['A', 'a ']), /valid|check/i, 'the same question twice (any case) is refused');
+  assert.match(await bad(['']), /valid|check/i);
+  assert.match(await bad([1]), /valid|check/i);
+  assert.match(await bad({ a: 1 }), /valid|check/i);
+  assert.match(await bad(['x'.repeat(201)]), /valid|check/i);
+  assert.match(await bad(Array.from({ length: 11 }, (_, i) => 'Q' + i)), /valid|check/i);
+});
