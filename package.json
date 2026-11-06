@@ -45,15 +45,15 @@
     "test:e2e:lead-feed": "node tests/e2e/lead-feed.mjs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@fontsource-variable/figtree": "^5.3.0",
-    "@supabase/supabase-js": "^2.117.3",
-    "eslint": "^9.39.5",
+    "@supabase/supabase-js": "^2.118.0",
+    "eslint": "^10.14.0",
     "espree": "^11.2.0",
     "exceljs": "^4.4.0",
-    "globals": "^17.13.0",
-    "pdfjs-dist": "^3.11.174",
+    "globals": "^17.14.0",
+    "pdfjs-dist": "^6.5.438",
     "pg": "^8.23.1",
-    "playwright": "^1.48.0"
+    "playwright": "^1.64.1"
   }
 }
