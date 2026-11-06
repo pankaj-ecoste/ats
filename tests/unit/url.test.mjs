@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadApp } from './load-app.mjs';
 
 const stub = { document: { addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], getElementById: () => null, documentElement: { dataset: {}, classList: { toggle() {}, add() {}, remove() {} } }, body: { classList: { toggle() {}, add() {}, remove() {}, contains: () => false } } }, window: new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}) }) };
-const app = loadApp({ until: 'src/app/url.js', expose: ['routeToHash', 'hashToRoute'], globals: stub });
+const app = loadApp({ until: 'src/app/url.js', expose: ['routeToHash', 'hashToRoute', 'canGoBack'], globals: stub });
 const plain = (x) => JSON.parse(JSON.stringify(x));
 
 test('a route becomes an address and back', () => {
@@ -24,4 +24,11 @@ test('odd characters in an id survive, and rubbish is refused', () => {
   assert.equal(app.hashToRoute('#OP-1001'), null);       // the careers page style of link is not ours
   assert.equal(app.hashToRoute('#/candidate'), null);    // a record page needs an id
   assert.equal(app.hashToRoute('#/candidate/%E0%A4'), null);
+});
+
+test('the Back button shows only when a screen came before this one', () => {
+  const at = (state) => loadApp({ until: 'src/app/url.js', expose: ['canGoBack'], globals: { ...stub, history: { state } } }).canGoBack();
+  assert.equal(at(null), false, 'the first screen has nothing to go back to');
+  assert.equal(at({ i: 0 }), false);
+  assert.equal(at({ i: 3 }), true);
 });

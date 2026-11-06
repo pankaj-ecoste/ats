@@ -26,12 +26,17 @@ function applyHash(){
  return true;
 }
 let urlStarted=false;
+// every screen the person opens is one step in the browser history, numbered in history.state ({i}); a step above 0 has a screen before it to go back to
+const canGoBack=()=>{try{return !!(history.state&&history.state.i>0)}catch{return false}};
+function showBackButton(){const b=document.getElementById('backBtn');if(b)b.hidden=!canGoBack()}
 // called at the end of render(): put the current screen in the address bar (the first time replaces, later ones add a history step)
 function syncUrl(){
  const h=routeToHash({view:R.view,param:R.param,tab:R.tab,dashTab:R.dashTab});
- if(location.hash===h)return;
- try{urlStarted?history.pushState(null,'',h):history.replaceState(null,'',h)}catch{/* a sandbox that forbids it: the app still works without addresses */}
+ if(location.hash===h){showBackButton();return}
+ const i=(history.state&&history.state.i)||0;
+ try{urlStarted?history.pushState({i:i+1},'',h):history.replaceState({i},'',h)}catch{/* a sandbox that forbids it: the app still works without addresses */}
  urlStarted=true;
+ showBackButton();
 }
 // back and forward, or a pasted link
 window.addEventListener('hashchange',()=>{

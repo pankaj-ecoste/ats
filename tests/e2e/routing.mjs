@@ -21,10 +21,16 @@ const view = () => page.evaluate(() => `${R.view}|${R.param}|${R.tab}`);
 const settle = () => page.waitForTimeout(150);
 
 check('the first screen has an address', (await hash()).startsWith('#/'));
+const backShown = () => page.evaluate(() => { const b = document.getElementById('backBtn'); return !!b && !b.hidden; });
+check('the first screen has no Back button: nothing came before it', !(await backShown()));
 
 await page.click('[data-go="openings"]');
 check('opening a page puts it in the address', (await hash()) === '#/openings');
 
+check('after opening a page the Back button shows', await backShown());
+await page.click('#backBtn'); await settle();
+check('the Back button returns to the screen before, and hides again at the first screen', !(await backShown()) && (await hash()).startsWith('#/') && !(await hash()).includes('openings'));
+await page.click('[data-go="openings"]'); await settle();
 const opId = await page.evaluate(() => S.openings[0].id);
 await page.evaluate((id) => go('opening', id), opId);
 check('an opening has its own address', (await hash()) === '#/opening/' + encodeURIComponent(opId));
