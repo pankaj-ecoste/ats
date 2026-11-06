@@ -4,7 +4,7 @@ Format: newest first. **Version 1** is the system handed to the HR team. **Every
 
 ## Version 2 (after v1.0.0, unreleased)
 
-Nothing yet. Candidates are listed in `.claude/plan.md` §12 (a separate staging database comes first).
+Nothing yet (tag v1.0.0 was created 2026-11-06). Candidates are listed in `.claude/plan.md` §12 (a separate staging database comes first).
 
 ## Version 1.0.0 — 2026-11-06
 
@@ -24,5 +24,7 @@ The whole hiring case in one shared system. Built from the intern's browser-only
 - Handover: `docs/HANDOVER.md` (running it), `docs/SECURITY_REVIEW.md`, `docs/SCALING.md`.
 
 **Tests at the tag:** 259 unit tests; browser tests in demo mode and against the live project; 108 database tests; policy test `test:e2e:csp` (17 checks); scale test `test:e2e:scale`.
+
+**Known test debt at the tag:** five older live tests were already failing and are listed in plan §12.
 
 **Known open items** (all in `docs/SECURITY_REVIEW.md` §3 and `docs/SECURITY_CHECKLIST.md`): the owner's dashboard steps, CAPTCHA on the careers form, a separate staging project, data-deletion requests (D17), server-sent e-mail (D5).
