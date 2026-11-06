@@ -2,7 +2,10 @@
 "use strict";
 
 // the standard fields a tab's columns can fill (source and the opening come from the link itself, so they are not columns)
-const LINK_FIELDS=LEAD_FIELDS.filter(f=>f.key!=='source');
+// the team's call status (Connected, Not Interested ...) is kept on the application and shown in the list
+const CALL_FIELD={key:'callStatus',label:'Call status',need:false};
+const LINK_FIELDS=[...LEAD_FIELDS.filter(f=>f.key!=='source'),CALL_FIELD];
+const isCallHeading=h=>/call\s*(sta|stat)/i.test(String(h||''));
 
 // headings of a platform's own bookkeeping (Meta and Google lead forms add them): not an answer of the person, so not kept unless asked
 const NOISE_HEADING=/^(id|lead[_ ]?id|ad[_ ]?id|ad[_ ]?name|adset[_ ]?id|adset[_ ]?name|campaign[_ ]?id|campaign[_ ]?name|form[_ ]?id|form[_ ]?name|page[_ ]?id|platform|is[_ ]?organic|created[_ ]?time|lead[_ ]?status|synced to ats)$/i;
@@ -14,6 +17,7 @@ function guessLink(headings){
  const hs=headings.filter(h=>String(h||'').trim());
  const g=guessLeadMap(hs);
  const map={};LINK_FIELDS.forEach(f=>{if(g[f.key])map[f.key]=g[f.key]});
+ const call=hs.find(h=>isCallHeading(h)&&!Object.values(map).includes(h));if(call)map.callStatus=call;
  const used=new Set(Object.values(map));
  return {map,extra:hs.filter(h=>!used.has(h)&&!isNoiseHeading(h))};
 }

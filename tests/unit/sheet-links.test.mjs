@@ -130,3 +130,13 @@ test('new and missing columns are told apart', () => {
   assert.deepEqual(plain(app.missingHeadings(link, ['Name', 'Q1'])), ['Phone']);
   assert.deepEqual(plain(app.missingHeadings(link, ['Name', 'Phone', 'Q1'])), []);
 });
+
+test('a call status column is guessed from the heading, and lead_status is not mistaken for it', () => {
+  const { app } = load();
+  const g = (hs) => plain(app.guessLink(hs));
+  assert.equal(g(['Full Name', 'Mobile', 'Call staus ', 'lead_status']).map.callStatus, 'Call staus ');
+  assert.equal(g(['Full Name', 'Mobile', 'Call Status']).map.callStatus, 'Call Status');
+  assert.equal(g(['Full Name', 'Mobile', 'lead_status', 'Remark']).map.callStatus, undefined);
+  assert.ok(app.LINK_FIELDS.some((f) => f.key === 'callStatus'));
+  assert.equal(app.linkProblem({ name: 'A', phone: 'B', callStatus: 'B' }), 'The column "B" is chosen for two fields');
+});

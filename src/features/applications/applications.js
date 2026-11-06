@@ -1,26 +1,29 @@
 /* Applications table, board, filters, bulk actions */
 /* ---------- applications ---------- */
 "use strict";
+const callOf=a=>a.callStatus||'';
 function filteredApps(){
  const f=R.af;
  let l=S.applications.filter(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);
-  if(f.op&&a.opId!==f.op)return false;if(f.status&&a.stage!==f.status)return false;if(f.rec&&a.recruiter!==f.rec)return false;
+  if(f.op&&a.opId!==f.op)return false;if(f.call&&callOf(a)!==f.call)return false;if(f.status&&a.stage!==f.status)return false;if(f.rec&&a.recruiter!==f.rec)return false;
   if(m.score<f.min)return false;if(f.exp&&c.exp<+f.exp)return false;if(f.loc&&!c.location.toLowerCase().includes(f.loc.toLowerCase()))return false;
   if(f.skill&&!c.skills.join(' ').toLowerCase().includes(f.skill.toLowerCase()))return false;if(f.from&&a.date<f.from)return false;
   if(f.q&&!(c.name+o.title+c.email+a.id).toLowerCase().includes(f.q.toLowerCase()))return false;return true});
  const key={date:a=>a.date,name:a=>getC(a.cid).name,match:a=>matchA(a).score,exp:a=>getC(a.cid).exp,notice:a=>getC(a.cid).notice,cur:a=>getC(a.cid).curSal,expSal:a=>getC(a.cid).expSal,stage:a=>stageRank(a)}[f.sort]||(a=>a.date);
  return l.sort((a,b)=>{const x=key(a),y=key(b);return (x>y?1:x<y?-1:0)*f.dir});
 }
+// the call statuses in use, for the filter
+const callList=()=>[...new Set(S.applications.map(callOf).filter(Boolean))].sort((x,y)=>x.localeCompare(y));
 function appTable(list,compact){
  const th=(k,l)=>`<th class="sort" data-sort="${k}">${l}${R.af.sort===k?(R.af.dir>0?' ▲':' ▼'):''}</th>`;
  if(!list.length)return '<div class="empty"><b>No applications here</b>Adjust filters or add a candidate.</div>';
- return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','Match score')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Recruiter</th><th>Next action</th></tr></thead><tbody>
+ return `<div class="tbl-wrap"><table><thead><tr>${compact?'':'<th><input type="checkbox" class="chk" id="selAll" aria-label="Select all"></th>'}${th('name','Candidate')}${compact?'':'<th>Opening</th>'}${th('date','Applied')}<th>Resume</th>${th('match','Match score')}${th('exp','Exp')}<th>Skills</th><th>Location</th><th>Education</th>${th('notice','Notice')}${th('cur','Current')}${th('expSal','Expected')}${th('stage','Status')}<th>Call status</th><th>Recruiter</th><th>Next action</th></tr></thead><tbody>
  ${(compact?list:pageRows(list,'apps')).map(a=>{const c=getC(a.cid),o=getOp(a.opId),m=matchA(a);const pc=v=>`<span style="color:${scoreColor(v)};font-weight:600">${v}%</span>`;
   return `<tr class="click ${R.sel.has(a.id)?'sel':''}" data-cand="${c.id}">${compact?'':`<td><input type="checkbox" class="chk" data-sel="${a.id}" ${R.sel.has(a.id)?'checked':''} aria-label="Select ${esc(c.name)}"></td>`}
   <td><div class="who">${av(c.name)}<div><b>${esc(c.name)}</b><small>${esc(c.designation)}, ${esc(c.company)}</small></div></div></td>${compact?'':`<td>${esc(o.title)}</td>`}
   <td>${fmtDs(a.date)}</td><td><button class="btn sm ghost" data-resume="${c.id}" data-op="${o.id}" aria-label="View resume">${ic('file')}</button></td>
   <td><button class="score" data-match="${a.id}" title="See why">${ring(m.score)}</button></td><td>${c.exp}y</td><td>${pc(m.skills)}</td><td>${pc(m.location)}</td><td>${pc(m.education)}</td>
-  <td>${c.notice}d</td><td>${lpa(c.curSal)}</td><td>${lpa(c.expSal)}</td><td>${stagePill(a.stage)}</td><td class="small">${esc(a.recruiter)}</td><td>${nextBtn(a)}</td></tr>`}).join('')}
+  <td>${c.notice}d</td><td>${lpa(c.curSal)}</td><td>${lpa(c.expSal)}</td><td>${stagePill(a.stage)}</td><td class="small">${esc(callOf(a)||'—')}</td><td class="small">${esc(a.recruiter)}</td><td>${nextBtn(a)}</td></tr>`}).join('')}
  </tbody></table></div>${compact?'':moreRows(list,'apps')}`;
 }
 function bindAppTable(root){
@@ -45,6 +48,7 @@ function vApplications(){
   <input class="inp" id="afq" placeholder="Search name, opening, ID" value="${esc(f.q)}" style="min-width:180px">
   <select class="inp" data-f="op">${opt(S.openings.map(o=>[o.id,o.title]),f.op,'All openings')}</select>
   <select class="inp" data-f="status">${opt(STAGES.concat(['On Hold','Rejected']).map(s=>[s,s]),f.status,'All statuses')}</select>
+  ${callList().length?`<select class="inp" data-f="call">${opt(callList().map(s=>[s,s]),f.call,'Any call status')}</select>`:''}
   <select class="inp" data-f="rec">${opt(recruiters().map(s=>[s,s]),f.rec,'All recruiters')}</select>
   <input class="inp" data-f="skill" placeholder="Skill" value="${esc(f.skill)}" style="width:100px">
   <input class="inp" data-f="loc" placeholder="Location" value="${esc(f.loc)}" style="width:100px">
@@ -57,7 +61,7 @@ function vApplications(){
 function bindApplications(root){
  const q=$('#afq',root);q.oninput=()=>{R.af.q=q.value;const p=q.selectionStart;render();const n=$('#afq');n.focus();n.setSelectionRange(p,p)};
  $$('[data-f]',root).forEach(el=>{const h=()=>{R.af[el.dataset.f]=el.type==='range'?+el.value:el.value;render()};if(el.tagName==='SELECT'||el.type==='range'||el.type==='date')el.onchange=h;else el.onchange=h});
- const c=$('#afClear',root);if(c)c.onclick=()=>{Object.assign(R.af,{q:'',op:'',status:'',rec:'',min:0,exp:'',loc:'',skill:'',from:''});render()};
+ const c=$('#afClear',root);if(c)c.onclick=()=>{Object.assign(R.af,{q:'',op:'',status:'',call:'',rec:'',min:0,exp:'',loc:'',skill:'',from:''});render()};
  $$('[data-av]',root).forEach(b=>b.onclick=()=>{R.appView=b.dataset.av;render()});
  $$('[data-bulk]',root).forEach(b=>b.onclick=()=>{const ids=[...R.sel];const k=b.dataset.bulk;
   if(k==='clear'){R.sel.clear();render();return}

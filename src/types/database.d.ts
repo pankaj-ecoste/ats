@@ -34,6 +34,7 @@ export interface Applications {
   source: string;
   campaign: string;
   answers: Json;
+  call_status: string;
 }
 
 export interface AuditLog {

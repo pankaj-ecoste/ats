@@ -47,6 +47,7 @@ The app guesses from the headings (Name, Mobile, Email ID, City …) and you can
 | Notice period | optional. `1 month`, `2 weeks`, `immediate` |
 | Date of the lead | optional. `12/10/2026` (day first) or `2026-10-12`; today if missing |
 | Remarks | kept as a note on the candidate |
+| Call status | the team's call result (Connected, Not Interested ...). Kept on the application, shown in the Applications list and the candidate page, and can be filtered. It is what the sheet said **when the row arrived**, and it never moves a stage |
 
 **Other columns to keep with the lead** become "form answers" on the candidate's page (question and answer). They are ticked for you, except the columns a platform adds for itself (`id`, `ad_id`, `form_name`, `platform`, `created_time` …). You decide.
 
