@@ -154,8 +154,8 @@ try {
   const brokenM = await openEach(page, await navOf(page));
   check('management pages open without an error', brokenM.length === 0 || (console.error(brokenM), false));
   const srv = await page.evaluate(async () => { reportCountsFor('2000-01-01', '2100-01-01'); for (let i = 0; i < 50 && !reportCountsFor('2000-01-01', '2100-01-01'); i++) await new Promise((r) => setTimeout(r, 200)); return reportCountsFor('2000-01-01', '2100-01-01'); });
-  const want = (await db.query("select (coalesce((select sum(made) from public.call_log), 0) + (select count(*) from public.screenings))::int calls, (select count(*) from public.offers where sent_on is not null)::int offers")).rows[0];
-  check('management report totals come from the database and include what management cannot read', srv && srv.calls === want.calls && srv.offer >= want.offers);
+  const want = (await db.query("select (select count(*) from public.call_events)::int calls, (select count(*) from public.call_events where status = 'Connected')::int conn, (select count(*) from public.offers where sent_on is not null)::int offers")).rows[0];   // calls are the logged calls (migration 0036), not the old manual log
+  check('management report totals come from the database and include what management cannot read', srv && srv.calls === want.calls && srv.conn === want.conn && srv.offer >= want.offers);
   await page.fill('#gsearch', 'Zed');
   check('management search never shows a candidate or an offer', !(await page.locator('#gres').innerText()).match(/Zed Candidate|Candidates|Offers/));
 
@@ -227,9 +227,13 @@ try {
   await db.query('insert into public.tasks (id, title, owner_id) values ($1, $2, $3)', [`T-${tag}x`, `Added elsewhere ${tag}`, recId2]);
   await page.evaluate(() => refreshNow(ME));
   check('another person change arrives without reloading', await page.evaluate((t) => S.tasks.some((x) => x.title === `Added elsewhere ${t}`), tag));
+  // a save under a third of a second is not announced (no flicker), so this one is made slow on purpose
+  await page.route('**/rest/v1/tasks*', async (route) => { await new Promise((r) => setTimeout(r, 1200)); await route.continue(); });
   await page.evaluate(() => { addTask({ title: 'Local only', due: today(), priority: 'Low', related: 'x', owner: S.settings.user }); });
+  await page.waitForFunction(() => { const e = document.getElementById('saveState'); return e && e.textContent === 'Saving…'; }, null, { timeout: 3000 }).catch(() => {});
   check('the top bar says Saving while a change is on its way', (await page.locator('#saveState').innerText()) === 'Saving…');
   await page.waitForFunction(() => writesPending() === 0, null, { timeout: 30000 });
+  await page.unroute('**/rest/v1/tasks*');
   check('and All saved again afterwards', (await page.locator('#saveState').innerText()) === 'All saved');
   await db.query("delete from public.tasks where id = $1 or title = 'Local only'", [`T-${tag}x`]);
 } catch (e) {

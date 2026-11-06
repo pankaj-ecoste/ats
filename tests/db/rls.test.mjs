@@ -219,13 +219,15 @@ test('a pending user sees nothing except their own profile', { skip }, async () 
 });
 
 /* ---------- staff ---------- */
+// The test records are named OP-T1, C-T2, ... (one digit). Real records have eight random characters and some of them start with T, so a prefix match
+// (like 'C-T%') also finds real people: the tests match the one-digit names exactly.
 test('admin and recruiter see all the data, including salary', { skip }, async () => {
   for (const who of [U.admin, U.recruiter]) {
     await as(who, async () => {
-      assert.deepEqual(ids(await attempt("select id from public.openings where id like 'OP-T%'")), ['OP-T1', 'OP-T2']);
-      assert.deepEqual(ids(await attempt("select id from public.candidates where id like 'C-T%'")), ['C-T1', 'C-T2']);
-      assert.equal((await attempt("select 1 from public.candidate_compensation where candidate_id like 'C-T%'")).rows.length, 2);
-      assert.equal((await attempt("select 1 from public.offers where id like 'OF-T%'")).rows.length, 2);
+      assert.deepEqual(ids(await attempt("select id from public.openings where id ~ '^OP-T[0-9]$'")), ['OP-T1', 'OP-T2']);
+      assert.deepEqual(ids(await attempt("select id from public.candidates where id ~ '^C-T[0-9]$'")), ['C-T1', 'C-T2']);
+      assert.equal((await attempt("select 1 from public.candidate_compensation where candidate_id ~ '^C-T[0-9]$'")).rows.length, 2);
+      assert.equal((await attempt("select 1 from public.offers where id ~ '^OF-T[0-9]$'")).rows.length, 2);
     });
   }
 });
@@ -243,8 +245,8 @@ test('only an admin can read the audit log or delete candidates', { skip }, asyn
 /* ---------- management ---------- */
 test('management reads openings and applications but no candidate details, salary or offers', { skip }, async () => {
   await as(U.management, async () => {
-    assert.deepEqual(ids(await attempt("select id from public.openings where id like 'OP-T%'")), ['OP-T1', 'OP-T2']);
-    assert.deepEqual(ids(await attempt("select id from public.applications where id like 'A-T%'")), ['A-T1', 'A-T2']);
+    assert.deepEqual(ids(await attempt("select id from public.openings where id ~ '^OP-T[0-9]$'")), ['OP-T1', 'OP-T2']);
+    assert.deepEqual(ids(await attempt("select id from public.applications where id ~ '^A-T[0-9]$'")), ['A-T1', 'A-T2']);
     for (const t of ['candidates', 'candidate_compensation', 'offers', 'interviews', 'tasks', 'audit_log', 'activity']) {
       assert.equal((await attempt(`select * from public.${t}`)).rows.length, 0, t);
     }
@@ -256,10 +258,10 @@ test('management reads openings and applications but no candidate details, salar
 /* ---------- hiring managers ---------- */
 test('a hiring manager sees only their own opening, its applications, candidates and offers', { skip }, async () => {
   await as(U.hm1, async () => {
-    assert.deepEqual(ids(await attempt("select id from public.openings where id like 'OP-T%'")), ['OP-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.applications where id like 'A-T%'")), ['A-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.candidates where id like 'C-T%'")), ['C-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.offers where id like 'OF-T%'")), ['OF-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.openings where id ~ '^OP-T[0-9]$'")), ['OP-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.applications where id ~ '^A-T[0-9]$'")), ['A-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.candidates where id ~ '^C-T[0-9]$'")), ['C-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.offers where id ~ '^OF-T[0-9]$'")), ['OF-T1']);
     assert.equal((await attempt('select * from public.candidate_compensation')).rows.length, 0, 'no salary');
   });
 });
@@ -297,10 +299,10 @@ test('the recruiter who prepared an offer cannot approve it, and an unapproved o
 /* ---------- interviewers ---------- */
 test('an interviewer sees only the interviews they are on and what belongs to them', { skip }, async () => {
   await as(U.interviewer, async () => {
-    assert.deepEqual(ids(await attempt("select id from public.interviews where id like 'I-T%'")), ['I-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.applications where id like 'A-T%'")), ['A-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.candidates where id like 'C-T%'")), ['C-T1']);
-    assert.deepEqual(ids(await attempt("select id from public.openings where id like 'OP-T%'")), ['OP-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.interviews where id ~ '^I-T[0-9]$'")), ['I-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.applications where id ~ '^A-T[0-9]$'")), ['A-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.candidates where id ~ '^C-T[0-9]$'")), ['C-T1']);
+    assert.deepEqual(ids(await attempt("select id from public.openings where id ~ '^OP-T[0-9]$'")), ['OP-T1']);
     for (const t of ['offers', 'candidate_compensation', 'candidate_documents', 'audit_log']) assert.equal((await attempt(`select * from public.${t}`)).rows.length, 0, t);
     assert.equal((await attempt("update public.interviews set feedback = 'x' where id = 'I-T1'")).rowCount, 0, 'cannot edit the interview itself');
   });
@@ -379,7 +381,7 @@ test('intake: the public sees open roles only, applies through one door, and not
   };
   const asAnon = async (over) => { let r; await as(null, async () => { const x = await apply(over); r = x.rows[0] ? x.rows[0].r : { ok: false, message: x.error }; }, { keep: true }); return r; };
   await as(null, async () => {
-    const view = await attempt("select id, title from public.careers_openings where id like 'OP-T%' order by id");
+    const view = await attempt("select id, title from public.careers_openings where id ~ '^OP-T[0-9]$' order by id");
     assert.deepEqual(view.rows.map((r) => r.id), ['OP-T1'], 'a draft is not listed');
     assert.ok(!Object.keys((await attempt('select * from public.careers_openings limit 1')).rows[0] || {}).some((k) => /sal|budget|manager|recruiter/.test(k)), 'no salary, budget or people');
     for (const t of ['candidates', 'applications', 'openings', 'candidate_compensation', 'notifications', 'intake_batches', 'messages', 'profiles', 'company_settings'])

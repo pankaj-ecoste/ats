@@ -69,7 +69,7 @@ const left = await text('#ldSum details');
 check('the rows left out are listed with their row number and reason', left.includes('Row 5') && left.includes('Repeated in this file') && left.includes('Row 6') && left.includes('No name'));
 check('the Import button says how many', (await text('#ldGo')) === 'Import 4 leads');
 
-await page.fill('#ldSrc', 'Facebook Ad');
+await page.selectOption('#ldSrc', 'Facebook Ad');   // the source is chosen from the company list (lead intake step 3)
 await page.click('#ldGo'); await settle(400);
 const after = await page.evaluate(() => ({ c: S.candidates.length, a: S.applications.length, view: R.view }));
 check('the new people and their applications are added', after.c === before.c + 3 && after.a === before.a + 4);
@@ -114,9 +114,9 @@ await wb.xlsx.writeFile(xlsxPath);
 await page.click('[data-act="importLeads"]'); await settle();
 await page.setInputFiles('#ldFile', xlsxPath); await page.waitForSelector('#ldOp'); await settle();
 check('an Excel file is read, with the biggest sheet chosen and a sheet picker', (await text('#ldSheet')).includes('October leads') && /2 new/.test(await text('#ldSum')));
-await page.fill('#ldSrc', 'Newspaper Ad'); await page.click('#ldGo'); await settle(400);
+await page.selectOption('#ldSrc', 'Google Ad'); await page.click('#ldGo'); await settle(400);
 const x = await page.evaluate(() => { const a = S.candidates.find((c) => c.name === 'Excel One'), b = S.candidates.find((c) => c.name === 'Excel Two'); return [a.phone, a.email, a.created, a.source, b.phone, b.created]; });
-check('Excel numbers, links and dates come through as text', x[0] === '+91 98765 01234' && x[1] === 'x1@example.com' && x[2] === '2026-10-05' && x[3] === 'Newspaper Ad' && x[4] === '+91 98765 01235' && x[5] === '2026-10-06');
+check('Excel numbers, links and dates come through as text', x[0] === '+91 98765 01234' && x[1] === 'x1@example.com' && x[2] === '2026-10-05' && x[3] === 'Google Ad' && x[4] === '+91 98765 01235' && x[5] === '2026-10-06');
 
 // the lead list can be searched and a lead can be opened and called
 await page.fill('#cq', 'Excel One'); await settle();

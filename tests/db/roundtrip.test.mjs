@@ -24,7 +24,9 @@ const q = (sql, params) => c.query(sql, params);
 const PEOPLE = { 'Priya Sharma': 'recruiter', 'Arjun Nair': 'recruiter', 'Sneha Kapoor': 'recruiter', 'Rahul Mehta': 'hiring_manager', 'Kavita Rao': 'hiring_manager',
   'Neha Joshi': 'hiring_manager', 'Aman Gupta': 'hiring_manager', 'Farah Khan': 'hiring_manager', 'Vikram Singh': 'interviewer' };
 // `notes` and `link` are JSON in one table and plain text in another, so columns are named with their table
-const JSON_COLUMNS = new Set(['candidates.history', 'candidates.notes', 'screenings.answers', 'offers.breakup', 'notifications.link', 'company_settings.match_weights', 'company_settings.config']);
+// every JSON column of the public tables, read from the database itself: a list written by hand misses the columns later migrations add, and a JavaScript
+// array sent to one is turned into a Postgres array ("{}"), which is a different thing
+let JSON_COLUMNS = new Set();
 const ORDER = ['openings', 'candidates', 'candidate_compensation', 'candidate_documents', 'applications', 'screenings', 'interview_groups', 'interviews', 'offers',
   'onboarding_checklists', 'onboarding_items', 'tasks', 'notifications', 'activity', 'job_boards', 'postings', 'report_events', 'call_log', 'monthly_targets', 'sheet_log'];
 
@@ -61,6 +63,8 @@ function tidy(state) {
     o.status = hired >= o.positions ? 'Filled' : furthest >= 6 ? 'Offer' : furthest >= 3 ? 'Interviewing' : furthest >= 1 ? 'Screening' : 'Open';
   });
   s.applications.forEach((a) => { if (a.backup === null) delete a.backup; if (a.screening === null) delete a.screening; });
+  // the database fills an application's source from the person when none is given (migration 0022, tested in apply-source.test.mjs); the sample never set one
+  s.applications.forEach((a) => { delete a.source; });
   return s;
 }
 const byText = (a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b));
@@ -71,6 +75,7 @@ before(async () => {
   c = connect();
   await c.connect();
   await q('begin');
+  JSON_COLUMNS = new Set((await q("select table_name || '.' || column_name as c from information_schema.columns where table_schema = 'public' and data_type in ('json', 'jsonb')")).rows.map((r) => r.c));
   await q("select set_config('app.allow_user_create', 'on', true)");
   const ids = {};
   // the database refuses to leave itself without an admin, so one exists for the whole test
