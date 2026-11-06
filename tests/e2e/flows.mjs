@@ -144,6 +144,24 @@ await page.click('#crPanel [data-crp="day"]');
 check('call report: going back to Daily shows the rows fetched before', await ev(() => document.querySelectorAll('#crPanel tbody tr').length === 3));
 await ev(() => { CALL_REPORT.cache = {}; });
 
+// ---- management report: real call numbers, the Ads section, ad spend in the cost
+await ev(() => { R.dashTab = 'report'; go('dashboard'); });
+check('report: the Ads section says so when no opening has an ad request', await ev(() => document.querySelector('#rpAds').textContent.includes('No ad requests yet')));
+check('report: the call rows are named for logged calls; no summary panel or bar chart is left', await ev(() => { const t = document.querySelector('#content').textContent; return t.includes('Calls logged') && t.includes('Calls connected') && !t.includes('Position calls made') && !t.includes('Interviews to joining: this vs last month') && !/Summary/.test([...document.querySelectorAll('.rep h3')].map((h) => h.textContent).join()) && !document.querySelector('#rpCalls'); }));
+await ev(() => {
+  const o = S.openings[0];
+  requestAd(o.id);
+  saveAdRequest(o.id, { status: 'Running', startOn: today(), platform: 'Meta', spend: '4000' });
+  const mk = (n, source, maxStage, stage) => repo.insert('applications', { id: 'A-RA' + n, cid: S.candidates[0].id, opId: o.id, date: today(), source, stage, maxStage, recruiter: o.recruiter, screening: null, stageSince: today(), matchScore: 50, matchReasons: [] });
+  mk(1, 'Facebook Ad', 0, 'New'); mk(2, 'Facebook Ad', 7, 'Offer Accepted');
+  setAppCall('A-RA1', 'Connected');
+  render();
+});
+check('report: the Ads section lists the opening with its leads, hired and cost per lead and per hire', await ev(() => { const r = document.querySelector('#rpAds tbody tr').textContent; return r.includes(S.openings[0].title) && r.includes('Running') && r.includes('Meta') && r.includes('₹4,000') && r.includes('₹2,000'); }));
+check('report: the ad spend is part of the actual spend of the month', await ev(() => /ads ₹4,000/.test(document.querySelector('#content').textContent)));
+check('report: a logged call is counted in the calls row', await ev(() => { const row = [...document.querySelectorAll('.rep tbody tr')].find((r) => r.children[0].textContent === 'Calls logged'); return !!row && +row.children[1].textContent >= 1 && +row.children[4].textContent >= 1; }));
+await ev(() => { S.applications = S.applications.filter((a) => !a.id.startsWith('A-RA')); dropAdRequest(S.openings[0].id); });
+
 // ---- add candidate from resume
 const before = await ev(() => ({ c: S.candidates.length, a: S.applications.length }));
 await ev(() => addCandidate());
@@ -306,16 +324,7 @@ check('settings: reset demo data restores the sample company and clears our test
 
 // ---- management report
 await ev(() => { R.dashTab = 'report'; go('dashboard'); });
-await ev(() => callLogModal());
-await page.fill('#clM', '40');
-await page.fill('#clC', '15');
-await page.click('#clS');
-await modalGone();
-check('report: a call log entry is added', await ev(() => S.callLog.some((c) => c.made === 40 && c.conn === 15 && !c.demo)));
-await ev(() => callLogModal());
-await page.click('[data-cldel]');
-await closeAllModals();
-check('report: a call log entry can be deleted', await ev(() => !S.callLog.some((c) => c.made === 40 && c.conn === 15 && !c.demo)));
+check('report: the manual Log calls button and its window are gone', await ev(() => !document.querySelector('#rpCalls') && typeof callLogModal === 'undefined'));
 await ev(() => targetsModal());
 const tkey = await ev(() => document.querySelector('[data-tm][data-k="target"]').dataset.tm);
 await page.fill('[data-tm][data-k="target"]', '7');

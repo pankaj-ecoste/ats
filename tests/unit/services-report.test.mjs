@@ -5,7 +5,7 @@ import { loadApp } from './load-app.mjs';
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const fresh = () => loadApp({
   until: 'services',
-  expose: ['S', 'repo', 'addEvent', 'moveStage', 'setReportThreshold', 'clearDemoHistory', 'logCalls', 'deleteCallLog', 'saveMonthlyTargets', 'setDropRisk',
+  expose: ['S', 'repo', 'addEvent', 'moveStage', 'setReportThreshold', 'clearDemoHistory', 'saveMonthlyTargets', 'setDropRisk',
     'setBackup', 'recordDropout', 'getA', 'getC', 'appsOfOp', 'today'],
 });
 const types = (app) => plain((app.S.events || []).map((e) => e.t));
@@ -53,15 +53,10 @@ test('rejecting after an accepted offer records "dropped"; rejecting earlier doe
   assert.equal(b.dropped, undefined);
 });
 
-test('thresholds, call log, monthly targets and drop risk are stored', () => {
+test('thresholds, monthly targets and drop risk are stored', () => {
   const app = fresh();
   app.setReportThreshold('offerAlert', 80);
   assert.deepEqual(plain(app.S.settings.report), { offerAlert: 80, noShowAlert: 25, dueSoon: 7 });
-  const c = app.logCalls({ d: '2026-10-01', op: 'OP-1001', made: 30, conn: 12 });
-  assert.match(c.id, /^CL-/);
-  assert.equal(app.S.callLog.length, 1);
-  assert.equal(app.deleteCallLog(c.id), true);
-  assert.equal(app.S.callLog.length, 0);
   app.saveMonthlyTargets([['2026-10', 'target', 8], ['2026-10', 'budget', 50000], ['2026-11', 'target', 5]]);
   assert.deepEqual(plain(app.S.monthly), { '2026-10': { target: 8, budget: 50000 }, '2026-11': { target: 5 } });
   const a = earlyApp(app);

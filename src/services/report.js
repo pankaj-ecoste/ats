@@ -24,8 +24,6 @@ function clearDemoHistory(){
  repo.root('postings',(S.postings||[]).filter(p=>!p.demo));
  repo.root('demoHistory',false);
 }
-function logCalls({d,op,made,conn}){return repo.insert('callLog',{id:uid('CL'),d,op,made,conn},{end:true})}
-function deleteCallLog(id){return repo.remove('callLog',id)}
 // entries: [[monthKey,field,value],...] e.g. [['2026-10','target',8]]
 function saveMonthlyTargets(entries){
  if(!S.monthly)repo.root('monthly',{});
